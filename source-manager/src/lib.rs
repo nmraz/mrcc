@@ -1,3 +1,4 @@
+use std::convert::TryInto;
 use std::option::Option;
 use std::path::{Path, PathBuf};
 use std::vec::Vec;
@@ -79,6 +80,8 @@ struct Source {
   pub info: SourceInfo,
 }
 
+pub struct SourcesTooLargeError;
+
 pub struct SourceManager {
   sources: Vec<Source>,
   next_offset: u32,
@@ -92,10 +95,23 @@ impl SourceManager {
     }
   }
 
-  fn add_source(&mut self, source: Source, len: u32) -> SourceId {
-    self.sources.push(source);
-    self.next_offset += len;
-    SourceId::from_raw(self.sources.len() as u32)
+  fn add_source(
+    &mut self,
+    ctor: impl FnOnce() -> SourceInfo,
+    len: u32,
+  ) -> Result<SourceId, SourcesTooLargeError> {
+    let offset = self.next_offset;
+    self.next_offset = match self.next_offset.checked_add(len) {
+      Some(off) => off,
+      None => return Err(SourcesTooLargeError),
+    };
+
+    self.sources.push(Source {
+      offset,
+      info: ctor(),
+    });
+
+    Ok(SourceId::from_raw(self.sources.len() as u32))
   }
 
   pub fn create_file(
@@ -103,14 +119,27 @@ impl SourceManager {
     filename: impl AsRef<Path>,
     src: String,
     include_pos: Option<SourcePos>,
-  ) -> SourceId {
-    let len = src.len() as u32;
+  ) -> Result<SourceId, SourcesTooLargeError> {
+    let len = match src.len().try_into() {
+      Ok(len) => len,
+      Err(..) => return Err(SourcesTooLargeError),
+    };
+
     self.add_source(
-      Source {
-        offset: self.next_offset,
-        info: SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
-      },
+      || SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
       len,
+    )
+  }
+
+  pub fn create_expansion(
+    &mut self,
+    spelling_pos: SourcePos,
+    expansion_range: SourceRange,
+    tok_len: u32,
+  ) -> Result<SourceId, SourcesTooLargeError> {
+    self.add_source(
+      || SourceInfo::Expansion(ExpansionSourceInfo::new(spelling_pos, expansion_range)),
+      tok_len,
     )
   }
 }
