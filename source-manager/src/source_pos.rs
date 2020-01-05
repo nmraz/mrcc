@@ -15,6 +15,10 @@ impl SourcePos {
     pub fn with_offset(&self, offset: i32) -> Self {
         SourcePos(self.0 + offset as u32)
     }
+
+    pub fn offset_from(&self, rhs: SourcePos) -> i32 {
+        (self.to_raw() - rhs.to_raw()) as i32
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -22,6 +26,7 @@ pub struct SourceRange(SourcePos, SourcePos);
 
 impl SourceRange {
     pub fn new(begin: SourcePos, end: SourcePos) -> Self {
+        assert!(end.offset_from(begin) > 0, "illegal source range");
         SourceRange(begin, end)
     }
 
@@ -35,6 +40,10 @@ impl SourceRange {
 
     pub fn end(&self) -> SourcePos {
         self.1
+    }
+
+    pub fn len(&self) -> u32 {
+        self.end().offset_from(self.begin()) as u32
     }
 }
 
