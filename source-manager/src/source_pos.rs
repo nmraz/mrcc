@@ -25,6 +25,10 @@ impl SourceRange {
         SourceRange(begin, end)
     }
 
+    pub fn new_with_offset(begin: SourcePos, offset: u32) -> Self {
+        SourceRange(begin, begin.with_offset(offset as i32))
+    }
+
     pub fn begin(&self) -> SourcePos {
         self.0
     }
