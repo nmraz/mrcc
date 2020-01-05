@@ -7,19 +7,6 @@ mod source_pos;
 
 pub use source_pos::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SourceId(usize);
-
-impl SourceId {
-    pub fn from_raw(raw: usize) -> Self {
-        SourceId(raw)
-    }
-
-    pub fn to_raw(&self) -> usize {
-        self.0
-    }
-}
-
 struct FileSourceInfo {
     filename: Box<Path>,
     src: String,
@@ -80,6 +67,12 @@ struct Source {
     pub info: SourceInfo,
 }
 
+impl Source {
+    pub fn start_pos(&self) -> SourcePos {
+        SourcePos::from_raw(self.offset)
+    }
+}
+
 pub struct SourcesTooLargeError;
 
 pub struct SourceManager {
@@ -99,7 +92,7 @@ impl SourceManager {
         &mut self,
         ctor: impl FnOnce() -> SourceInfo,
         len: u32,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         let offset = self.next_offset;
         self.next_offset = match self.next_offset.checked_add(len) {
             Some(off) => off,
@@ -111,7 +104,7 @@ impl SourceManager {
             info: ctor(),
         });
 
-        Ok(SourceId::from_raw(self.sources.len()))
+        Ok(self.sources.last().unwrap())
     }
 
     pub fn create_file(
@@ -119,16 +112,23 @@ impl SourceManager {
         filename: PathBuf,
         src: String,
         include_pos: Option<SourcePos>,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<(SourcePos, &str), SourcesTooLargeError> {
         let len = match src.len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
         };
 
-        self.add_source(
+        let source = self.add_source(
             || SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
             len,
-        )
+        )?;
+
+        let contents = match &source.info {
+            SourceInfo::File(file) => file.src(),
+            _ => unreachable!(),
+        };
+
+        Ok((source.start_pos(), contents))
     }
 
     pub fn create_expansion(
@@ -136,10 +136,11 @@ impl SourceManager {
         spelling_pos: SourcePos,
         expansion_range: SourceRange,
         tok_len: u32,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<SourcePos, SourcesTooLargeError> {
         self.add_source(
             || SourceInfo::Expansion(ExpansionSourceInfo::new(spelling_pos, expansion_range)),
             tok_len,
         )
+        .map(|source| source.start_pos())
     }
 }
