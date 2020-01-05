@@ -27,9 +27,9 @@ struct FileSourceInfo {
 }
 
 impl FileSourceInfo {
-    pub fn new(filename: impl AsRef<Path>, src: String, include_pos: Option<SourcePos>) -> Self {
+    pub fn new(filename: PathBuf, src: String, include_pos: Option<SourcePos>) -> Self {
         FileSourceInfo {
-            filename: PathBuf::from(filename.as_ref()).into_boxed_path(),
+            filename: filename.into_boxed_path(),
             src,
             include_pos,
         }
@@ -116,7 +116,7 @@ impl SourceManager {
 
     pub fn create_file(
         &mut self,
-        filename: impl AsRef<Path>,
+        filename: PathBuf,
         src: String,
         include_pos: Option<SourcePos>,
     ) -> Result<SourceId, SourcesTooLargeError> {
