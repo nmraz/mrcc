@@ -12,12 +12,14 @@ impl SourcePos {
         self.0
     }
 
-    pub fn with_offset(&self, offset: i32) -> Self {
-        SourcePos(self.0 + offset as u32)
+    pub fn with_offset(&self, offset: u32) -> Self {
+        SourcePos(self.0 + offset)
     }
 
-    pub fn offset_from(&self, rhs: SourcePos) -> i32 {
-        (self.to_raw() - rhs.to_raw()) as i32
+    pub fn offset_from(&self, rhs: SourcePos) -> u32 {
+        self.to_raw()
+            .checked_sub(rhs.to_raw())
+            .expect("other position does not precede self")
     }
 }
 
@@ -26,12 +28,12 @@ pub struct SourceRange(SourcePos, SourcePos);
 
 impl SourceRange {
     pub fn new(begin: SourcePos, end: SourcePos) -> Self {
-        assert!(end.offset_from(begin) > 0, "illegal source range");
+        end.offset_from(begin); // Check that begin precedes end
         SourceRange(begin, end)
     }
 
     pub fn new_with_offset(begin: SourcePos, offset: u32) -> Self {
-        SourceRange(begin, begin.with_offset(offset as i32))
+        SourceRange(begin, begin.with_offset(offset))
     }
 
     pub fn begin(&self) -> SourcePos {
@@ -43,7 +45,7 @@ impl SourceRange {
     }
 
     pub fn len(&self) -> u32 {
-        self.end().offset_from(self.begin()) as u32
+        self.end().offset_from(self.begin())
     }
 }
 
