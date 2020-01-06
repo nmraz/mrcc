@@ -137,10 +137,77 @@ impl SourceManager {
         expansion_range: SourceRange,
         tok_len: u32,
     ) -> Result<SourcePos, SourcesTooLargeError> {
+        self.check_range(expansion_range);
+
         self.add_source(
             || SourceInfo::Expansion(ExpansionSourceInfo::new(spelling_pos, expansion_range)),
             tok_len,
         )
         .map(|source| source.start_pos())
+    }
+
+    fn get_source_idx(&self, pos: SourcePos) -> usize {
+        let offset = pos.to_raw();
+        assert!(offset < self.next_offset);
+
+        self.sources
+            .binary_search_by_key(&offset, |source| source.offset)
+            .unwrap_or_else(|i| i - 1)
+    }
+
+    fn get_range_source_idx(&self, range: SourceRange) -> usize {
+        let begin_idx = self.get_source_idx(range.begin());
+        let end_idx = self.get_source_idx(range.end());
+        assert_eq!(begin_idx, end_idx, "invalid source range");
+        begin_idx
+    }
+
+    fn check_range(&self, range: SourceRange) {
+        self.get_range_source_idx(range);
+    }
+
+    fn get_decomposed_pos(&self, pos: SourcePos) -> (&Source, u32) {
+        let source = &self.sources[self.get_source_idx(pos)];
+        (source, pos.offset_from(source.start_pos()))
+    }
+
+    pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
+        let (source, offset) = self.get_decomposed_pos(pos);
+
+        match &source.info {
+            SourceInfo::File(..) => pos,
+            SourceInfo::Expansion(exp) => exp.spelling_pos().with_offset(offset),
+        }
+    }
+
+    pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
+        let source = &self.sources[self.get_range_source_idx(range)];
+
+        match &source.info {
+            SourceInfo::File(..) => range,
+            SourceInfo::Expansion(exp) => exp.expansion_range(),
+        }
+    }
+
+    pub fn get_spelling_pos(&self, mut pos: SourcePos) -> SourcePos {
+        let mut imm_pos = self.get_immediate_spelling_pos(pos);
+
+        while imm_pos != pos {
+            pos = imm_pos;
+            imm_pos = self.get_immediate_spelling_pos(pos);
+        }
+
+        pos
+    }
+
+    pub fn get_expansion_range(&self, mut range: SourceRange) -> SourceRange {
+        let mut imm_range = self.get_immediate_expansion_range(range);
+
+        while imm_range != range {
+            range = imm_range;
+            imm_range = self.get_immediate_expansion_range(range);
+        }
+
+        range
     }
 }
