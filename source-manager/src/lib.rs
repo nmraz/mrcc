@@ -210,4 +210,25 @@ impl SourceManager {
 
         range
     }
+
+    fn get_decomposed_spelling_pos(&self, pos: SourcePos) -> (&FileSourceInfo, u32) {
+        let spelling_pos = self.get_spelling_pos(pos);
+        let (source, offset) = self.get_decomposed_pos(spelling_pos);
+        match &source.info {
+            SourceInfo::File(file) => (file, offset),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn get_spelling(&self, range: SourceRange) -> &str {
+        let (spelling_file, spelling_off) = self.get_decomposed_spelling_pos(range.begin());
+        let src = spelling_file.src();
+
+        let spelling_start = spelling_off as usize;
+        let spelling_end = spelling_start + range.len() as usize;
+
+        assert!(spelling_end <= src.len(), "invalid source range");
+
+        &src[spelling_start..spelling_end]
+    }
 }
