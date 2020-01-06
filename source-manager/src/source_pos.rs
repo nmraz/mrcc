@@ -4,11 +4,11 @@ use std::path::Path;
 pub struct SourcePos(u32);
 
 impl SourcePos {
-    pub fn from_raw(raw: u32) -> Self {
+    pub(crate) fn from_raw(raw: u32) -> Self {
         SourcePos(raw)
     }
 
-    pub fn to_raw(&self) -> u32 {
+    pub(crate) fn to_raw(&self) -> u32 {
         self.0
     }
 
