@@ -26,7 +26,6 @@ pub struct SourceRange(SourcePos, SourcePos);
 
 impl SourceRange {
     pub fn new(begin: SourcePos, end: SourcePos) -> Self {
-        end.offset_from(begin); // Check that begin precedes end
         SourceRange(begin, end)
     }
 
