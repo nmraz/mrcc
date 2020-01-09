@@ -82,14 +82,22 @@ impl SourceInfo {
     }
 }
 
-struct Source {
-    pub offset: u32,
-    pub info: SourceInfo,
+pub struct Source {
+    info: SourceInfo,
+    range: SourceRange,
 }
 
 impl Source {
-    pub fn start_pos(&self) -> SourcePos {
-        SourcePos::from_raw(self.offset)
+    pub fn new(info: SourceInfo, range: SourceRange) -> Self {
+        Source { info, range }
+    }
+
+    pub fn range(&self) -> SourceRange {
+        self.range
+    }
+
+    pub fn info(&self) -> &SourceInfo {
+        &self.info
     }
 }
 
@@ -119,10 +127,10 @@ impl SourceManager {
             None => return Err(SourcesTooLargeError),
         };
 
-        self.sources.push(Source {
-            offset,
-            info: ctor(),
-        });
+        self.sources.push(Source::new(
+            ctor(),
+            SourceRange::new_with_offset(SourcePos::from_raw(offset), len),
+        ));
 
         Ok(self.sources.last().unwrap())
     }
@@ -132,23 +140,16 @@ impl SourceManager {
         filename: PathBuf,
         src: String,
         include_pos: Option<SourcePos>,
-    ) -> Result<(SourcePos, &str), SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         let len = match src.len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
         };
 
-        let source = self.add_source(
+        self.add_source(
             || SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
             len,
-        )?;
-
-        let contents = match &source.info {
-            SourceInfo::File(file) => file.src(),
-            _ => unreachable!(),
-        };
-
-        Ok((source.start_pos(), contents))
+        )
     }
 
     pub fn create_expansion(
@@ -156,14 +157,13 @@ impl SourceManager {
         spelling_pos: SourcePos,
         expansion_range: SourceRange,
         tok_len: u32,
-    ) -> Result<SourcePos, SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         self.check_range(expansion_range);
 
         self.add_source(
             || SourceInfo::Expansion(ExpansionSourceInfo::new(spelling_pos, expansion_range)),
             tok_len,
         )
-        .map(|source| source.start_pos())
     }
 
     fn get_source_idx(&self, pos: SourcePos) -> usize {
@@ -171,7 +171,7 @@ impl SourceManager {
         assert!(offset < self.next_offset);
 
         self.sources
-            .binary_search_by_key(&offset, |source| source.offset)
+            .binary_search_by_key(&offset, |source| source.range().begin().to_raw())
             .unwrap_or_else(|i| i - 1)
     }
 
@@ -186,9 +186,9 @@ impl SourceManager {
         self.get_range_source_idx(range);
     }
 
-    fn get_decomposed_pos(&self, pos: SourcePos) -> (&Source, u32) {
+    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (&Source, u32) {
         let source = &self.sources[self.get_source_idx(pos)];
-        (source, pos.offset_from(source.start_pos()))
+        (source, pos.offset_from(source.range().begin()))
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
