@@ -17,9 +17,7 @@ impl SourcePos {
     }
 
     pub fn offset_from(&self, rhs: SourcePos) -> u32 {
-        self.to_raw()
-            .checked_sub(rhs.to_raw())
-            .expect("other position does not precede self")
+        self.to_raw() - rhs.to_raw()
     }
 }
 
