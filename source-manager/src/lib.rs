@@ -7,7 +7,7 @@ mod source_pos;
 
 pub use source_pos::*;
 
-struct FileSourceInfo {
+pub struct FileSourceInfo {
     filename: Box<Path>,
     src: String,
     include_pos: Option<SourcePos>,
@@ -35,7 +35,7 @@ impl FileSourceInfo {
     }
 }
 
-struct ExpansionSourceInfo {
+pub struct ExpansionSourceInfo {
     spelling_pos: SourcePos,
     expansion_range: SourceRange,
 }
@@ -57,9 +57,29 @@ impl ExpansionSourceInfo {
     }
 }
 
-enum SourceInfo {
+pub enum SourceInfo {
     File(FileSourceInfo),
     Expansion(ExpansionSourceInfo),
+}
+
+impl SourceInfo {
+    pub fn is_file(&self) -> bool {
+        match self {
+            SourceInfo::File(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_expansion(&self) -> bool {
+        !self.is_file()
+    }
+
+    pub fn unwrap_file(&self) -> &FileSourceInfo {
+        match self {
+            SourceInfo::File(file) => file,
+            _ => panic!("source was not a file"),
+        }
+    }
 }
 
 struct Source {
