@@ -62,26 +62,6 @@ pub enum SourceInfo {
     Expansion(ExpansionSourceInfo),
 }
 
-impl SourceInfo {
-    pub fn is_file(&self) -> bool {
-        match self {
-            SourceInfo::File(..) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_expansion(&self) -> bool {
-        !self.is_file()
-    }
-
-    pub fn unwrap_file(&self) -> &FileSourceInfo {
-        match self {
-            SourceInfo::File(file) => file,
-            _ => panic!("source was not a file"),
-        }
-    }
-}
-
 pub struct Source {
     info: SourceInfo,
     range: SourceRange,
@@ -98,6 +78,24 @@ impl Source {
 
     pub fn info(&self) -> &SourceInfo {
         &self.info
+    }
+
+    pub fn is_file(&self) -> bool {
+        match self.info {
+            SourceInfo::File(..) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_expansion(&self) -> bool {
+        !self.is_file()
+    }
+
+    pub fn unwrap_file(&self) -> &FileSourceInfo {
+        match &self.info {
+            SourceInfo::File(file) => file,
+            _ => panic!("source was not a file"),
+        }
     }
 }
 
