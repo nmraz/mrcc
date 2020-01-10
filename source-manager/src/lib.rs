@@ -140,7 +140,7 @@ impl SourceManager {
 
         self.sources.push(Source::new(
             ctor(),
-            SourceRange::new_with_offset(SourcePos::from_raw(offset), len),
+            SourceRange::new(SourcePos::from_raw(offset), len),
         ));
 
         Ok(SourceId::from_idx(self.sources.len() - 1))
@@ -193,10 +193,12 @@ impl SourceManager {
     }
 
     fn get_range_source_id(&self, range: SourceRange) -> SourceId {
-        let begin_id = self.get_source_id(range.begin());
-        let end_id = self.get_source_id(range.end());
-        assert_eq!(begin_id, end_id, "invalid source range");
-        begin_id
+        let id = self.get_source_id(range.begin());
+        assert!(
+            range.len() <= self.get_source(id).range().len(),
+            "invalid source range"
+        );
+        id
     }
 
     fn check_range(&self, range: SourceRange) {

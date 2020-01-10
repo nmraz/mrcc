@@ -22,27 +22,23 @@ impl SourcePos {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub struct SourceRange(SourcePos, SourcePos);
+pub struct SourceRange(SourcePos, u32);
 
 impl SourceRange {
-    pub fn new(begin: SourcePos, end: SourcePos) -> Self {
-        SourceRange(begin, end)
-    }
-
-    pub fn new_with_offset(begin: SourcePos, offset: u32) -> Self {
-        SourceRange(begin, begin.with_offset(offset))
+    pub fn new(begin: SourcePos, len: u32) -> Self {
+        SourceRange(begin, len)
     }
 
     pub fn begin(&self) -> SourcePos {
         self.0
     }
 
-    pub fn end(&self) -> SourcePos {
+    pub fn len(&self) -> u32 {
         self.1
     }
 
-    pub fn len(&self) -> u32 {
-        self.end().offset_from(self.begin())
+    pub fn end(&self) -> SourcePos {
+        self.begin().with_offset(self.len())
     }
 }
 
