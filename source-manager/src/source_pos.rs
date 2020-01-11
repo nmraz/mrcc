@@ -40,6 +40,11 @@ impl SourceRange {
     pub fn end(&self) -> SourcePos {
         self.begin().with_offset(self.len())
     }
+
+    pub fn contains(&self, pos: SourcePos) -> bool {
+        let raw = pos.to_raw();
+        self.begin().to_raw() <= raw && raw < self.end().to_raw()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
