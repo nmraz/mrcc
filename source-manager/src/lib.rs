@@ -126,6 +126,13 @@ impl Source {
             _ => panic!("source was not a file"),
         }
     }
+
+    pub fn unwrap_expansion(&self) -> &ExpansionSourceInfo {
+        match &self.info {
+            SourceInfo::Expansion(exp) => exp,
+            _ => panic!("source was not an expansion"),
+        }
+    }
 }
 
 pub struct SourcesTooLargeError;
