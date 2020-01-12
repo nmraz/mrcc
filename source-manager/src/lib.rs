@@ -48,16 +48,28 @@ impl FileSourceInfo {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExpansionType {
+    Macro,
+    MacroArg,
+}
+
 pub struct ExpansionSourceInfo {
     spelling_pos: SourcePos,
     expansion_range: SourceRange,
+    expansion_type: ExpansionType,
 }
 
 impl ExpansionSourceInfo {
-    pub fn new(spelling_pos: SourcePos, expansion_range: SourceRange) -> Self {
+    pub fn new(
+        spelling_pos: SourcePos,
+        expansion_range: SourceRange,
+        expansion_type: ExpansionType,
+    ) -> Self {
         ExpansionSourceInfo {
             spelling_pos,
             expansion_range,
+            expansion_type,
         }
     }
 
@@ -67,6 +79,10 @@ impl ExpansionSourceInfo {
 
     pub fn expansion_range(&self) -> SourceRange {
         self.expansion_range
+    }
+
+    pub fn expansion_type(&self) -> ExpansionType {
+        self.expansion_type
     }
 }
 
@@ -167,13 +183,20 @@ impl SourceManager {
         &mut self,
         spelling_pos: SourcePos,
         expansion_range: SourceRange,
-        tok_len: u32,
+        expansion_type: ExpansionType,
+        len: u32,
     ) -> Result<SourceId, SourcesTooLargeError> {
         self.check_range(expansion_range);
 
         self.add_source(
-            || SourceInfo::Expansion(ExpansionSourceInfo::new(spelling_pos, expansion_range)),
-            tok_len,
+            || {
+                SourceInfo::Expansion(ExpansionSourceInfo::new(
+                    spelling_pos,
+                    expansion_range,
+                    expansion_type,
+                ))
+            },
+            len,
         )
     }
 
