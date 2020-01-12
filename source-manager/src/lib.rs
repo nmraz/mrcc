@@ -215,7 +215,7 @@ impl SourceManager {
         let (id, offset) = self.get_decomposed_pos(pos);
         let source = self.get_source(id);
 
-        match &source.info {
+        match source.info() {
             SourceInfo::File(..) => pos,
             SourceInfo::Expansion(exp) => exp.spelling_pos().with_offset(offset),
         }
@@ -224,7 +224,7 @@ impl SourceManager {
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
         let source = self.get_source(self.get_range_source_id(range));
 
-        match &source.info {
+        match source.info() {
             SourceInfo::File(..) => range,
             SourceInfo::Expansion(exp) => exp.expansion_range(),
         }
