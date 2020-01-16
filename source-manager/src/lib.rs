@@ -291,4 +291,26 @@ impl SourceManager {
 
         range
     }
+
+    pub fn get_interpreted_pos(&self, pos: SourcePos) -> InterpretedSourcePos {
+        let expansion_pos = self.get_expansion_range(SourceRange::new(pos, 0)).begin();
+        let (id, off) = self.get_decomposed_pos(expansion_pos);
+
+        let file = self.get_source(id).unwrap_file();
+
+        InterpretedSourcePos::new(file.filename(), file.get_line_col(off))
+    }
+
+    pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedSourceRange {
+        let expansion_range = self.get_expansion_range(range);
+        let (id, start_off) = self.get_decomposed_pos(expansion_range.begin());
+
+        let file = self.get_source(id).unwrap_file();
+
+        InterpretedSourceRange::new(
+            file.filename(),
+            file.get_line_col(start_off),
+            file.get_line_col(start_off + expansion_range.len()),
+        )
+    }
 }
