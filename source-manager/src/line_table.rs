@@ -1,7 +1,35 @@
 use std::vec::Vec;
 
+use crate::source_pos::LineCol;
+
 pub struct LineTable {
     line_offsets: Vec<u32>,
 }
 
-impl LineTable {}
+impl LineTable {
+    pub fn new_for_src(src: &str) -> LineTable {
+        let mut line_offsets = vec![0];
+
+        for (c, off) in src.chars().zip(0..) {
+            if c == '\n' {
+                line_offsets.push(off + 1);
+            }
+        }
+
+        LineTable { line_offsets }
+    }
+
+    pub fn get_line_col(&self, off: u32) -> LineCol {
+        let line = self
+            .line_offsets
+            .binary_search(&off)
+            .unwrap_or_else(|i| i - 1);
+
+        let col = off - self.line_offsets[line];
+
+        LineCol {
+            line: line as u32,
+            col,
+        }
+    }
+}
