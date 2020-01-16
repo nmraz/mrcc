@@ -7,7 +7,7 @@ pub struct LineTable {
 }
 
 impl LineTable {
-    pub fn new_for_src(src: &str) -> LineTable {
+    pub fn new_for_src(src: &str) -> Self {
         let mut line_offsets = vec![0];
 
         for (c, off) in src.chars().zip(0..) {
