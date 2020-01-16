@@ -58,6 +58,10 @@ pub struct InterpretedSourcePos<'f> {
 }
 
 impl<'f> InterpretedSourcePos<'f> {
+    pub fn new(filename: &'f str, pos: LineCol) -> Self {
+        InterpretedSourcePos { filename, pos }
+    }
+
     pub fn filename(&self) -> &'f str {
         self.filename
     }
@@ -79,6 +83,16 @@ pub struct InterpretedSourceRange<'f> {
 }
 
 impl<'f> InterpretedSourceRange<'f> {
+    pub fn new(filename: &'f str, begin: LineCol, end: LineCol) -> Self {
+        assert!(begin < end);
+
+        InterpretedSourceRange {
+            filename,
+            begin,
+            end,
+        }
+    }
+
     pub fn filename(&self) -> &'f str {
         self.filename
     }
