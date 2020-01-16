@@ -2,6 +2,7 @@ use std::convert::TryInto;
 use std::option::Option;
 use std::vec::Vec;
 
+mod line_table;
 mod source_pos;
 
 pub use source_pos::*;
