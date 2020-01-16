@@ -1,6 +1,5 @@
 use std::convert::TryInto;
 use std::option::Option;
-use std::path::{Path, PathBuf};
 use std::vec::Vec;
 
 mod source_pos;
@@ -21,15 +20,15 @@ impl SourceId {
 }
 
 pub struct FileSourceInfo {
-    filename: Box<Path>,
+    filename: String,
     src: String,
     include_pos: Option<SourcePos>,
 }
 
 impl FileSourceInfo {
-    pub fn new(filename: PathBuf, src: String, include_pos: Option<SourcePos>) -> Self {
+    pub fn new(filename: String, src: String, include_pos: Option<SourcePos>) -> Self {
         FileSourceInfo {
-            filename: filename.into_boxed_path(),
+            filename: filename,
             src,
             include_pos,
         }
@@ -39,7 +38,7 @@ impl FileSourceInfo {
         &self.src
     }
 
-    pub fn filename(&self) -> &Path {
+    pub fn filename(&self) -> &str {
         &self.filename
     }
 
@@ -171,7 +170,7 @@ impl SourceManager {
 
     pub fn create_file(
         &mut self,
-        filename: PathBuf,
+        filename: String,
         src: String,
         include_pos: Option<SourcePos>,
     ) -> Result<SourceId, SourcesTooLargeError> {

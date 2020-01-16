@@ -1,5 +1,3 @@
-use std::path::Path;
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct SourcePos(u32);
 
@@ -55,12 +53,12 @@ pub struct LineCol {
 
 #[derive(Clone, Copy)]
 pub struct InterpretedSourcePos<'f> {
-    filename: &'f Path,
+    filename: &'f str,
     pos: LineCol,
 }
 
 impl<'f> InterpretedSourcePos<'f> {
-    pub fn filename(&self) -> &'f Path {
+    pub fn filename(&self) -> &'f str {
         self.filename
     }
 
@@ -75,13 +73,13 @@ impl<'f> InterpretedSourcePos<'f> {
 
 #[derive(Clone, Copy)]
 pub struct InterpretedSourceRange<'f> {
-    filename: &'f Path,
+    filename: &'f str,
     begin: LineCol,
     end: LineCol,
 }
 
 impl<'f> InterpretedSourceRange<'f> {
-    pub fn filename(&self) -> &'f Path {
+    pub fn filename(&self) -> &'f str {
         self.filename
     }
 
