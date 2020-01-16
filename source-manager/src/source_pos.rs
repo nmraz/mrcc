@@ -45,7 +45,7 @@ impl SourceRange {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LineCol {
     pub line: u32,
     pub col: u32,
