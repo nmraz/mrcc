@@ -5,6 +5,7 @@ use std::vec::Vec;
 mod line_table;
 mod source_pos;
 
+use line_table::LineTable;
 pub use source_pos::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,19 +25,28 @@ pub struct FileSourceInfo {
     filename: String,
     src: String,
     include_pos: Option<SourcePos>,
+    line_table: LineTable,
 }
 
 impl FileSourceInfo {
     pub fn new(filename: String, src: String, include_pos: Option<SourcePos>) -> Self {
+        let line_table = LineTable::new_for_src(&src);
+
         FileSourceInfo {
             filename: filename,
             src,
             include_pos,
+            line_table,
         }
     }
 
     pub fn src(&self) -> &str {
         &self.src
+    }
+
+    pub fn get_line_col(&self, off: u32) -> LineCol {
+        assert!((off as usize) < self.src.len());
+        self.line_table.get_line_col(off)
     }
 
     pub fn filename(&self) -> &str {
