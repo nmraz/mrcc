@@ -1,4 +1,5 @@
 use std::convert::TryInto;
+use std::ops::Range;
 use std::option::Option;
 use std::vec::Vec;
 
@@ -44,17 +45,39 @@ impl FileSourceInfo {
         &self.src
     }
 
-    pub fn get_line_col(&self, off: u32) -> LineCol {
-        assert!((off as usize) < self.src.len());
-        self.line_table.get_line_col(off)
-    }
-
     pub fn filename(&self) -> &str {
         &self.filename
     }
 
     pub fn include_pos(&self) -> Option<SourcePos> {
         self.include_pos
+    }
+
+    pub fn get_snippet(&self, range: Range<u32>) -> &str {
+        &self.src[range.start as usize..range.end as usize]
+    }
+
+    pub fn line_count(&self) -> u32 {
+        self.line_table.line_count()
+    }
+
+    pub fn get_line_col(&self, off: u32) -> LineCol {
+        assert!((off as usize) < self.src.len());
+        self.line_table.get_line_col(off)
+    }
+
+    pub fn get_line_start(&self, line: u32) -> u32 {
+        self.line_table.get_line_start(line)
+    }
+
+    pub fn get_line_end(&self, line: u32) -> u32 {
+        assert!(line < self.line_count());
+
+        if line == self.line_count() - 1 {
+            self.src().len() as u32
+        } else {
+            self.line_table.get_line_start(line + 1)
+        }
     }
 }
 
