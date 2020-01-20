@@ -10,7 +10,7 @@ impl SourcePos {
         self.0
     }
 
-    pub fn with_offset(&self, offset: u32) -> Self {
+    pub fn offset(&self, offset: u32) -> Self {
         SourcePos(self.0 + offset)
     }
 
@@ -36,7 +36,7 @@ impl SourceRange {
     }
 
     pub fn end(&self) -> SourcePos {
-        self.begin().with_offset(self.len())
+        self.begin().offset(self.len())
     }
 
     pub fn contains(&self, pos: SourcePos) -> bool {

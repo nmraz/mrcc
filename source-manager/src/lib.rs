@@ -257,7 +257,7 @@ impl SourceManager {
 
         match source.info() {
             SourceInfo::File(..) => pos,
-            SourceInfo::Expansion(exp) => exp.spelling_pos().with_offset(offset),
+            SourceInfo::Expansion(exp) => exp.spelling_pos().offset(offset),
         }
     }
 
