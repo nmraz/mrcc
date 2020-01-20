@@ -32,4 +32,12 @@ impl LineTable {
             col,
         }
     }
+
+    pub fn line_count(&self) -> u32 {
+        self.line_offsets.len() as u32
+    }
+
+    pub fn get_line_start(&self, line: u32) -> u32 {
+        self.line_offsets[line as usize]
+    }
 }
