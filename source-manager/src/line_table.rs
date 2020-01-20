@@ -19,7 +19,7 @@ impl LineTable {
         LineTable { line_offsets }
     }
 
-    pub fn get_line_col(&self, off: u32) -> LineCol {
+    pub fn get_linecol(&self, off: u32) -> LineCol {
         let line = self
             .line_offsets
             .binary_search(&off)

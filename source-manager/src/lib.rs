@@ -61,9 +61,9 @@ impl FileSourceInfo {
         self.line_table.line_count()
     }
 
-    pub fn get_line_col(&self, off: u32) -> LineCol {
+    pub fn get_linecol(&self, off: u32) -> LineCol {
         assert!((off as usize) < self.src.len());
-        self.line_table.get_line_col(off)
+        self.line_table.get_linecol(off)
     }
 
     pub fn get_line_start(&self, line: u32) -> u32 {
