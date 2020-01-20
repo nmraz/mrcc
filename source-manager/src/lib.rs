@@ -81,6 +81,35 @@ impl FileSourceInfo {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct InterpretedFileRange<'f> {
+    file: &'f FileSourceInfo,
+    off: u32,
+    len: u32,
+}
+
+impl<'f> InterpretedFileRange<'f> {
+    pub fn new(file: &'f FileSourceInfo, off: u32, len: u32) -> Self {
+        InterpretedFileRange { file, off, len }
+    }
+
+    pub fn file(&self) -> &'f FileSourceInfo {
+        self.file
+    }
+
+    pub fn range(&self) -> Range<u32> {
+        self.off..self.off + self.len
+    }
+
+    pub fn start_linecol(&self) -> LineCol {
+        self.file.get_linecol(self.off)
+    }
+
+    pub fn end_linecol(&self) -> LineCol {
+        self.file.get_linecol(self.off + self.len)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpansionType {
     Macro,
