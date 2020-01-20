@@ -246,7 +246,7 @@ impl SourceManager {
 
         SourceId::from_idx(
             self.sources
-                .binary_search_by_key(&offset, |source| source.range().begin().to_raw())
+                .binary_search_by_key(&offset, |source| source.range().start().to_raw())
                 .unwrap_or_else(|i| i - 1),
         )
     }
@@ -256,7 +256,7 @@ impl SourceManager {
     }
 
     fn get_range_source_id(&self, range: SourceRange) -> SourceId {
-        let id = self.get_source_id(range.begin());
+        let id = self.get_source_id(range.start());
         assert!(
             range.len() <= self.get_source(id).range().len(),
             "invalid source range"
@@ -271,7 +271,7 @@ impl SourceManager {
     pub fn get_decomposed_pos(&self, pos: SourcePos) -> (SourceId, u32) {
         let id = self.get_source_id(pos);
         let source = self.get_source(id);
-        (id, pos.offset_from(source.range().begin()))
+        (id, pos.offset_from(source.range().start()))
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
@@ -316,7 +316,7 @@ impl SourceManager {
     }
 
     pub fn get_interpreted_pos(&self, pos: SourcePos) -> InterpretedSourcePos {
-        let expansion_pos = self.get_expansion_range(SourceRange::new(pos, 0)).begin();
+        let expansion_pos = self.get_expansion_range(SourceRange::new(pos, 0)).start();
         let (id, off) = self.get_decomposed_pos(expansion_pos);
 
         let file = self.get_source(id).unwrap_file();
@@ -326,7 +326,7 @@ impl SourceManager {
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedSourceRange {
         let expansion_range = self.get_expansion_range(range);
-        let (id, start_off) = self.get_decomposed_pos(expansion_range.begin());
+        let (id, start_off) = self.get_decomposed_pos(expansion_range.start());
 
         let file = self.get_source(id).unwrap_file();
 

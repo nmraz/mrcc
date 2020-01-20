@@ -27,7 +27,7 @@ impl SourceRange {
         SourceRange(begin, len)
     }
 
-    pub fn begin(&self) -> SourcePos {
+    pub fn start(&self) -> SourcePos {
         self.0
     }
 
@@ -36,12 +36,12 @@ impl SourceRange {
     }
 
     pub fn end(&self) -> SourcePos {
-        self.begin().offset(self.len())
+        self.start().offset(self.len())
     }
 
     pub fn contains(&self, pos: SourcePos) -> bool {
         let raw = pos.to_raw();
-        self.begin().to_raw() <= raw && raw < self.end().to_raw()
+        self.start().to_raw() <= raw && raw < self.end().to_raw()
     }
 }
 
