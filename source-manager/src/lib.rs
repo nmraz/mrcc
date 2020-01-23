@@ -7,7 +7,7 @@ mod line_table;
 mod source_pos;
 
 use line_table::LineTable;
-pub use source_pos::*;
+pub use source_pos::{LineCol, SourcePos, SourceRange};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceId(usize);
