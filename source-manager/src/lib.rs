@@ -288,6 +288,10 @@ impl SourceManager {
         &self.sources[id.to_idx()]
     }
 
+    pub fn get_source_start(&self, id: SourceId) -> SourcePos {
+        self.get_source(id).range().start()
+    }
+
     fn get_range_source_id(&self, range: SourceRange) -> SourceId {
         let id = self.get_source_id(range.start());
         assert!(
