@@ -77,7 +77,7 @@ impl FileSourceInfo {
         if line == self.line_count() - 1 {
             self.src().len() as u32
         } else {
-            self.line_table.get_line_start(line + 1)
+            self.line_table.get_line_start(line + 1) - 1
         }
     }
 }
