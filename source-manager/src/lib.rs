@@ -31,11 +31,12 @@ pub struct FileSourceInfo {
 
 impl FileSourceInfo {
     pub fn new(filename: String, src: String, include_pos: Option<SourcePos>) -> Self {
-        let line_table = LineTable::new_for_src(&src);
+        let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
+        let line_table = LineTable::new_for_src(&normalized_src);
 
         FileSourceInfo {
             filename: filename,
-            src,
+            src: normalized_src,
             include_pos,
             line_table,
         }
