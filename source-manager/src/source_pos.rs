@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourcePos(u32);
 
 impl SourcePos {
@@ -19,7 +19,7 @@ impl SourcePos {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceRange(SourcePos, u32);
 
 impl SourceRange {
@@ -45,8 +45,21 @@ impl SourceRange {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LineCol {
     pub line: u32,
     pub col: u32,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn source_range_half_open() {
+        let start = SourcePos::from_raw(0);
+        let range = SourceRange::new(start, 5);
+        assert!(range.contains(start));
+        assert!(!range.contains(start.offset(5)));
+    }
 }
