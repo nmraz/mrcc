@@ -6,6 +6,9 @@ use std::vec::Vec;
 mod line_table;
 mod source_pos;
 
+#[cfg(test)]
+mod tests;
+
 use line_table::LineTable;
 pub use source_pos::{LineCol, SourcePos, SourceRange};
 
