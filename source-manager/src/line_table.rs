@@ -41,3 +41,43 @@ impl LineTable {
         self.line_offsets[line as usize]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_line_table() -> LineTable {
+        let src = "Test\nline\n\n  other line!";
+        LineTable::new_for_src(src)
+    }
+
+    #[test]
+    fn lookup() {
+        let table = create_line_table();
+        assert_eq!(table.get_linecol(0), LineCol { line: 0, col: 0 });
+        assert_eq!(table.get_linecol(2), LineCol { line: 0, col: 2 });
+        assert_eq!(table.get_linecol(8), LineCol { line: 1, col: 3 });
+        assert_eq!(table.get_linecol(10), LineCol { line: 2, col: 0 });
+        assert_eq!(table.get_linecol(16), LineCol { line: 3, col: 5 });
+    }
+
+    #[test]
+    fn line_count() {
+        let table = create_line_table();
+        assert_eq!(table.line_count(), 4);
+    }
+
+    #[test]
+    fn line_start() {
+        let table = create_line_table();
+        assert_eq!(table.get_line_start(0), 0);
+        assert_eq!(table.get_line_start(1), 5);
+    }
+
+    #[test]
+    #[should_panic]
+    fn line_start_past_end() {
+        let table = create_line_table();
+        table.get_line_start(4);
+    }
+}
