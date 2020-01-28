@@ -12,19 +12,6 @@ mod tests;
 use line_table::LineTable;
 pub use source_pos::{LineCol, SourcePos, SourceRange};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SourceId(usize);
-
-impl SourceId {
-    pub(crate) fn from_idx(idx: usize) -> Self {
-        SourceId(idx)
-    }
-
-    pub(crate) fn to_idx(&self) -> usize {
-        self.0
-    }
-}
-
 pub struct FileSourceInfo {
     filename: String,
     src: String,
@@ -220,7 +207,7 @@ impl SourceManager {
         &mut self,
         ctor: impl FnOnce() -> SourceInfo,
         len: u32,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         let offset = self.next_offset;
         self.next_offset = match self.next_offset.checked_add(len) {
             Some(off) => off,
@@ -232,7 +219,7 @@ impl SourceManager {
             SourceRange::new(SourcePos::from_raw(offset), len),
         ));
 
-        Ok(SourceId::from_idx(self.sources.len() - 1))
+        Ok(self.sources.last().unwrap())
     }
 
     pub fn create_file(
@@ -240,7 +227,7 @@ impl SourceManager {
         filename: String,
         src: String,
         include_pos: Option<SourcePos>,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         let len = match src.len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
@@ -258,7 +245,7 @@ impl SourceManager {
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
         len: u32,
-    ) -> Result<SourceId, SourcesTooLargeError> {
+    ) -> Result<&Source, SourcesTooLargeError> {
         self.check_range(expansion_range);
 
         self.add_source(
@@ -273,47 +260,34 @@ impl SourceManager {
         )
     }
 
-    pub fn get_source_id(&self, pos: SourcePos) -> SourceId {
+    pub fn get_source(&self, pos: SourcePos) -> &Source {
         let offset = pos.to_raw();
         assert!(offset < self.next_offset);
 
-        SourceId::from_idx(
-            self.sources
-                .binary_search_by_key(&offset, |source| source.range().start().to_raw())
-                .unwrap_or_else(|i| i - 1),
-        )
+        let idx = self
+            .sources
+            .binary_search_by_key(&offset, |source| source.range().start().to_raw())
+            .unwrap_or_else(|i| i - 1);
+        &self.sources[idx]
     }
 
-    pub fn get_source(&self, id: SourceId) -> &Source {
-        &self.sources[id.to_idx()]
-    }
-
-    pub fn get_source_start(&self, id: SourceId) -> SourcePos {
-        self.get_source(id).range().start()
-    }
-
-    fn get_range_source_id(&self, range: SourceRange) -> SourceId {
-        let id = self.get_source_id(range.start());
-        assert!(
-            range.len() <= self.get_source(id).range().len(),
-            "invalid source range"
-        );
-        id
+    fn get_range_source(&self, range: SourceRange) -> &Source {
+        let source = self.get_source(range.start());
+        assert!(range.len() <= source.range().len(), "invalid source range");
+        source
     }
 
     fn check_range(&self, range: SourceRange) {
-        self.get_range_source_id(range);
+        self.get_range_source(range);
     }
 
-    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (SourceId, u32) {
-        let id = self.get_source_id(pos);
-        let source = self.get_source(id);
-        (id, pos.offset_from(source.range().start()))
+    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (&Source, u32) {
+        let source = self.get_source(pos);
+        (source, pos.offset_from(source.range().start()))
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        let (id, offset) = self.get_decomposed_pos(pos);
-        let source = self.get_source(id);
+        let (source, offset) = self.get_decomposed_pos(pos);
 
         match source.info() {
             SourceInfo::File(..) => pos,
@@ -322,7 +296,7 @@ impl SourceManager {
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
-        let source = self.get_source(self.get_range_source_id(range));
+        let source = self.get_range_source(range);
 
         match source.info() {
             SourceInfo::File(..) => range,
@@ -354,9 +328,9 @@ impl SourceManager {
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
         let expansion_range = self.get_expansion_range(range);
-        let (id, start_off) = self.get_decomposed_pos(expansion_range.start());
+        let (source, start_off) = self.get_decomposed_pos(expansion_range.start());
 
-        let file = self.get_source(id).unwrap_file();
+        let file = source.unwrap_file();
 
         InterpretedFileRange::new(file, start_off, expansion_range.len())
     }
