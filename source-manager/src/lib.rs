@@ -43,10 +43,6 @@ pub struct InterpretedFileRange<'f> {
 }
 
 impl<'f> InterpretedFileRange<'f> {
-    pub fn new(file: &'f FileSourceInfo, off: u32, len: u32) -> Self {
-        InterpretedFileRange { file, off, len }
-    }
-
     pub fn file(&self) -> &'f FileSourceInfo {
         self.file
     }
@@ -213,6 +209,10 @@ impl SourceManager {
 
         let file = source.unwrap_file();
 
-        InterpretedFileRange::new(file, start_off, expansion_range.len())
+        InterpretedFileRange {
+            file,
+            off: start_off,
+            len: expansion_range.len(),
+        }
     }
 }
