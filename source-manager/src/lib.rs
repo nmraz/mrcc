@@ -27,7 +27,7 @@ impl<'s> Deref for SourceRef<'s> {
     }
 }
 
-impl<'s> PartialEq<SourceRef<'s>> for SourceRef<'s> {
+impl PartialEq<SourceRef<'_>> for SourceRef<'_> {
     fn eq(&self, rhs: &SourceRef) -> bool {
         ptr::eq(self.source, rhs.source)
     }
