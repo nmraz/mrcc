@@ -19,11 +19,17 @@ pub struct SourceRef<'s> {
     source: &'s Source,
 }
 
-impl<'s> Deref for SourceRef<'s> {
-    type Target = &'s Source;
+impl<'s> SourceRef<'s> {
+    pub fn get(this: &SourceRef<'s>) -> &'s Source {
+        this.source
+    }
+}
 
-    fn deref(&self) -> &&'s Source {
-        &self.source
+impl Deref for SourceRef<'_> {
+    type Target = Source;
+
+    fn deref(&self) -> &Source {
+        self.source
     }
 }
 
@@ -207,7 +213,7 @@ impl SourceManager {
         let expansion_range = self.get_expansion_range(range);
         let (source, start_off) = self.get_decomposed_pos(expansion_range.start());
 
-        let file = source.unwrap_file();
+        let file = SourceRef::get(&source).unwrap_file();
 
         InterpretedFileRange {
             file,
