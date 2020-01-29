@@ -43,3 +43,39 @@ fn file_source_line_ranges() {
     assert_eq!(file.get_line_end(2), 12);
     assert_eq!(file.get_line_end(3), 17);
 }
+
+#[test]
+fn source_file() {
+    let file = FileSourceInfo::new("file".to_owned(), "source".to_owned(), None);
+    let source = Source::new(
+        SourceInfo::File(file),
+        SourceRange::new(SourcePos::from_raw(0), 5),
+    );
+
+    assert!(source.is_file());
+    assert!(!source.is_expansion());
+
+    let unwrapped = source.unwrap_file();
+    assert_eq!(unwrapped.filename(), "file");
+    assert_eq!(unwrapped.src(), "source");
+}
+
+#[test]
+fn source_expansion() {
+    let spelling_pos = SourcePos::from_raw(5);
+    let expansion_range = SourceRange::new(SourcePos::from_raw(27), 6);
+
+    let exp = ExpansionSourceInfo::new(spelling_pos, expansion_range, ExpansionType::Macro);
+    let source = Source::new(
+        SourceInfo::Expansion(exp),
+        SourceRange::new(SourcePos::from_raw(40), 5),
+    );
+
+    assert!(source.is_expansion());
+    assert!(!source.is_file());
+
+    let unwrapped = source.unwrap_expansion();
+    assert_eq!(unwrapped.spelling_pos(), spelling_pos);
+    assert_eq!(unwrapped.expansion_range(), expansion_range);
+    assert_eq!(unwrapped.expansion_type(), ExpansionType::Macro);
+}
