@@ -1,4 +1,5 @@
 use std::ops::Range;
+use std::ptr;
 
 mod line_table;
 
@@ -117,7 +118,7 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn new(info: SourceInfo, range: SourceRange) -> Self {
+    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Self {
         Source { info, range }
     }
 
@@ -154,3 +155,11 @@ impl Source {
         }
     }
 }
+
+impl PartialEq<Source> for Source {
+    fn eq(&self, rhs: &Source) -> bool {
+        ptr::eq(self, rhs)
+    }
+}
+
+impl Eq for Source {}
