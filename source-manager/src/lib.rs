@@ -37,6 +37,7 @@ impl<'f> InterpretedFileRange<'f> {
     }
 }
 
+#[derive(Debug)]
 pub struct SourcesTooLargeError;
 
 pub struct SourceManager {
