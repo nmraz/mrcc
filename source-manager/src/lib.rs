@@ -109,7 +109,7 @@ impl SourceManager {
         )
     }
 
-    pub fn get_source(&self, pos: SourcePos) -> Rc<Source> {
+    pub fn lookup_source(&self, pos: SourcePos) -> Rc<Source> {
         let offset = pos.to_raw();
         let sources = self.sources.borrow();
 
@@ -124,24 +124,24 @@ impl SourceManager {
         sources[idx].clone()
     }
 
-    fn get_range_source(&self, range: SourceRange) -> Rc<Source> {
-        let source = self.get_source(range.start());
+    fn lookup_range_source(&self, range: SourceRange) -> Rc<Source> {
+        let source = self.lookup_source(range.start());
         assert!(range.len() <= source.range().len(), "invalid source range");
         source
     }
 
     fn check_range(&self, range: SourceRange) {
-        self.get_range_source(range);
+        self.lookup_range_source(range);
     }
 
-    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (Rc<Source>, u32) {
-        let source = self.get_source(pos);
+    pub fn lookup_source_off(&self, pos: SourcePos) -> (Rc<Source>, u32) {
+        let source = self.lookup_source(pos);
         let off = pos.offset_from(source.range().start());
         (source, off)
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        let (source, offset) = self.get_decomposed_pos(pos);
+        let (source, offset) = self.lookup_source_off(pos);
 
         match source.info() {
             SourceInfo::File(..) => pos,
@@ -150,7 +150,7 @@ impl SourceManager {
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
-        let source = self.get_range_source(range);
+        let source = self.lookup_range_source(range);
 
         match source.info() {
             SourceInfo::File(..) => range,
@@ -182,7 +182,7 @@ impl SourceManager {
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
         let expansion_range = self.get_expansion_range(range);
-        let (source, start_off) = self.get_decomposed_pos(expansion_range.start());
+        let (source, start_off) = self.lookup_source_off(expansion_range.start());
 
         InterpretedFileRange {
             source,
