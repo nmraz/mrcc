@@ -1,6 +1,8 @@
+use std::cell::RefCell;
 use std::convert::TryInto;
 use std::ops::Range;
 use std::option::Option;
+use std::rc::Rc;
 use std::vec::Vec;
 
 pub mod pos;
@@ -12,16 +14,16 @@ mod tests;
 use pos::{LineCol, SourcePos, SourceRange};
 pub use source::{ExpansionSourceInfo, ExpansionType, FileSourceInfo, Source, SourceInfo};
 
-#[derive(Clone, Copy)]
-pub struct InterpretedFileRange<'f> {
-    file: &'f FileSourceInfo,
+#[derive(Clone)]
+pub struct InterpretedFileRange {
+    source: Rc<Source>,
     off: u32,
     len: u32,
 }
 
-impl<'f> InterpretedFileRange<'f> {
-    pub fn file(&self) -> &'f FileSourceInfo {
-        self.file
+impl InterpretedFileRange {
+    pub fn file(&self) -> &FileSourceInfo {
+        self.source.unwrap_file()
     }
 
     pub fn range(&self) -> Range<u32> {
@@ -29,11 +31,11 @@ impl<'f> InterpretedFileRange<'f> {
     }
 
     pub fn start_linecol(&self) -> LineCol {
-        self.file.get_linecol(self.off)
+        self.file().get_linecol(self.off)
     }
 
     pub fn end_linecol(&self) -> LineCol {
-        self.file.get_linecol(self.off + self.len)
+        self.file().get_linecol(self.off + self.len)
     }
 }
 
@@ -41,61 +43,58 @@ impl<'f> InterpretedFileRange<'f> {
 pub struct SourcesTooLargeError;
 
 pub struct SourceManager {
-    sources: Vec<Source>,
-    next_offset: u32,
+    sources: RefCell<Vec<Rc<Source>>>,
 }
 
 impl SourceManager {
     pub fn new() -> Self {
         SourceManager {
-            sources: vec![],
-            next_offset: 0,
+            sources: RefCell::new(vec![]),
         }
     }
 
-    fn add_source(
-        &mut self,
-        ctor: impl FnOnce() -> SourceInfo,
-        len: u32,
-    ) -> Result<&Source, SourcesTooLargeError> {
-        let offset = self.next_offset;
-        self.next_offset = match self.next_offset.checked_add(len) {
-            Some(off) => off,
-            None => return Err(SourcesTooLargeError),
+    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> Rc<Source> {
+        let mut sources = self.sources.borrow_mut();
+
+        let offset = match sources.last() {
+            None => 0,
+            Some(source) => source.range().end().to_raw() + 1,
         };
 
-        self.sources.push(Source::new(
+        let source = Rc::new(Source::new(
             ctor(),
             SourceRange::new(SourcePos::from_raw(offset), len),
         ));
 
-        Ok(self.sources.last().unwrap())
+        sources.push(source.clone());
+
+        source
     }
 
     pub fn create_file(
-        &mut self,
+        &self,
         filename: String,
         src: String,
         include_pos: Option<SourcePos>,
-    ) -> Result<&Source, SourcesTooLargeError> {
+    ) -> Result<Rc<Source>, SourcesTooLargeError> {
         let len = match src.len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
         };
 
-        self.add_source(
+        Ok(self.add_source(
             || SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
             len,
-        )
+        ))
     }
 
     pub fn create_expansion(
-        &mut self,
+        &self,
         spelling_pos: SourcePos,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
         len: u32,
-    ) -> Result<&Source, SourcesTooLargeError> {
+    ) -> Rc<Source> {
         self.check_range(expansion_range);
 
         self.add_source(
@@ -110,19 +109,22 @@ impl SourceManager {
         )
     }
 
-    pub fn get_source(&self, pos: SourcePos) -> &Source {
+    pub fn get_source(&self, pos: SourcePos) -> Rc<Source> {
         let offset = pos.to_raw();
-        assert!(offset < self.next_offset);
+        let sources = self.sources.borrow();
 
-        let idx = self
-            .sources
+        if let Some(last) = sources.last() {
+            assert!(offset < last.range().end().to_raw());
+        }
+
+        let idx = sources
             .binary_search_by_key(&offset, |source| source.range().start().to_raw())
             .unwrap_or_else(|i| i - 1);
 
-        &self.sources[idx]
+        sources[idx].clone()
     }
 
-    fn get_range_source(&self, range: SourceRange) -> &Source {
+    fn get_range_source(&self, range: SourceRange) -> Rc<Source> {
         let source = self.get_source(range.start());
         assert!(range.len() <= source.range().len(), "invalid source range");
         source
@@ -132,9 +134,10 @@ impl SourceManager {
         self.get_range_source(range);
     }
 
-    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (&Source, u32) {
+    pub fn get_decomposed_pos(&self, pos: SourcePos) -> (Rc<Source>, u32) {
         let source = self.get_source(pos);
-        (source, pos.offset_from(source.range().start()))
+        let off = pos.offset_from(source.range().start());
+        (source, off)
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
@@ -181,10 +184,8 @@ impl SourceManager {
         let expansion_range = self.get_expansion_range(range);
         let (source, start_off) = self.get_decomposed_pos(expansion_range.start());
 
-        let file = source.unwrap_file();
-
         InterpretedFileRange {
-            file,
+            source,
             off: start_off,
             len: expansion_range.len(),
         }
