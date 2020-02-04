@@ -131,6 +131,23 @@ fn immediate_spelling_pos() {
 }
 
 #[test]
+fn spelling_pos() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+
+    let in_file = file.range().start().offset(5);
+    assert_eq!(sm.get_spelling_pos(in_file), in_file);
+
+    let in_a = exp_a.range().start().offset(4);
+    assert_eq!(sm.get_spelling_pos(in_a), file.range().start().offset(35));
+
+    let in_b = exp_b.range().start().offset(2);
+    assert_eq!(sm.get_spelling_pos(in_b), file.range().start().offset(15));
+
+    let in_b_x = exp_b_x.range().start().offset(3);
+    assert_eq!(sm.get_spelling_pos(in_b_x), file.range().start().offset(36));
+}
+
+#[test]
 fn immediate_expansion_range() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
 
