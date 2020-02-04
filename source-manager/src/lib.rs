@@ -90,22 +90,21 @@ impl SourceManager {
 
     pub fn create_expansion(
         &self,
-        spelling_pos: SourcePos,
+        spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
-        len: u32,
     ) -> Rc<Source> {
         self.check_range(expansion_range);
 
         self.add_source(
             || {
                 SourceInfo::Expansion(ExpansionSourceInfo::new(
-                    spelling_pos,
+                    spelling_range.start(),
                     expansion_range,
                     expansion_type,
                 ))
             },
-            len,
+            spelling_range.len(),
         )
     }
 

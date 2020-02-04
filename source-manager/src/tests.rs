@@ -20,10 +20,9 @@ fn create_expansion() {
     let start = file_source.range().start();
 
     let exp_source = sm.create_expansion(
-        start.offset(10),
+        SourceRange::new(start.offset(10), 1),
         SourceRange::new(start.offset(12), 1),
         ExpansionType::Macro,
-        1,
     );
 
     let exp = exp_source.unwrap_expansion();
