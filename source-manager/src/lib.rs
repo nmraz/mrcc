@@ -141,44 +141,49 @@ impl SourceManager {
         (source, off)
     }
 
-    pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
+    fn try_get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
         let (source, offset) = self.lookup_source_off(pos);
 
         match source.info() {
-            SourceInfo::File(..) => pos,
-            SourceInfo::Expansion(exp) => exp.spelling_pos().offset(offset),
+            SourceInfo::File(..) => None,
+            SourceInfo::Expansion(exp) => Some(exp.spelling_pos().offset(offset)),
+        }
+    }
+
+    pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
+        self.try_get_immediate_spelling_pos(pos).unwrap_or(pos)
+    }
+
+    pub fn get_spelling_pos(&self, mut pos: SourcePos) -> SourcePos {
+        loop {
+            pos = match self.try_get_immediate_spelling_pos(pos) {
+                Some(imm_pos) => imm_pos,
+                None => return pos,
+            }
+        }
+    }
+
+    fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
+        let source = self.lookup_range_source(range);
+
+        match source.info() {
+            SourceInfo::File(..) => None,
+            SourceInfo::Expansion(exp) => Some(exp.expansion_range()),
         }
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
-        let source = self.lookup_range_source(range);
-
-        match source.info() {
-            SourceInfo::File(..) => range,
-            SourceInfo::Expansion(exp) => exp.expansion_range(),
-        }
-    }
-
-    pub fn get_spelling_pos(&self, mut pos: SourcePos) -> SourcePos {
-        let mut imm_pos = self.get_immediate_spelling_pos(pos);
-
-        while imm_pos != pos {
-            pos = imm_pos;
-            imm_pos = self.get_immediate_spelling_pos(pos);
-        }
-
-        pos
+        self.try_get_immediate_expansion_range(range)
+            .unwrap_or(range)
     }
 
     pub fn get_expansion_range(&self, mut range: SourceRange) -> SourceRange {
-        let mut imm_range = self.get_immediate_expansion_range(range);
-
-        while imm_range != range {
-            range = imm_range;
-            imm_range = self.get_immediate_expansion_range(range);
+        loop {
+            range = match self.try_get_immediate_expansion_range(range) {
+                Some(imm_range) => imm_range,
+                None => return range,
+            }
         }
-
-        range
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
