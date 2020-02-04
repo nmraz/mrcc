@@ -55,6 +55,15 @@ fn lookup_pos() {
     assert!(sm.lookup_source(source_h.range().start()) == source_h);
 }
 
+#[test]
+fn lookup_pos_last() {
+    let sm = SourceManager::new();
+    let source = sm
+        .create_file("file".to_owned(), "".to_owned(), None)
+        .unwrap();
+    assert!(sm.lookup_source(source.range().start()) == source);
+}
+
 fn create_sm() -> (
     SourceManager,
     Rc<Source>,
