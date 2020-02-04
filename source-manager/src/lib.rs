@@ -112,9 +112,8 @@ impl SourceManager {
         let offset = pos.to_raw();
         let sources = self.sources.borrow();
 
-        if let Some(last) = sources.last() {
-            assert!(offset < last.range().end().to_raw());
-        }
+        let last = sources.last().unwrap();
+        assert!(offset <= last.range().end().to_raw());
 
         let idx = sources
             .binary_search_by_key(&offset, |source| source.range().start().to_raw())
