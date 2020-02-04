@@ -120,3 +120,26 @@ fn immediate_spelling_pos() {
         exp_a.range().start().offset(5)
     );
 }
+
+#[test]
+fn immediate_expansion_range() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+
+    let in_file = SourceRange::new(file.range().start().offset(5), 2);
+    assert_eq!(sm.get_immediate_expansion_range(in_file), in_file);
+
+    let in_a = SourceRange::new(exp_a.range().start().offset(3), 3);
+    assert_eq!(
+        sm.get_immediate_expansion_range(in_a),
+        SourceRange::new(file.range().start().offset(48), 1)
+    );
+
+    let in_b = SourceRange::new(exp_b.range().start().offset(2), 1);
+    assert_eq!(sm.get_immediate_expansion_range(in_b), exp_a.range());
+
+    let in_b_x = SourceRange::new(exp_b_x.range().start().offset(2), 2);
+    assert_eq!(
+        sm.get_immediate_expansion_range(in_b_x),
+        SourceRange::new(exp_b.range().start().offset(1), 1)
+    );
+}
