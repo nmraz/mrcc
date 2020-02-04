@@ -169,3 +169,21 @@ fn immediate_expansion_range() {
         SourceRange::new(exp_b.range().start().offset(1), 1)
     );
 }
+
+#[test]
+fn expansion_range() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let exp_range = SourceRange::new(file.range().start().offset(48), 1);
+
+    let in_file = SourceRange::new(file.range().start().offset(5), 2);
+    assert_eq!(sm.get_expansion_range(in_file), in_file);
+
+    let in_a = SourceRange::new(exp_a.range().start().offset(3), 3);
+    assert_eq!(sm.get_expansion_range(in_a), exp_range);
+
+    let in_b = SourceRange::new(exp_b.range().start().offset(2), 1);
+    assert_eq!(sm.get_expansion_range(in_b), exp_range);
+
+    let in_b_x = SourceRange::new(exp_b_x.range().start().offset(2), 2);
+    assert_eq!(sm.get_expansion_range(in_b_x), exp_range);
+}
