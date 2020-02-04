@@ -54,3 +54,69 @@ fn lookup_pos() {
     assert!(sm.lookup_source(source_empty.range().start()) == source_empty);
     assert!(sm.lookup_source(source_h.range().start()) == source_h);
 }
+
+fn create_sm() -> (
+    SourceManager,
+    Rc<Source>,
+    Rc<Source>,
+    Rc<Source>,
+    Rc<Source>,
+) {
+    let sm = SourceManager::new();
+
+    let file = sm
+        .create_file(
+            "file.c".to_owned(),
+            "#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;".to_owned(),
+            None,
+        )
+        .unwrap();
+
+    let file_start = file.range().start();
+
+    let exp_a = sm.create_expansion(
+        SourceRange::new(file_start.offset(31), 8),
+        SourceRange::new(file_start.offset(48), 1),
+        ExpansionType::Macro,
+    );
+
+    let exp_b = sm.create_expansion(
+        SourceRange::new(file_start.offset(13), 7),
+        exp_a.range(),
+        ExpansionType::Macro,
+    );
+
+    let exp_b_x = sm.create_expansion(
+        SourceRange::new(exp_a.range().start().offset(2), 5),
+        SourceRange::new(exp_b.range().start().offset(1), 1),
+        ExpansionType::MacroArg,
+    );
+
+    (sm, file, exp_a, exp_b, exp_b_x)
+}
+
+#[test]
+fn immediate_spelling_pos() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+
+    let in_file = file.range().start().offset(5);
+    assert_eq!(sm.get_immediate_spelling_pos(in_file), in_file);
+
+    let in_a = exp_a.range().start().offset(4);
+    assert_eq!(
+        sm.get_immediate_spelling_pos(in_a),
+        file.range().start().offset(35)
+    );
+
+    let in_b = exp_b.range().start().offset(2);
+    assert_eq!(
+        sm.get_immediate_spelling_pos(in_b),
+        file.range().start().offset(15)
+    );
+
+    let in_b_x = exp_b_x.range().start().offset(3);
+    assert_eq!(
+        sm.get_immediate_spelling_pos(in_b_x),
+        exp_a.range().start().offset(5)
+    );
+}
