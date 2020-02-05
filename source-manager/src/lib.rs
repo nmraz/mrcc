@@ -23,7 +23,7 @@ pub struct InterpretedFileRange {
 
 impl InterpretedFileRange {
     pub fn file(&self) -> &FileSourceInfo {
-        self.source.unwrap_file()
+        self.source.as_file().unwrap()
     }
 
     pub fn range(&self) -> Range<u32> {
@@ -141,10 +141,9 @@ impl SourceManager {
     fn try_get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
         let (source, offset) = self.lookup_source_off(pos);
 
-        match source.info() {
-            SourceInfo::File(..) => None,
-            SourceInfo::Expansion(exp) => Some(exp.spelling_pos().offset(offset)),
-        }
+        source
+            .as_expansion()
+            .map(|exp| exp.spelling_pos().offset(offset))
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
@@ -161,12 +160,9 @@ impl SourceManager {
     }
 
     fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
-        let source = self.lookup_range_source(range);
-
-        match source.info() {
-            SourceInfo::File(..) => None,
-            SourceInfo::Expansion(exp) => Some(exp.expansion_range()),
-        }
+        self.lookup_range_source(range)
+            .as_expansion()
+            .map(|exp| exp.expansion_range())
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {

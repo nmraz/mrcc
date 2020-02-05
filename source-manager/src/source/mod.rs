@@ -130,29 +130,26 @@ impl Source {
         &self.info
     }
 
-    pub fn is_file(&self) -> bool {
+    pub fn as_file(&self) -> Option<&FileSourceInfo> {
         match self.info {
-            SourceInfo::File(..) => true,
-            _ => false,
+            SourceInfo::File(ref file) => Some(file),
+            _ => None,
         }
+    }
+
+    pub fn as_expansion(&self) -> Option<&ExpansionSourceInfo> {
+        match self.info {
+            SourceInfo::Expansion(ref exp) => Some(exp),
+            _ => None,
+        }
+    }
+
+    pub fn is_file(&self) -> bool {
+        self.as_file().is_some()
     }
 
     pub fn is_expansion(&self) -> bool {
-        !self.is_file()
-    }
-
-    pub fn unwrap_file(&self) -> &FileSourceInfo {
-        match &self.info {
-            SourceInfo::File(file) => file,
-            _ => panic!("source was not a file"),
-        }
-    }
-
-    pub fn unwrap_expansion(&self) -> &ExpansionSourceInfo {
-        match &self.info {
-            SourceInfo::Expansion(exp) => exp,
-            _ => panic!("source was not an expansion"),
-        }
+        self.as_expansion().is_some()
     }
 }
 

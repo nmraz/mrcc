@@ -55,7 +55,7 @@ fn source_file() {
     assert!(source.is_file());
     assert!(!source.is_expansion());
 
-    let unwrapped = source.unwrap_file();
+    let unwrapped = source.as_file().unwrap();
     assert_eq!(unwrapped.filename(), "file");
     assert_eq!(unwrapped.src(), "source");
 }
@@ -74,7 +74,7 @@ fn source_expansion() {
     assert!(source.is_expansion());
     assert!(!source.is_file());
 
-    let unwrapped = source.unwrap_expansion();
+    let unwrapped = source.as_expansion().unwrap();
     assert_eq!(unwrapped.spelling_pos(), spelling_pos);
     assert_eq!(unwrapped.expansion_range(), expansion_range);
     assert_eq!(unwrapped.expansion_type(), ExpansionType::Macro);

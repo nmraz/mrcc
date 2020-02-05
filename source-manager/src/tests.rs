@@ -6,7 +6,7 @@ fn create_file() {
     let source = sm
         .create_file("file".to_owned(), "line\nline\nline".to_owned(), None)
         .unwrap();
-    let f = source.unwrap_file();
+    let f = source.as_file().unwrap();
     assert_eq!(f.filename(), "file");
 }
 
@@ -25,7 +25,7 @@ fn create_expansion() {
         ExpansionType::Macro,
     );
 
-    let exp = exp_source.unwrap_expansion();
+    let exp = exp_source.as_expansion().unwrap();
     assert_eq!(exp.spelling_pos(), range.subpos(10));
     assert_eq!(exp.expansion_type(), ExpansionType::Macro);
 }
