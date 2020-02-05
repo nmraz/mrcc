@@ -17,16 +17,16 @@ fn create_expansion() {
     let file_source = sm
         .create_file("file.c".to_owned(), "#define A 5\nA;".to_owned(), None)
         .unwrap();
-    let start = file_source.range().start();
+    let range = file_source.range();
 
     let exp_source = sm.create_expansion(
-        SourceRange::new(start.offset(10), 1),
-        SourceRange::new(start.offset(12), 1),
+        SourceRange::new(range.subpos(10), 1),
+        SourceRange::new(range.subpos(12), 1),
         ExpansionType::Macro,
     );
 
     let exp = exp_source.unwrap_expansion();
-    assert_eq!(exp.spelling_pos(), start.offset(10));
+    assert_eq!(exp.spelling_pos(), range.subpos(10));
     assert_eq!(exp.expansion_type(), ExpansionType::Macro);
 }
 
@@ -50,7 +50,7 @@ fn lookup_pos() {
         )
         .unwrap();
 
-    assert!(sm.lookup_source(source_c.range().start().offset(3)) == source_c);
+    assert!(sm.lookup_source(source_c.range().subpos(3)) == source_c);
     assert!(sm.lookup_source(source_empty.range().start()) == source_empty);
     assert!(sm.lookup_source(source_h.range().start()) == source_h);
 }
@@ -81,23 +81,23 @@ fn create_sm() -> (
         )
         .unwrap();
 
-    let file_start = file.range().start();
+    let file_range = file.range();
 
     let exp_a = sm.create_expansion(
-        SourceRange::new(file_start.offset(31), 8),
-        SourceRange::new(file_start.offset(48), 1),
+        file_range.subrange(31, 8),
+        file_range.subrange(48, 1),
         ExpansionType::Macro,
     );
 
     let exp_b = sm.create_expansion(
-        SourceRange::new(file_start.offset(13), 7),
+        file_range.subrange(13, 7),
         exp_a.range(),
         ExpansionType::Macro,
     );
 
     let exp_b_x = sm.create_expansion(
-        SourceRange::new(exp_a.range().start().offset(2), 5),
-        SourceRange::new(exp_b.range().start().offset(1), 1),
+        exp_a.range().subrange(2, 5),
+        exp_b.range().subrange(1, 1),
         ExpansionType::MacroArg,
     );
 
@@ -108,82 +108,77 @@ fn create_sm() -> (
 fn immediate_spelling_pos() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
 
-    let in_file = file.range().start().offset(5);
+    let in_file = file.range().subpos(5);
     assert_eq!(sm.get_immediate_spelling_pos(in_file), in_file);
 
-    let in_a = exp_a.range().start().offset(4);
-    assert_eq!(
-        sm.get_immediate_spelling_pos(in_a),
-        file.range().start().offset(35)
-    );
+    let in_a = exp_a.range().subpos(4);
+    assert_eq!(sm.get_immediate_spelling_pos(in_a), file.range().subpos(35));
 
-    let in_b = exp_b.range().start().offset(2);
-    assert_eq!(
-        sm.get_immediate_spelling_pos(in_b),
-        file.range().start().offset(15)
-    );
+    let in_b = exp_b.range().subpos(2);
+    assert_eq!(sm.get_immediate_spelling_pos(in_b), file.range().subpos(15));
 
-    let in_b_x = exp_b_x.range().start().offset(3);
+    let in_b_x = exp_b_x.range().subpos(3);
     assert_eq!(
         sm.get_immediate_spelling_pos(in_b_x),
-        exp_a.range().start().offset(5)
+        exp_a.range().subpos(5)
     );
 }
 
 #[test]
 fn spelling_pos() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let file_range = file.range();
 
-    let in_file = file.range().start().offset(5);
+    let in_file = file_range.subpos(5);
     assert_eq!(sm.get_spelling_pos(in_file), in_file);
 
-    let in_a = exp_a.range().start().offset(4);
-    assert_eq!(sm.get_spelling_pos(in_a), file.range().start().offset(35));
+    let in_a = exp_a.range().subpos(4);
+    assert_eq!(sm.get_spelling_pos(in_a), file_range.subpos(35));
 
-    let in_b = exp_b.range().start().offset(2);
-    assert_eq!(sm.get_spelling_pos(in_b), file.range().start().offset(15));
+    let in_b = exp_b.range().subpos(2);
+    assert_eq!(sm.get_spelling_pos(in_b), file_range.subpos(15));
 
-    let in_b_x = exp_b_x.range().start().offset(3);
-    assert_eq!(sm.get_spelling_pos(in_b_x), file.range().start().offset(36));
+    let in_b_x = exp_b_x.range().subpos(3);
+    assert_eq!(sm.get_spelling_pos(in_b_x), file_range.subpos(36));
 }
 
 #[test]
 fn immediate_expansion_range() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
 
-    let in_file = SourceRange::new(file.range().start().offset(5), 2);
+    let in_file = file.range().subrange(5, 2);
     assert_eq!(sm.get_immediate_expansion_range(in_file), in_file);
 
-    let in_a = SourceRange::new(exp_a.range().start().offset(3), 3);
+    let in_a = exp_a.range().subrange(3, 3);
     assert_eq!(
         sm.get_immediate_expansion_range(in_a),
-        SourceRange::new(file.range().start().offset(48), 1)
+        file.range().subrange(48, 1)
     );
 
-    let in_b = SourceRange::new(exp_b.range().start().offset(2), 1);
+    let in_b = exp_b.range().subrange(2, 1);
     assert_eq!(sm.get_immediate_expansion_range(in_b), exp_a.range());
 
-    let in_b_x = SourceRange::new(exp_b_x.range().start().offset(2), 2);
+    let in_b_x = exp_b_x.range().subrange(2, 2);
     assert_eq!(
         sm.get_immediate_expansion_range(in_b_x),
-        SourceRange::new(exp_b.range().start().offset(1), 1)
+        exp_b.range().subrange(1, 1)
     );
 }
 
 #[test]
 fn expansion_range() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
-    let exp_range = SourceRange::new(file.range().start().offset(48), 1);
+    let exp_range = file.range().subrange(48, 1);
 
-    let in_file = SourceRange::new(file.range().start().offset(5), 2);
+    let in_file = file.range().subrange(5, 2);
     assert_eq!(sm.get_expansion_range(in_file), in_file);
 
-    let in_a = SourceRange::new(exp_a.range().start().offset(3), 3);
+    let in_a = exp_a.range().subrange(3, 3);
     assert_eq!(sm.get_expansion_range(in_a), exp_range);
 
-    let in_b = SourceRange::new(exp_b.range().start().offset(2), 1);
+    let in_b = exp_b.range().subrange(2, 1);
     assert_eq!(sm.get_expansion_range(in_b), exp_range);
 
-    let in_b_x = SourceRange::new(exp_b_x.range().start().offset(2), 2);
+    let in_b_x = exp_b_x.range().subrange(2, 2);
     assert_eq!(sm.get_expansion_range(in_b_x), exp_range);
 }

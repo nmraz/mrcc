@@ -124,10 +124,7 @@ impl SourceManager {
 
     fn lookup_range_source(&self, range: SourceRange) -> Rc<Source> {
         let source = self.lookup_source(range.start());
-        assert!(
-            range.end().to_raw() <= source.range().end().to_raw(),
-            "invalid source range"
-        );
+        assert!(source.range().contains_range(range), "invalid source range");
         source
     }
 
