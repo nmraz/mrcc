@@ -39,9 +39,24 @@ impl SourceRange {
         self.start().offset(self.len())
     }
 
+    pub fn subpos(&self, off: u32) -> SourcePos {
+        assert!(off < self.len());
+        self.start().offset(off)
+    }
+
+    pub fn subrange(&self, off: u32, len: u32) -> SourceRange {
+        assert!(off + len <= self.len());
+        SourceRange::new(self.start().offset(off), len)
+    }
+
     pub fn contains(&self, pos: SourcePos) -> bool {
         let raw = pos.to_raw();
         self.start().to_raw() <= raw && raw < self.end().to_raw()
+    }
+
+    pub fn contains_range(&self, other: SourceRange) -> bool {
+        self.start().to_raw() <= other.start().to_raw()
+            && other.end().to_raw() <= self.end().to_raw()
     }
 }
 
@@ -60,6 +75,16 @@ mod tests {
         let start = SourcePos::from_raw(0);
         let range = SourceRange::new(start, 5);
         assert!(range.contains(start));
+        assert!(range.contains(start.offset(4)));
         assert!(!range.contains(start.offset(5)));
+    }
+    #[test]
+    fn source_range_contains_range() {
+        let start = SourcePos::from_raw(16);
+        let range = SourceRange::new(start.offset(1), 20);
+        assert!(range.contains_range(range));
+        assert!(range.contains_range(range.subrange(5, 7)));
+        assert!(!range.contains_range(SourceRange::new(start, 5)));
+        assert!(!range.contains_range(SourceRange::new(start.offset(6), 20)));
     }
 }
