@@ -182,3 +182,44 @@ fn expansion_range() {
     let in_b_x = exp_b_x.range().subrange(2, 2);
     assert_eq!(sm.get_expansion_range(in_b_x), exp_range);
 }
+
+#[test]
+fn immediate_caller_range() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+
+    let in_file = file.range().subrange(5, 2);
+    assert_eq!(sm.get_immediate_caller_range(in_file), in_file);
+
+    let in_a = exp_a.range().subrange(3, 3);
+    assert_eq!(
+        sm.get_immediate_caller_range(in_a),
+        file.range().subrange(48, 1)
+    );
+
+    let in_b = exp_b.range().subrange(2, 1);
+    assert_eq!(sm.get_immediate_caller_range(in_b), exp_a.range());
+
+    let in_b_x = exp_b_x.range().subrange(2, 2);
+    assert_eq!(
+        sm.get_immediate_caller_range(in_b_x),
+        exp_a.range().subrange(4, 2)
+    );
+}
+
+#[test]
+fn caller_range() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let exp_range = file.range().subrange(48, 1);
+
+    let in_file = file.range().subrange(5, 2);
+    assert_eq!(sm.get_caller_range(in_file), in_file);
+
+    let in_a = exp_a.range().subrange(3, 3);
+    assert_eq!(sm.get_caller_range(in_a), exp_range);
+
+    let in_b = exp_b.range().subrange(2, 1);
+    assert_eq!(sm.get_caller_range(in_b), exp_range);
+
+    let in_b_x = exp_b_x.range().subrange(2, 2);
+    assert_eq!(sm.get_caller_range(in_b_x), exp_range);
+}

@@ -178,6 +178,29 @@ impl SourceManager {
         repeat_until_none(range, |cur| self.try_get_immediate_expansion_range(cur))
     }
 
+    fn try_get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
+        let source = self.lookup_range_source(range);
+        let off = range.start().offset_from(source.range().start());
+
+        source.as_expansion().map(|exp| {
+            if exp.expansion_type() == ExpansionType::MacroArg {
+                // Macro arguments are spelled by the caller
+                SourceRange::new(exp.spelling_pos().offset(off), range.len())
+            } else {
+                // Everything else is expanded into the caller
+                exp.expansion_range()
+            }
+        })
+    }
+
+    pub fn get_immediate_caller_range(&self, range: SourceRange) -> SourceRange {
+        self.try_get_immediate_caller_range(range).unwrap_or(range)
+    }
+
+    pub fn get_caller_range(&self, range: SourceRange) -> SourceRange {
+        repeat_until_none(range, |cur| self.try_get_immediate_caller_range(cur))
+    }
+
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
         let expansion_range = self.get_expansion_range(range);
         let (source, start_off) = self.lookup_source_off(expansion_range.start());
