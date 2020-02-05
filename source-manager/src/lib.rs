@@ -46,6 +46,15 @@ pub struct SourceManager {
     sources: RefCell<Vec<Rc<Source>>>,
 }
 
+fn repeat_until_none<T: Copy>(mut val: T, f: impl Fn(T) -> Option<T>) -> T {
+    loop {
+        match f(val) {
+            Some(next) => val = next,
+            None => return val,
+        }
+    }
+}
+
 impl SourceManager {
     pub fn new() -> Self {
         SourceManager {
@@ -150,13 +159,8 @@ impl SourceManager {
         self.try_get_immediate_spelling_pos(pos).unwrap_or(pos)
     }
 
-    pub fn get_spelling_pos(&self, mut pos: SourcePos) -> SourcePos {
-        loop {
-            pos = match self.try_get_immediate_spelling_pos(pos) {
-                Some(imm_pos) => imm_pos,
-                None => return pos,
-            }
-        }
+    pub fn get_spelling_pos(&self, pos: SourcePos) -> SourcePos {
+        repeat_until_none(pos, |cur| self.try_get_immediate_spelling_pos(cur))
     }
 
     fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -170,13 +174,8 @@ impl SourceManager {
             .unwrap_or(range)
     }
 
-    pub fn get_expansion_range(&self, mut range: SourceRange) -> SourceRange {
-        loop {
-            range = match self.try_get_immediate_expansion_range(range) {
-                Some(imm_range) => imm_range,
-                None => return range,
-            }
-        }
+    pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
+        repeat_until_none(range, |cur| self.try_get_immediate_expansion_range(cur))
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
