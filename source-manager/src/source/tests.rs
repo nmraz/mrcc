@@ -26,11 +26,18 @@ fn file_source_linecol() {
 }
 
 #[test]
+fn file_source_linecol_at_end() {
+    let src = "line 1\nline 2\nline 3".to_owned();
+    let file = FileSourceInfo::new("file".to_owned(), src, None);
+    assert_eq!(file.get_linecol(20), LineCol { line: 2, col: 6 });
+}
+
+#[test]
 #[should_panic]
 fn file_source_linecol_past_end() {
     let src = "line\nline\n".to_owned();
     let file = FileSourceInfo::new("file".to_owned(), src, None);
-    file.get_linecol(17);
+    file.get_linecol(12);
 }
 
 #[test]

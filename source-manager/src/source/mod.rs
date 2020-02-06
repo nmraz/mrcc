@@ -50,7 +50,7 @@ impl FileSourceInfo {
     }
 
     pub fn get_linecol(&self, off: u32) -> LineCol {
-        assert!((off as usize) < self.src.len());
+        assert!((off as usize) <= self.src.len());
         self.line_table.get_linecol(off)
     }
 
