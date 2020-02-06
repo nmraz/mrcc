@@ -202,13 +202,13 @@ impl SourceManager {
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
-        let expansion_range = self.get_expansion_range(range);
-        let (source, start_off) = self.lookup_source_off(expansion_range.start());
+        let caller_range = self.get_caller_range(range);
+        let (source, start_off) = self.lookup_source_off(caller_range.start());
 
         InterpretedFileRange {
             source,
             off: start_off,
-            len: expansion_range.len(),
+            len: caller_range.len(),
         }
     }
 }
