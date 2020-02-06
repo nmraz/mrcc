@@ -183,12 +183,11 @@ impl SourceManager {
         let off = range.start().offset_from(source.range().start());
 
         source.as_expansion().map(|exp| {
-            if exp.expansion_type() == ExpansionType::MacroArg {
-                // Macro arguments are spelled by the caller
-                SourceRange::new(exp.spelling_pos().offset(off), range.len())
-            } else {
-                // Everything else is expanded into the caller
-                exp.expansion_range()
+            // For macro arguments, the caller is where the argument was spelled, while for
+            // everything else the caller recieves the expansion.
+            match exp.expansion_type() {
+                ExpansionType::MacroArg => exp.get_spelling_range(off, range.len()),
+                _ => exp.expansion_range(),
             }
         })
     }

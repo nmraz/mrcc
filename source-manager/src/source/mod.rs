@@ -98,6 +98,10 @@ impl ExpansionSourceInfo {
         self.spelling_pos
     }
 
+    pub fn get_spelling_range(&self, off: u32, len: u32) -> SourceRange {
+        SourceRange::new(self.spelling_pos.offset(off), len)
+    }
+
     pub fn expansion_range(&self) -> SourceRange {
         self.expansion_range
     }
