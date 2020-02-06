@@ -12,13 +12,11 @@ version = "0.1.0"
 name = "normalize-line-endings"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
 
 [[package]]
 name = "source-manager"
 version = "0.1.0"
 dependencies = [
- "normalize-line-endings 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "normalize-line-endings",
 ]
-
-[metadata]
-"checksum normalize-line-endings 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "61807f77802ff30975e01f4f071c8ba10c022052f98b3294119f3e615d13e5be"
