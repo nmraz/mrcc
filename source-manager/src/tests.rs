@@ -223,3 +223,30 @@ fn caller_range() {
     let in_b_x = exp_b_x.range().subrange(2, 2);
     assert_eq!(sm.get_caller_range(in_b_x), exp_range);
 }
+
+#[test]
+fn interpreted_range() {
+    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+
+    let in_file = file.range().subrange(15, 16);
+    let interp_in_file = sm.get_interpreted_range(in_file);
+
+    assert_eq!(interp_in_file.file().filename(), "file.c");
+    assert_eq!(interp_in_file.range(), 15..31);
+    assert_eq!(interp_in_file.start_linecol(), LineCol { line: 0, col: 15 });
+    assert_eq!(interp_in_file.end_linecol(), LineCol { line: 1, col: 10 });
+
+    let check_exp_interp = |interp: InterpretedFileRange| {
+        assert_eq!(interp.file().filename(), "file.c");
+        assert_eq!(interp.range(), 48..49);
+    };
+
+    let in_a = exp_a.range().subrange(3, 3);
+    check_exp_interp(sm.get_interpreted_range(in_a));
+
+    let in_b = exp_b.range().subrange(2, 1);
+    check_exp_interp(sm.get_interpreted_range(in_b));
+
+    let in_b_x = exp_b_x.range().subrange(2, 2);
+    check_exp_interp(sm.get_interpreted_range(in_b_x));
+}
