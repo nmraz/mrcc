@@ -6,7 +6,10 @@ fn create_file() {
 
     let filename = FileName::new_real("file");
     let source = sm
-        .create_file(filename.clone(), "line\nline\nline".to_owned(), None)
+        .create_file(
+            FileContents::new(filename.clone(), "line\nline\nline"),
+            None,
+        )
         .unwrap();
     let f = source.as_file().unwrap();
     assert_eq!(f.filename(), &filename);
@@ -18,8 +21,7 @@ fn create_expansion() {
 
     let file_source = sm
         .create_file(
-            FileName::new_real("file.c"),
-            "#define A 5\nA;".to_owned(),
+            FileContents::new(FileName::new_real("file.c"), "#define A 5\nA;"),
             None,
         )
         .unwrap();
@@ -42,20 +44,18 @@ fn lookup_pos() {
 
     let source_c = sm
         .create_file(
-            FileName::new_real("file.c"),
-            "#include <file.h>".to_owned(),
+            FileContents::new(FileName::new_real("file.c"), "#include <file.h>"),
             None,
         )
         .unwrap();
 
     let source_empty = sm
-        .create_file(FileName::new_real("empty.c"), "".to_owned(), None)
+        .create_file(FileContents::new(FileName::new_real("empty.c"), ""), None)
         .unwrap();
 
     let source_h = sm
         .create_file(
-            FileName::new_real("file.h"),
-            "void f();".to_owned(),
+            FileContents::new(FileName::new_real("file.h"), "void f();"),
             Some(source_c.range().start()),
         )
         .unwrap();
@@ -69,7 +69,7 @@ fn lookup_pos() {
 fn lookup_pos_last() {
     let sm = SourceManager::new();
     let source = sm
-        .create_file(FileName::new_real("file"), "".to_owned(), None)
+        .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
     assert!(sm.lookup_source(source.range().start()) == source);
 }
@@ -85,8 +85,10 @@ fn create_sm() -> (
 
     let file = sm
         .create_file(
-            FileName::new_real("file.c"),
-            "#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;".to_owned(),
+            FileContents::new(
+                FileName::new_real("file.c"),
+                "#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;",
+            ),
             None,
         )
         .unwrap();

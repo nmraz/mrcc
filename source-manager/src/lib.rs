@@ -13,7 +13,7 @@ mod tests;
 
 use pos::{LineCol, SourcePos, SourceRange};
 pub use source::{
-    ExpansionSourceInfo, ExpansionType, FileName, FileSourceInfo, Source, SourceInfo,
+    ExpansionSourceInfo, ExpansionType, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
 
 #[derive(Clone)]
@@ -32,12 +32,20 @@ impl InterpretedFileRange {
         self.off..self.off + self.len
     }
 
+    pub fn filename(&self) -> &FileName {
+        self.file().filename()
+    }
+
+    pub fn include_pos(&self) -> Option<SourcePos> {
+        self.file().include_pos()
+    }
+
     pub fn start_linecol(&self) -> LineCol {
-        self.file().get_linecol(self.off)
+        self.file().contents().get_linecol(self.off)
     }
 
     pub fn end_linecol(&self) -> LineCol {
-        self.file().get_linecol(self.off + self.len)
+        self.file().contents().get_linecol(self.off + self.len)
     }
 }
 
@@ -79,17 +87,16 @@ impl SourceManager {
 
     pub fn create_file(
         &self,
-        filename: FileName,
-        src: String,
+        contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<Rc<Source>, SourcesTooLargeError> {
-        let len = match src.len().try_into() {
+        let len = match contents.src().len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
         };
 
         Ok(self.add_source(
-            || SourceInfo::File(FileSourceInfo::new(filename, src, include_pos)),
+            || SourceInfo::File(FileSourceInfo::new(contents, include_pos)),
             len,
         ))
     }

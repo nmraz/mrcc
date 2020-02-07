@@ -21,61 +21,70 @@ fn filename_to_string() {
 }
 
 #[test]
-fn file_source_new() {
-    let include_pos = SourcePos::from_raw(5);
+fn file_contents_new() {
     let filename = FileName::new_real("file");
-    let file = FileSourceInfo::new(filename.clone(), "Hello".to_owned(), Some(include_pos));
+    let contents = FileContents::new(filename.clone(), "Hello");
 
-    assert_eq!(file.src(), "Hello");
-    assert_eq!(file.filename(), &filename);
-    assert_eq!(file.include_pos(), Some(include_pos));
+    assert_eq!(contents.src(), "Hello");
+    assert_eq!(contents.filename(), &filename);
 }
 
 #[test]
-fn file_source_normalized() {
-    let src = "line\r\nline\nline".to_owned();
-    let file = FileSourceInfo::new(FileName::new_synth("paste"), src, None);
-    assert_eq!(file.src(), "line\nline\nline");
+fn file_contents_normalized() {
+    let src = "line\r\nline\nline";
+    let contents = FileContents::new(FileName::new_synth("paste"), src);
+    assert_eq!(contents.src(), "line\nline\nline");
 }
 
 #[test]
-fn file_source_linecol() {
-    let src = "line 1\nline 2\nline 3".to_owned();
-    let file = FileSourceInfo::new(FileName::new_real("file"), src, None);
-    assert_eq!(file.get_linecol(6), LineCol { line: 0, col: 6 });
-    assert_eq!(file.get_linecol(17), LineCol { line: 2, col: 3 });
+fn file_contents_linecol() {
+    let src = "line 1\nline 2\nline 3";
+    let contents = FileContents::new(FileName::new_real("file"), src);
+    assert_eq!(contents.get_linecol(6), LineCol { line: 0, col: 6 });
+    assert_eq!(contents.get_linecol(17), LineCol { line: 2, col: 3 });
 }
 
 #[test]
-fn file_source_linecol_at_end() {
-    let src = "line 1\nline 2\nline 3".to_owned();
-    let file = FileSourceInfo::new(FileName::new_real("file"), src, None);
-    assert_eq!(file.get_linecol(20), LineCol { line: 2, col: 6 });
+fn file_contents_linecol_at_end() {
+    let src = "line 1\nline 2\nline 3";
+    let contents = FileContents::new(FileName::new_real("file"), src);
+    assert_eq!(contents.get_linecol(20), LineCol { line: 2, col: 6 });
 }
 
 #[test]
 #[should_panic]
-fn file_source_linecol_past_end() {
-    let src = "line\nline\n".to_owned();
-    let file = FileSourceInfo::new(FileName::new_real("file"), src, None);
-    file.get_linecol(12);
+fn file_contents_linecol_past_end() {
+    let src = "line\nline\n";
+    let contents = FileContents::new(FileName::new_real("file"), src);
+    contents.get_linecol(12);
 }
 
 #[test]
-fn file_source_line_ranges() {
-    let src = "line\r\nline 2\n\nline".to_owned();
-    let file = FileSourceInfo::new(FileName::new_real("file"), src, None);
-    assert_eq!(file.get_line_start(0), 0);
-    assert_eq!(file.get_line_end(0), 4);
-    assert_eq!(file.get_line_start(2), 12);
-    assert_eq!(file.get_line_end(2), 12);
-    assert_eq!(file.get_line_end(3), 17);
+fn file_contents_line_ranges() {
+    let src = "line\r\nline 2\n\nline";
+    let contents = FileContents::new(FileName::new_real("file"), src);
+    assert_eq!(contents.get_line_start(0), 0);
+    assert_eq!(contents.get_line_end(0), 4);
+    assert_eq!(contents.get_line_start(2), 12);
+    assert_eq!(contents.get_line_end(2), 12);
+    assert_eq!(contents.get_line_end(3), 17);
+}
+
+#[test]
+fn file_source_new() {
+    let contents = FileContents::new(FileName::new_real("file"), "Hello");
+    let include_pos = SourcePos::from_raw(7);
+    let file = FileSourceInfo::new(contents, Some(include_pos));
+
+    assert_eq!(file.include_pos(), Some(include_pos));
+    assert_eq!(file.contents().src(), "Hello");
 }
 
 #[test]
 fn source_file() {
     let filename = FileName::new_synth("paste");
-    let file = FileSourceInfo::new(filename.clone(), "source".to_owned(), None);
+    let contents = FileContents::new(filename.clone(), "source");
+    let file = FileSourceInfo::new(contents, None);
     let source = Source::new(
         SourceInfo::File(file),
         SourceRange::new(SourcePos::from_raw(0), 5),
@@ -86,7 +95,7 @@ fn source_file() {
 
     let unwrapped = source.as_file().unwrap();
     assert_eq!(unwrapped.filename(), &filename);
-    assert_eq!(unwrapped.src(), "source");
+    assert_eq!(unwrapped.contents().src(), "source");
 }
 
 #[test]

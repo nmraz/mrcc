@@ -44,24 +44,22 @@ impl fmt::Display for FileName {
     }
 }
 
-pub struct FileSourceInfo {
+pub struct FileContents {
     filename: FileName,
     src: String,
-    include_pos: Option<SourcePos>,
     line_table: LineTable,
 }
 
-impl FileSourceInfo {
-    pub fn new(filename: FileName, src: String, include_pos: Option<SourcePos>) -> Self {
+impl FileContents {
+    pub fn new(filename: FileName, src: &str) -> Rc<Self> {
         let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
         let line_table = LineTable::new_for_src(&normalized_src);
 
-        FileSourceInfo {
-            filename: filename,
+        Rc::new(FileContents {
+            filename,
             src: normalized_src,
-            include_pos,
             line_table,
-        }
+        })
     }
 
     pub fn src(&self) -> &str {
@@ -72,8 +70,8 @@ impl FileSourceInfo {
         &self.filename
     }
 
-    pub fn include_pos(&self) -> Option<SourcePos> {
-        self.include_pos
+    pub fn is_real(&self) -> bool {
+        self.filename.is_real()
     }
 
     pub fn get_snippet(&self, range: Range<u32>) -> &str {
@@ -101,6 +99,32 @@ impl FileSourceInfo {
         } else {
             self.line_table.get_line_start(line + 1) - 1
         }
+    }
+}
+
+pub struct FileSourceInfo {
+    contents: Rc<FileContents>,
+    include_pos: Option<SourcePos>,
+}
+
+impl FileSourceInfo {
+    pub fn new(contents: Rc<FileContents>, include_pos: Option<SourcePos>) -> Self {
+        FileSourceInfo {
+            contents,
+            include_pos,
+        }
+    }
+
+    pub fn contents(&self) -> &Rc<FileContents> {
+        &self.contents
+    }
+
+    pub fn filename(&self) -> &FileName {
+        self.contents.filename()
+    }
+
+    pub fn include_pos(&self) -> Option<SourcePos> {
+        self.include_pos
     }
 }
 
