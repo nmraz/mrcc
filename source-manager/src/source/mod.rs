@@ -1,4 +1,6 @@
+use std::fmt;
 use std::ops::Range;
+use std::path::PathBuf;
 use std::ptr;
 use std::rc::Rc;
 
@@ -10,15 +12,47 @@ mod tests;
 use crate::pos::{LineCol, SourcePos, SourceRange};
 use line_table::LineTable;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FileName {
+    Real(PathBuf),
+    Synth(String),
+}
+
+impl FileName {
+    pub fn new_real(path: impl Into<PathBuf>) -> Self {
+        FileName::Real(path.into())
+    }
+
+    pub fn new_synth(name: impl Into<String>) -> Self {
+        FileName::Synth(name.into())
+    }
+
+    pub fn is_real(&self) -> bool {
+        match self {
+            FileName::Real(_) => true,
+            _ => false,
+        }
+    }
+}
+
+impl fmt::Display for FileName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FileName::Real(path) => write!(f, "{}", path.display()),
+            FileName::Synth(name) => write!(f, "<{}>", name),
+        }
+    }
+}
+
 pub struct FileSourceInfo {
-    filename: String,
+    filename: FileName,
     src: String,
     include_pos: Option<SourcePos>,
     line_table: LineTable,
 }
 
 impl FileSourceInfo {
-    pub fn new(filename: String, src: String, include_pos: Option<SourcePos>) -> Self {
+    pub fn new(filename: FileName, src: String, include_pos: Option<SourcePos>) -> Self {
         let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
         let line_table = LineTable::new_for_src(&normalized_src);
 
@@ -34,7 +68,7 @@ impl FileSourceInfo {
         &self.src
     }
 
-    pub fn filename(&self) -> &str {
+    pub fn filename(&self) -> &FileName {
         &self.filename
     }
 

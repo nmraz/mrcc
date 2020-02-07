@@ -3,11 +3,13 @@ use super::*;
 #[test]
 fn create_file() {
     let sm = SourceManager::new();
+
+    let filename = FileName::new_real("file");
     let source = sm
-        .create_file("file".to_owned(), "line\nline\nline".to_owned(), None)
+        .create_file(filename.clone(), "line\nline\nline".to_owned(), None)
         .unwrap();
     let f = source.as_file().unwrap();
-    assert_eq!(f.filename(), "file");
+    assert_eq!(f.filename(), &filename);
 }
 
 #[test]
@@ -15,7 +17,11 @@ fn create_expansion() {
     let sm = SourceManager::new();
 
     let file_source = sm
-        .create_file("file.c".to_owned(), "#define A 5\nA;".to_owned(), None)
+        .create_file(
+            FileName::new_real("file.c"),
+            "#define A 5\nA;".to_owned(),
+            None,
+        )
         .unwrap();
     let range = file_source.range();
 
@@ -35,16 +41,20 @@ fn lookup_pos() {
     let sm = SourceManager::new();
 
     let source_c = sm
-        .create_file("file.c".to_owned(), "#include <file.h>".to_owned(), None)
+        .create_file(
+            FileName::new_real("file.c"),
+            "#include <file.h>".to_owned(),
+            None,
+        )
         .unwrap();
 
     let source_empty = sm
-        .create_file("empty.c".to_owned(), "".to_owned(), None)
+        .create_file(FileName::new_real("empty.c"), "".to_owned(), None)
         .unwrap();
 
     let source_h = sm
         .create_file(
-            "file.h".to_owned(),
+            FileName::new_real("file.h"),
             "void f();".to_owned(),
             Some(source_c.range().start()),
         )
@@ -59,7 +69,7 @@ fn lookup_pos() {
 fn lookup_pos_last() {
     let sm = SourceManager::new();
     let source = sm
-        .create_file("file".to_owned(), "".to_owned(), None)
+        .create_file(FileName::new_real("file"), "".to_owned(), None)
         .unwrap();
     assert!(sm.lookup_source(source.range().start()) == source);
 }
@@ -75,7 +85,7 @@ fn create_sm() -> (
 
     let file = sm
         .create_file(
-            "file.c".to_owned(),
+            FileName::new_real("file.c"),
             "#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;".to_owned(),
             None,
         )
@@ -228,16 +238,18 @@ fn caller_range() {
 fn interpreted_range() {
     let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
 
+    let filename = FileName::new_real("file.c");
+
     let in_file = file.range().subrange(15, 16);
     let interp_in_file = sm.get_interpreted_range(in_file);
 
-    assert_eq!(interp_in_file.file().filename(), "file.c");
+    assert_eq!(interp_in_file.file().filename(), &filename);
     assert_eq!(interp_in_file.range(), 15..31);
     assert_eq!(interp_in_file.start_linecol(), LineCol { line: 0, col: 15 });
     assert_eq!(interp_in_file.end_linecol(), LineCol { line: 1, col: 10 });
 
     let check_exp_interp = |interp: InterpretedFileRange| {
-        assert_eq!(interp.file().filename(), "file.c");
+        assert_eq!(interp.file().filename(), &filename);
         assert_eq!(interp.range(), 48..49);
     };
 

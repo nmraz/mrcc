@@ -12,7 +12,9 @@ mod source;
 mod tests;
 
 use pos::{LineCol, SourcePos, SourceRange};
-pub use source::{ExpansionSourceInfo, ExpansionType, FileSourceInfo, Source, SourceInfo};
+pub use source::{
+    ExpansionSourceInfo, ExpansionType, FileName, FileSourceInfo, Source, SourceInfo,
+};
 
 #[derive(Clone)]
 pub struct InterpretedFileRange {
@@ -77,7 +79,7 @@ impl SourceManager {
 
     pub fn create_file(
         &self,
-        filename: String,
+        filename: FileName,
         src: String,
         include_pos: Option<SourcePos>,
     ) -> Result<Rc<Source>, SourcesTooLargeError> {
