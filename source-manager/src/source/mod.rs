@@ -1,5 +1,6 @@
 use std::ops::Range;
 use std::ptr;
+use std::rc::Rc;
 
 mod line_table;
 
@@ -123,8 +124,8 @@ pub struct Source {
 }
 
 impl Source {
-    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Self {
-        Source { info, range }
+    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Rc<Self> {
+        Rc::new(Source { info, range })
     }
 
     pub fn range(&self) -> SourceRange {

@@ -70,13 +70,8 @@ impl SourceManager {
             Some(source) => source.range().end().to_raw() + 1,
         };
 
-        let source = Rc::new(Source::new(
-            ctor(),
-            SourceRange::new(SourcePos::from_raw(offset), len),
-        ));
-
+        let source = Source::new(ctor(), SourceRange::new(SourcePos::from_raw(offset), len));
         sources.push(source.clone());
-
         source
     }
 
