@@ -73,6 +73,7 @@ impl FileSourceInfo {
 pub enum ExpansionType {
     Macro,
     MacroArg,
+    Synthesized,
 }
 
 pub struct ExpansionSourceInfo {
