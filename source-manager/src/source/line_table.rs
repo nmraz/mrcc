@@ -10,8 +10,8 @@ impl LineTable {
     pub fn new_for_src(src: &str) -> Self {
         let mut line_offsets = vec![0];
 
-        for (off, c) in src.char_indices() {
-            if c == '\n' {
+        for (off, c) in src.as_bytes().iter().enumerate() {
+            if *c == b'\n' {
                 line_offsets.push((off + 1) as u32);
             }
         }
