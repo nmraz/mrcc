@@ -21,15 +21,6 @@ fn filename_to_string() {
 }
 
 #[test]
-fn file_contents_new() {
-    let filename = FileName::new_real("file");
-    let contents = FileContents::new(filename.clone(), "Hello");
-
-    assert_eq!(contents.src, "Hello");
-    assert_eq!(contents.filename, filename);
-}
-
-#[test]
 fn file_contents_normalized() {
     let src = "line\r\nline\nline";
     let contents = FileContents::new(FileName::new_synth("paste"), src);
@@ -68,16 +59,6 @@ fn file_contents_line_ranges() {
     assert_eq!(contents.get_line_start(2), 12);
     assert_eq!(contents.get_line_end(2), 12);
     assert_eq!(contents.get_line_end(3), 17);
-}
-
-#[test]
-fn file_source_new() {
-    let contents = FileContents::new(FileName::new_real("file"), "Hello");
-    let include_pos = SourcePos::from_raw(7);
-    let file = FileSourceInfo::new(contents, Some(include_pos));
-
-    assert_eq!(file.include_pos, Some(include_pos));
-    assert_eq!(file.contents.src, "Hello");
 }
 
 #[test]
