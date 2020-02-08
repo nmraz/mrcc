@@ -243,13 +243,13 @@ fn interpreted_range() {
     let interp_in_file = sm.get_interpreted_range(in_file);
 
     assert_eq!(interp_in_file.file().contents.filename, filename);
-    assert_eq!(interp_in_file.range(), 15..31);
+    assert_eq!(interp_in_file.local_range(), 15..31);
     assert_eq!(interp_in_file.start_linecol(), LineCol { line: 0, col: 15 });
     assert_eq!(interp_in_file.end_linecol(), LineCol { line: 1, col: 10 });
 
     let check_exp_interp = |interp: InterpretedFileRange| {
         assert_eq!(interp.file().contents.filename, filename);
-        assert_eq!(interp.range(), 48..49);
+        assert_eq!(interp.local_range(), 48..49);
     };
 
     let in_a = exp_a.range.subrange(3, 3);

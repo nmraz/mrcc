@@ -28,7 +28,7 @@ impl InterpretedFileRange {
         self.source.as_file().unwrap()
     }
 
-    pub fn range(&self) -> Range<u32> {
+    pub fn local_range(&self) -> Range<u32> {
         self.off..self.off + self.len
     }
 
