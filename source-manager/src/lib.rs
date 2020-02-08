@@ -33,19 +33,19 @@ impl InterpretedFileRange {
     }
 
     pub fn filename(&self) -> &FileName {
-        self.file().filename()
+        &self.file().contents.filename
     }
 
     pub fn include_pos(&self) -> Option<SourcePos> {
-        self.file().include_pos()
+        self.file().include_pos
     }
 
     pub fn start_linecol(&self) -> LineCol {
-        self.file().contents().get_linecol(self.off)
+        self.file().contents.get_linecol(self.off)
     }
 
     pub fn end_linecol(&self) -> LineCol {
-        self.file().contents().get_linecol(self.off + self.len)
+        self.file().contents.get_linecol(self.off + self.len)
     }
 }
 
@@ -77,7 +77,7 @@ impl SourceManager {
 
         let offset = match sources.last() {
             None => 0,
-            Some(source) => source.range().end().to_raw() + 1,
+            Some(source) => source.range.end().to_raw() + 1,
         };
 
         let source = Source::new(ctor(), SourceRange::new(SourcePos::from_raw(offset), len));
@@ -90,7 +90,7 @@ impl SourceManager {
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<Rc<Source>, SourcesTooLargeError> {
-        let len = match contents.src().len().try_into() {
+        let len = match contents.src.len().try_into() {
             Ok(len) => len,
             Err(..) => return Err(SourcesTooLargeError),
         };
@@ -126,10 +126,10 @@ impl SourceManager {
         let sources = self.sources.borrow();
 
         let last = sources.last().unwrap();
-        assert!(offset <= last.range().end().to_raw());
+        assert!(offset <= last.range.end().to_raw());
 
         let idx = sources
-            .binary_search_by_key(&offset, |source| source.range().start().to_raw())
+            .binary_search_by_key(&offset, |source| source.range.start().to_raw())
             .unwrap_or_else(|i| i - 1);
 
         sources[idx].clone()
@@ -137,7 +137,7 @@ impl SourceManager {
 
     fn lookup_range_source(&self, range: SourceRange) -> Rc<Source> {
         let source = self.lookup_source(range.start());
-        assert!(source.range().contains_range(range), "invalid source range");
+        assert!(source.range.contains_range(range), "invalid source range");
         source
     }
 
@@ -147,7 +147,7 @@ impl SourceManager {
 
     pub fn lookup_source_off(&self, pos: SourcePos) -> (Rc<Source>, u32) {
         let source = self.lookup_source(pos);
-        let off = pos.offset_from(source.range().start());
+        let off = pos.offset_from(source.range.start());
         (source, off)
     }
 
@@ -156,7 +156,7 @@ impl SourceManager {
 
         source
             .as_expansion()
-            .map(|exp| exp.spelling_pos().offset(offset))
+            .map(|exp| exp.spelling_pos.offset(offset))
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
@@ -170,7 +170,7 @@ impl SourceManager {
     fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
         self.lookup_range_source(range)
             .as_expansion()
-            .map(|exp| exp.expansion_range())
+            .map(|exp| exp.expansion_range)
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
@@ -184,14 +184,14 @@ impl SourceManager {
 
     fn try_get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
         let source = self.lookup_range_source(range);
-        let off = range.start().offset_from(source.range().start());
+        let off = range.start().offset_from(source.range.start());
 
         source.as_expansion().map(|exp| {
             // For macro arguments, the caller is where the argument was spelled, while for
             // everything else the caller recieves the expansion.
-            match exp.expansion_type() {
+            match exp.expansion_type {
                 ExpansionType::MacroArg => exp.get_spelling_range(off, range.len()),
-                _ => exp.expansion_range(),
+                _ => exp.expansion_range,
             }
         })
     }

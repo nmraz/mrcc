@@ -25,15 +25,15 @@ fn file_contents_new() {
     let filename = FileName::new_real("file");
     let contents = FileContents::new(filename.clone(), "Hello");
 
-    assert_eq!(contents.src(), "Hello");
-    assert_eq!(contents.filename(), &filename);
+    assert_eq!(contents.src, "Hello");
+    assert_eq!(contents.filename, filename);
 }
 
 #[test]
 fn file_contents_normalized() {
     let src = "line\r\nline\nline";
     let contents = FileContents::new(FileName::new_synth("paste"), src);
-    assert_eq!(contents.src(), "line\nline\nline");
+    assert_eq!(contents.src, "line\nline\nline");
 }
 
 #[test]
@@ -76,8 +76,8 @@ fn file_source_new() {
     let include_pos = SourcePos::from_raw(7);
     let file = FileSourceInfo::new(contents, Some(include_pos));
 
-    assert_eq!(file.include_pos(), Some(include_pos));
-    assert_eq!(file.contents().src(), "Hello");
+    assert_eq!(file.include_pos, Some(include_pos));
+    assert_eq!(file.contents.src, "Hello");
 }
 
 #[test]
@@ -94,8 +94,8 @@ fn source_file() {
     assert!(!source.is_expansion());
 
     let unwrapped = source.as_file().unwrap();
-    assert_eq!(unwrapped.filename(), &filename);
-    assert_eq!(unwrapped.contents().src(), "source");
+    assert_eq!(unwrapped.contents.filename, filename);
+    assert_eq!(unwrapped.contents.src, "source");
 }
 
 #[test]
@@ -113,7 +113,7 @@ fn source_expansion() {
     assert!(!source.is_file());
 
     let unwrapped = source.as_expansion().unwrap();
-    assert_eq!(unwrapped.spelling_pos(), spelling_pos);
-    assert_eq!(unwrapped.expansion_range(), expansion_range);
-    assert_eq!(unwrapped.expansion_type(), ExpansionType::Macro);
+    assert_eq!(unwrapped.spelling_pos, spelling_pos);
+    assert_eq!(unwrapped.expansion_range, expansion_range);
+    assert_eq!(unwrapped.expansion_type, ExpansionType::Macro);
 }

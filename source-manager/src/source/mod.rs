@@ -45,8 +45,8 @@ impl fmt::Display for FileName {
 }
 
 pub struct FileContents {
-    filename: FileName,
-    src: String,
+    pub filename: FileName,
+    pub src: String,
     line_table: LineTable,
 }
 
@@ -60,14 +60,6 @@ impl FileContents {
             src: normalized_src,
             line_table,
         })
-    }
-
-    pub fn src(&self) -> &str {
-        &self.src
-    }
-
-    pub fn filename(&self) -> &FileName {
-        &self.filename
     }
 
     pub fn is_real(&self) -> bool {
@@ -95,7 +87,7 @@ impl FileContents {
         assert!(line < self.line_count());
 
         if line == self.line_count() - 1 {
-            self.src().len() as u32
+            self.src.len() as u32
         } else {
             self.line_table.get_line_start(line + 1) - 1
         }
@@ -103,8 +95,8 @@ impl FileContents {
 }
 
 pub struct FileSourceInfo {
-    contents: Rc<FileContents>,
-    include_pos: Option<SourcePos>,
+    pub contents: Rc<FileContents>,
+    pub include_pos: Option<SourcePos>,
 }
 
 impl FileSourceInfo {
@@ -113,18 +105,6 @@ impl FileSourceInfo {
             contents,
             include_pos,
         }
-    }
-
-    pub fn contents(&self) -> &Rc<FileContents> {
-        &self.contents
-    }
-
-    pub fn filename(&self) -> &FileName {
-        self.contents.filename()
-    }
-
-    pub fn include_pos(&self) -> Option<SourcePos> {
-        self.include_pos
     }
 }
 
@@ -136,9 +116,9 @@ pub enum ExpansionType {
 }
 
 pub struct ExpansionSourceInfo {
-    spelling_pos: SourcePos,
-    expansion_range: SourceRange,
-    expansion_type: ExpansionType,
+    pub spelling_pos: SourcePos,
+    pub expansion_range: SourceRange,
+    pub expansion_type: ExpansionType,
 }
 
 impl ExpansionSourceInfo {
@@ -154,20 +134,8 @@ impl ExpansionSourceInfo {
         }
     }
 
-    pub fn spelling_pos(&self) -> SourcePos {
-        self.spelling_pos
-    }
-
     pub fn get_spelling_range(&self, off: u32, len: u32) -> SourceRange {
         SourceRange::new(self.spelling_pos.offset(off), len)
-    }
-
-    pub fn expansion_range(&self) -> SourceRange {
-        self.expansion_range
-    }
-
-    pub fn expansion_type(&self) -> ExpansionType {
-        self.expansion_type
     }
 }
 
@@ -177,21 +145,18 @@ pub enum SourceInfo {
 }
 
 pub struct Source {
-    info: SourceInfo,
-    range: SourceRange,
+    pub info: SourceInfo,
+    pub range: SourceRange,
+    _private: (),
 }
 
 impl Source {
     pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Rc<Self> {
-        Rc::new(Source { info, range })
-    }
-
-    pub fn range(&self) -> SourceRange {
-        self.range
-    }
-
-    pub fn info(&self) -> &SourceInfo {
-        &self.info
+        Rc::new(Source {
+            info,
+            range,
+            _private: (),
+        })
     }
 
     pub fn as_file(&self) -> Option<&FileSourceInfo> {
