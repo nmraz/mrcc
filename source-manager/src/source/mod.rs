@@ -151,12 +151,12 @@ pub struct Source {
 }
 
 impl Source {
-    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Rc<Self> {
-        Rc::new(Source {
+    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Self {
+        Source {
             info,
             range,
             _private: (),
-        })
+        }
     }
 
     pub fn as_file(&self) -> Option<&FileSourceInfo> {

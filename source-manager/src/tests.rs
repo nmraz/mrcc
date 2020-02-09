@@ -74,15 +74,7 @@ fn lookup_pos_last() {
     assert!(sm.lookup_source(source.range.start()) == source);
 }
 
-fn create_sm() -> (
-    SourceManager,
-    Rc<Source>,
-    Rc<Source>,
-    Rc<Source>,
-    Rc<Source>,
-) {
-    let sm = SourceManager::new();
-
+fn populate_sm(sm: &SourceManager) -> (&Source, &Source, &Source, &Source) {
     let file = sm
         .create_file(
             FileContents::new(
@@ -113,12 +105,13 @@ fn create_sm() -> (
         ExpansionType::MacroArg,
     );
 
-    (sm, file, exp_a, exp_b, exp_b_x)
+    (file, exp_a, exp_b, exp_b_x)
 }
 
 #[test]
 fn immediate_spelling_pos() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
 
     let in_file = file.range.subpos(5);
     assert_eq!(sm.get_immediate_spelling_pos(in_file), in_file);
@@ -135,7 +128,9 @@ fn immediate_spelling_pos() {
 
 #[test]
 fn spelling_pos() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
+
     let file_range = file.range;
 
     let in_file = file_range.subpos(5);
@@ -153,7 +148,8 @@ fn spelling_pos() {
 
 #[test]
 fn immediate_expansion_range() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
 
     let in_file = file.range.subrange(5, 2);
     assert_eq!(sm.get_immediate_expansion_range(in_file), in_file);
@@ -176,7 +172,9 @@ fn immediate_expansion_range() {
 
 #[test]
 fn expansion_range() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
+
     let exp_range = file.range.subrange(48, 1);
 
     let in_file = file.range.subrange(5, 2);
@@ -194,7 +192,8 @@ fn expansion_range() {
 
 #[test]
 fn immediate_caller_range() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
 
     let in_file = file.range.subrange(5, 2);
     assert_eq!(sm.get_immediate_caller_range(in_file), in_file);
@@ -217,7 +216,9 @@ fn immediate_caller_range() {
 
 #[test]
 fn caller_range() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
+
     let exp_range = file.range.subrange(48, 1);
 
     let in_file = file.range.subrange(5, 2);
@@ -235,7 +236,8 @@ fn caller_range() {
 
 #[test]
 fn interpreted_range() {
-    let (sm, file, exp_a, exp_b, exp_b_x) = create_sm();
+    let sm = SourceManager::new();
+    let (file, exp_a, exp_b, exp_b_x) = populate_sm(&sm);
 
     let filename = FileName::new_real("file.c");
 
