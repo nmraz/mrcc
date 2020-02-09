@@ -75,10 +75,9 @@ impl SourceManager {
     fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> Rc<Source> {
         let mut sources = self.sources.borrow_mut();
 
-        let offset = match sources.last() {
-            None => 0,
-            Some(source) => source.range.end().to_raw() + 1,
-        };
+        let offset = sources
+            .last()
+            .map_or(0, |source| source.range.end().to_raw() + 1);
 
         let source = Source::new(ctor(), SourceRange::new(SourcePos::from_raw(offset), len));
         sources.push(source.clone());
@@ -90,10 +89,11 @@ impl SourceManager {
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<Rc<Source>, SourcesTooLargeError> {
-        let len = match contents.src.len().try_into() {
-            Ok(len) => len,
-            Err(..) => return Err(SourcesTooLargeError),
-        };
+        let len = contents
+            .src
+            .len()
+            .try_into()
+            .map_err(|_| SourcesTooLargeError)?;
 
         Ok(self.add_source(
             || SourceInfo::File(FileSourceInfo::new(contents, include_pos)),
