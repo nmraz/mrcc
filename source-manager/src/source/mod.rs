@@ -1,7 +1,6 @@
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
-use std::ptr;
 use std::rc::Rc;
 
 mod line_table;
@@ -181,11 +180,3 @@ impl Source {
         self.as_expansion().is_some()
     }
 }
-
-impl PartialEq<Source> for Source {
-    fn eq(&self, rhs: &Source) -> bool {
-        ptr::eq(self, rhs)
-    }
-}
-
-impl Eq for Source {}

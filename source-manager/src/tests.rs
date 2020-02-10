@@ -1,3 +1,5 @@
+use std::ptr;
+
 use super::*;
 
 #[test]
@@ -60,9 +62,15 @@ fn lookup_pos() {
         )
         .unwrap();
 
-    assert!(sm.lookup_source(source_c.range.subpos(3)) == source_c);
-    assert!(sm.lookup_source(source_empty.range.start()) == source_empty);
-    assert!(sm.lookup_source(source_h.range.start()) == source_h);
+    assert!(ptr::eq(
+        sm.lookup_source(source_c.range.subpos(3)),
+        source_c
+    ));
+    assert!(ptr::eq(
+        sm.lookup_source(source_empty.range.start()),
+        source_empty
+    ));
+    assert!(ptr::eq(sm.lookup_source(source_h.range.start()), source_h));
 }
 
 #[test]
@@ -71,7 +79,7 @@ fn lookup_pos_last() {
     let source = sm
         .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
-    assert!(sm.lookup_source(source.range.start()) == source);
+    assert!(ptr::eq(sm.lookup_source(source.range.start()), source));
 }
 
 fn populate_sm(sm: &SourceManager) -> (&Source, &Source, &Source, &Source) {
