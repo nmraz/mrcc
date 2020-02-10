@@ -1,6 +1,5 @@
 use std::cell::RefCell;
 use std::convert::TryInto;
-use std::mem;
 use std::ops::Range;
 use std::option::Option;
 use std::rc::Rc;
@@ -82,7 +81,7 @@ impl SourceManager {
         ));
 
         // Safety: the boxed sources are never dropped or reseated after being added
-        let source = unsafe { mem::transmute(&*boxed) };
+        let source = unsafe { &*(&*boxed as *const _) };
         sources.push(boxed);
         source
     }
@@ -136,7 +135,7 @@ impl SourceManager {
             .unwrap_or_else(|i| i - 1);
 
         // Safety: the boxed sources are never dropped or reseated after being added
-        unsafe { mem::transmute(&*sources[idx]) }
+        unsafe { &*(&*sources[idx] as *const _) }
     }
 
     fn lookup_range_source(&self, range: SourceRange) -> &Source {
