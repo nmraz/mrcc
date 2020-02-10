@@ -76,10 +76,7 @@ impl SourceManager {
             .last()
             .map_or(0, |source| source.range.end().to_raw() + 1);
 
-        let boxed = Box::new(Source::new(
-            ctor(),
-            SourceRange::new(SourcePos::from_raw(offset), len),
-        ));
+        let boxed = Source::new(ctor(), SourceRange::new(SourcePos::from_raw(offset), len));
 
         // Safety: the boxed sources are never dropped or reseated after being added
         let source = unsafe { &*(&*boxed as *const _) };
