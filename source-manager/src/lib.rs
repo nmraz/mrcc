@@ -52,13 +52,14 @@ pub struct SourceManager {
     sources: RefCell<Vec<Box<Source>>>,
 }
 
-fn repeat_until_none<T: Copy>(mut val: T, f: impl Fn(T) -> Option<T>) -> T {
-    loop {
-        match f(val) {
-            Some(next) => val = next,
-            None => return val,
-        }
-    }
+fn build_location_stack<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
+where
+    T: Copy + 'sm,
+    F: Fn(T) -> Option<T> + 'sm,
+{
+    itertools::iterate(Some(init), move |cur| cur.and_then(&f))
+        .take_while(|x| x.is_some())
+        .map(|x| x.unwrap())
 }
 
 impl SourceManager {
@@ -166,8 +167,15 @@ impl SourceManager {
         self.try_get_immediate_spelling_pos(pos).unwrap_or(pos)
     }
 
+    pub fn get_spelling_stack<'sm>(
+        &'sm self,
+        pos: SourcePos,
+    ) -> impl Iterator<Item = SourcePos> + 'sm {
+        build_location_stack(pos, move |cur| self.try_get_immediate_spelling_pos(cur))
+    }
+
     pub fn get_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        repeat_until_none(pos, |cur| self.try_get_immediate_spelling_pos(cur))
+        self.get_spelling_stack(pos).last().unwrap()
     }
 
     fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -181,8 +189,17 @@ impl SourceManager {
             .unwrap_or(range)
     }
 
+    pub fn get_expansion_stack<'sm>(
+        &'sm self,
+        range: SourceRange,
+    ) -> impl Iterator<Item = SourceRange> + 'sm {
+        build_location_stack(range, move |cur| {
+            self.try_get_immediate_expansion_range(cur)
+        })
+    }
+
     pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
-        repeat_until_none(range, |cur| self.try_get_immediate_expansion_range(cur))
+        self.get_expansion_stack(range).last().unwrap()
     }
 
     fn try_get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -203,8 +220,15 @@ impl SourceManager {
         self.try_get_immediate_caller_range(range).unwrap_or(range)
     }
 
+    pub fn get_caller_stack<'sm>(
+        &'sm self,
+        range: SourceRange,
+    ) -> impl Iterator<Item = SourceRange> + 'sm {
+        build_location_stack(range, move |cur| self.try_get_immediate_caller_range(cur))
+    }
+
     pub fn get_caller_range(&self, range: SourceRange) -> SourceRange {
-        repeat_until_none(range, |cur| self.try_get_immediate_caller_range(cur))
+        self.get_caller_stack(range).last().unwrap()
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
