@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 normalize-line-endings = "0.3.0"
+itertools = "0.8.2"
