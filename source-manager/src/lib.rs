@@ -52,7 +52,7 @@ pub struct SourceManager {
     sources: RefCell<Vec<Box<Source>>>,
 }
 
-fn build_location_stack<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
+fn get_location_chain<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
 where
     T: Copy + 'sm,
     F: Fn(T) -> Option<T> + 'sm,
@@ -160,15 +160,15 @@ impl SourceManager {
             .map(|exp| exp.spelling_pos.offset(offset))
     }
 
-    pub fn get_spelling_stack<'sm>(
+    pub fn get_spelling_chain<'sm>(
         &'sm self,
         pos: SourcePos,
     ) -> impl Iterator<Item = SourcePos> + 'sm {
-        build_location_stack(pos, move |cur| self.get_immediate_spelling_pos(cur))
+        get_location_chain(pos, move |cur| self.get_immediate_spelling_pos(cur))
     }
 
     pub fn get_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        self.get_spelling_stack(pos).last().unwrap()
+        self.get_spelling_chain(pos).last().unwrap()
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -177,15 +177,15 @@ impl SourceManager {
             .map(|exp| exp.expansion_range)
     }
 
-    pub fn get_expansion_stack<'sm>(
+    pub fn get_expansion_chain<'sm>(
         &'sm self,
         range: SourceRange,
     ) -> impl Iterator<Item = SourceRange> + 'sm {
-        build_location_stack(range, move |cur| self.get_immediate_expansion_range(cur))
+        get_location_chain(range, move |cur| self.get_immediate_expansion_range(cur))
     }
 
     pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
-        self.get_expansion_stack(range).last().unwrap()
+        self.get_expansion_chain(range).last().unwrap()
     }
 
     pub fn get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -202,15 +202,15 @@ impl SourceManager {
         })
     }
 
-    pub fn get_caller_stack<'sm>(
+    pub fn get_caller_chain<'sm>(
         &'sm self,
         range: SourceRange,
     ) -> impl Iterator<Item = SourceRange> + 'sm {
-        build_location_stack(range, move |cur| self.get_immediate_caller_range(cur))
+        get_location_chain(range, move |cur| self.get_immediate_caller_range(cur))
     }
 
     pub fn get_caller_range(&self, range: SourceRange) -> SourceRange {
-        self.get_caller_stack(range).last().unwrap()
+        self.get_caller_chain(range).last().unwrap()
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
