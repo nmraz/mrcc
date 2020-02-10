@@ -152,7 +152,7 @@ impl SourceManager {
         (source, off)
     }
 
-    fn try_get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
+    pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
         let (source, offset) = self.lookup_source_off(pos);
 
         source
@@ -160,46 +160,35 @@ impl SourceManager {
             .map(|exp| exp.spelling_pos.offset(offset))
     }
 
-    pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        self.try_get_immediate_spelling_pos(pos).unwrap_or(pos)
-    }
-
     pub fn get_spelling_stack<'sm>(
         &'sm self,
         pos: SourcePos,
     ) -> impl Iterator<Item = SourcePos> + 'sm {
-        build_location_stack(pos, move |cur| self.try_get_immediate_spelling_pos(cur))
+        build_location_stack(pos, move |cur| self.get_immediate_spelling_pos(cur))
     }
 
     pub fn get_spelling_pos(&self, pos: SourcePos) -> SourcePos {
         self.get_spelling_stack(pos).last().unwrap()
     }
 
-    fn try_get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
+    pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
         self.lookup_range_source(range)
             .as_expansion()
             .map(|exp| exp.expansion_range)
-    }
-
-    pub fn get_immediate_expansion_range(&self, range: SourceRange) -> SourceRange {
-        self.try_get_immediate_expansion_range(range)
-            .unwrap_or(range)
     }
 
     pub fn get_expansion_stack<'sm>(
         &'sm self,
         range: SourceRange,
     ) -> impl Iterator<Item = SourceRange> + 'sm {
-        build_location_stack(range, move |cur| {
-            self.try_get_immediate_expansion_range(cur)
-        })
+        build_location_stack(range, move |cur| self.get_immediate_expansion_range(cur))
     }
 
     pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
         self.get_expansion_stack(range).last().unwrap()
     }
 
-    fn try_get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
+    pub fn get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
         let source = self.lookup_range_source(range);
         let off = range.start().offset_from(source.range.start());
 
@@ -213,15 +202,11 @@ impl SourceManager {
         })
     }
 
-    pub fn get_immediate_caller_range(&self, range: SourceRange) -> SourceRange {
-        self.try_get_immediate_caller_range(range).unwrap_or(range)
-    }
-
     pub fn get_caller_stack<'sm>(
         &'sm self,
         range: SourceRange,
     ) -> impl Iterator<Item = SourceRange> + 'sm {
-        build_location_stack(range, move |cur| self.try_get_immediate_caller_range(cur))
+        build_location_stack(range, move |cur| self.get_immediate_caller_range(cur))
     }
 
     pub fn get_caller_range(&self, range: SourceRange) -> SourceRange {
