@@ -72,6 +72,18 @@ impl SourceRange {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FragmentedSourceRange {
+    pub start: SourcePos,
+    pub end: SourcePos,
+}
+
+impl FragmentedSourceRange {
+    pub fn new(start: SourcePos, end: SourcePos) -> Self {
+        FragmentedSourceRange { start, end }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LineCol {
     pub line: u32,
