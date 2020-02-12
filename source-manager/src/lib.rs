@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::cell::RefCell;
 use std::convert::TryInto;
 use std::ops::Range;
@@ -57,9 +58,7 @@ where
     T: Copy + 'sm,
     F: Fn(T) -> Option<T> + 'sm,
 {
-    itertools::iterate(Some(init), move |cur| cur.and_then(&f))
-        .take_while(|x| x.is_some())
-        .map(|x| x.unwrap())
+    itertools::iterate(Some(init), move |cur| cur.and_then(&f)).while_some()
 }
 
 impl SourceManager {
