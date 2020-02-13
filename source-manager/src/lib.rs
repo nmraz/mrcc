@@ -24,7 +24,7 @@ pub struct InterpretedFileRange<'f> {
     pub len: u32,
 }
 
-impl<'f> InterpretedFileRange<'f> {
+impl InterpretedFileRange<'_> {
     pub fn local_range(&self) -> Range<u32> {
         self.off..self.off + self.len
     }
