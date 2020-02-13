@@ -8,17 +8,17 @@ impl SourcePos {
     }
 
     #[inline]
-    pub(crate) fn to_raw(&self) -> u32 {
+    pub(crate) fn to_raw(self) -> u32 {
         self.0
     }
 
     #[inline]
-    pub fn offset(&self, offset: u32) -> Self {
+    pub fn offset(self, offset: u32) -> Self {
         SourcePos(self.0 + offset)
     }
 
     #[inline]
-    pub fn offset_from(&self, rhs: SourcePos) -> u32 {
+    pub fn offset_from(self, rhs: SourcePos) -> u32 {
         self.to_raw() - rhs.to_raw()
     }
 }
@@ -26,6 +26,7 @@ impl SourcePos {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceRange(SourcePos, u32);
 
+#[allow(clippy::len_without_is_empty)]
 impl SourceRange {
     #[inline]
     pub fn new(begin: SourcePos, len: u32) -> Self {
@@ -33,40 +34,40 @@ impl SourceRange {
     }
 
     #[inline]
-    pub fn start(&self) -> SourcePos {
+    pub fn start(self) -> SourcePos {
         self.0
     }
 
     #[inline]
-    pub fn len(&self) -> u32 {
+    pub fn len(self) -> u32 {
         self.1
     }
 
     #[inline]
-    pub fn end(&self) -> SourcePos {
+    pub fn end(self) -> SourcePos {
         self.start().offset(self.len())
     }
 
     #[inline]
-    pub fn subpos(&self, off: u32) -> SourcePos {
+    pub fn subpos(self, off: u32) -> SourcePos {
         assert!(off < self.len());
         self.start().offset(off)
     }
 
     #[inline]
-    pub fn subrange(&self, off: u32, len: u32) -> SourceRange {
+    pub fn subrange(self, off: u32, len: u32) -> SourceRange {
         assert!(off + len <= self.len());
         SourceRange::new(self.start().offset(off), len)
     }
 
     #[inline]
-    pub fn contains(&self, pos: SourcePos) -> bool {
+    pub fn contains(self, pos: SourcePos) -> bool {
         let raw = pos.to_raw();
         self.start().to_raw() <= raw && raw < self.end().to_raw()
     }
 
     #[inline]
-    pub fn contains_range(&self, other: SourceRange) -> bool {
+    pub fn contains_range(self, other: SourceRange) -> bool {
         self.start().to_raw() <= other.start().to_raw()
             && other.end().to_raw() <= self.end().to_raw()
     }

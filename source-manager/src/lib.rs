@@ -51,6 +51,7 @@ impl InterpretedFileRange<'_> {
 #[derive(Debug)]
 pub struct SourcesTooLargeError;
 
+#[derive(Default)]
 pub struct SourceManager {
     sources: RefCell<Vec<Source>>,
 }
@@ -65,9 +66,7 @@ where
 
 impl SourceManager {
     pub fn new() -> Self {
-        SourceManager {
-            sources: Default::default(),
-        }
+        Default::default()
     }
 
     fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> SourceRange {
@@ -233,11 +232,11 @@ impl SourceManager {
         extract_pos: F,
     ) -> impl Iterator<Item = (SourcePos, u32)> + 'sm
     where
-        F: Fn(&SourceRange) -> SourcePos + 'sm,
+        F: Fn(SourceRange) -> SourcePos + 'sm,
     {
         self.get_expansion_chain(SourceRange::new(pos, 0))
             .map(move |range| {
-                let (source, off) = self.lookup_source_off(extract_pos(&range));
+                let (source, off) = self.lookup_source_off(extract_pos(range));
                 (source.range.start(), off)
             })
     }
