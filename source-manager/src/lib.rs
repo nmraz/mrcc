@@ -1,3 +1,5 @@
+#![warn(clippy::all)]
+
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use std::cell::{Ref, RefCell};
