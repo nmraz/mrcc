@@ -222,4 +222,38 @@ impl SourceManager {
             len: caller_range.len(),
         }
     }
+
+    fn get_expansion_source_offs<'sm, F>(
+        &'sm self,
+        pos: SourcePos,
+        extract_pos: F,
+    ) -> impl Iterator<Item = (SourcePos, u32)> + 'sm
+    where
+        F: Fn(&SourceRange) -> SourcePos + 'sm,
+    {
+        self.get_expansion_chain(SourceRange::new(pos, 0))
+            .map(move |range| {
+                let (source, off) = self.lookup_source_off(extract_pos(&range));
+                (source.range.start(), off)
+            })
+    }
+
+    pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
+        let start_source_offs: FxHashMap<_, _> = self
+            .get_expansion_source_offs(range.start, SourceRange::start)
+            .collect();
+
+        let (lca_source, start_off, end_off) = self
+            .get_expansion_source_offs(range.end, SourceRange::end)
+            .find_map(|(source, end_off)| {
+                start_source_offs
+                    .get(&source)
+                    .map(|&start_off| (source, start_off, end_off))
+            })
+            .expect("fragmented source range spans multiple files");
+
+        assert!(start_off <= end_off, "invalid source range");
+
+        SourceRange::new(lca_source.offset(start_off), end_off - start_off)
+    }
 }
