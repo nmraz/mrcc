@@ -66,10 +66,10 @@ fn source_file() {
     let filename = FileName::new_synth("paste");
     let contents = FileContents::new(filename.clone(), "source");
     let file = FileSourceInfo::new(contents, None);
-    let source = Source::new(
-        SourceInfo::File(file),
-        SourceRange::new(SourcePos::from_raw(0), 5),
-    );
+    let source = Source {
+        info: SourceInfo::File(file),
+        range: SourceRange::new(SourcePos::from_raw(0), 5),
+    };
 
     assert!(source.is_file());
     assert!(!source.is_expansion());
@@ -85,10 +85,10 @@ fn source_expansion() {
     let expansion_range = SourceRange::new(SourcePos::from_raw(27), 6);
 
     let exp = ExpansionSourceInfo::new(spelling_pos, expansion_range, ExpansionType::Macro);
-    let source = Source::new(
-        SourceInfo::Expansion(exp),
-        SourceRange::new(SourcePos::from_raw(40), 5),
-    );
+    let source = Source {
+        info: SourceInfo::Expansion(exp),
+        range: SourceRange::new(SourcePos::from_raw(40), 5),
+    };
 
     assert!(source.is_expansion());
     assert!(!source.is_file());

@@ -93,6 +93,7 @@ impl FileContents {
     }
 }
 
+#[derive(Clone)]
 pub struct FileSourceInfo {
     pub contents: Rc<FileContents>,
     pub include_pos: Option<SourcePos>,
@@ -114,6 +115,7 @@ pub enum ExpansionType {
     Synthesized,
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
     pub spelling_pos: SourcePos,
     pub expansion_range: SourceRange,
@@ -138,26 +140,19 @@ impl ExpansionSourceInfo {
     }
 }
 
+#[derive(Clone)]
 pub enum SourceInfo {
     File(FileSourceInfo),
     Expansion(ExpansionSourceInfo),
 }
 
+#[derive(Clone)]
 pub struct Source {
     pub info: SourceInfo,
     pub range: SourceRange,
-    _private: (),
 }
 
 impl Source {
-    pub(crate) fn new(info: SourceInfo, range: SourceRange) -> Box<Self> {
-        Box::new(Source {
-            info,
-            range,
-            _private: (),
-        })
-    }
-
     pub fn as_file(&self) -> Option<&FileSourceInfo> {
         match self.info {
             SourceInfo::File(ref file) => Some(file),

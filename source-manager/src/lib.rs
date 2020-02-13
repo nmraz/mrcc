@@ -1,5 +1,6 @@
 use itertools::Itertools;
-use std::cell::RefCell;
+use rustc_hash::FxHashMap;
+use std::cell::{Ref, RefCell};
 use std::convert::TryInto;
 use std::ops::Range;
 use std::option::Option;
@@ -12,14 +13,13 @@ mod source;
 #[cfg(test)]
 mod tests;
 
-use pos::{LineCol, SourcePos, SourceRange};
+use pos::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
     ExpansionSourceInfo, ExpansionType, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
 
-#[derive(Clone, Copy)]
 pub struct InterpretedFileRange<'f> {
-    pub file: &'f FileSourceInfo,
+    pub file: Ref<'f, FileSourceInfo>,
     pub off: u32,
     pub len: u32,
 }
@@ -29,7 +29,7 @@ impl<'f> InterpretedFileRange<'f> {
         self.off..self.off + self.len
     }
 
-    pub fn filename(&self) -> &'f FileName {
+    pub fn filename(&self) -> &FileName {
         &self.file.contents.filename
     }
 
@@ -50,7 +50,7 @@ impl<'f> InterpretedFileRange<'f> {
 pub struct SourcesTooLargeError;
 
 pub struct SourceManager {
-    sources: RefCell<Vec<Box<Source>>>,
+    sources: RefCell<Vec<Source>>,
 }
 
 fn get_location_chain<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
@@ -64,30 +64,32 @@ where
 impl SourceManager {
     pub fn new() -> Self {
         SourceManager {
-            sources: RefCell::new(vec![]),
+            sources: Default::default(),
         }
     }
 
-    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> &Source {
+    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> SourceRange {
         let mut sources = self.sources.borrow_mut();
 
-        let offset = sources
+        let off = sources
             .last()
             .map_or(0, |source| source.range.end().to_raw() + 1);
 
-        let boxed = Source::new(ctor(), SourceRange::new(SourcePos::from_raw(offset), len));
+        let range = SourceRange::new(SourcePos::from_raw(off), len);
 
-        // Safety: the boxed sources are never dropped or reseated after being added
-        let source = unsafe { &*(&*boxed as *const _) };
-        sources.push(boxed);
-        source
+        sources.push(Source {
+            info: ctor(),
+            range,
+        });
+
+        range
     }
 
     pub fn create_file(
         &self,
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
-    ) -> Result<&Source, SourcesTooLargeError> {
+    ) -> Result<SourceRange, SourcesTooLargeError> {
         let len = contents
             .src
             .len()
@@ -105,7 +107,7 @@ impl SourceManager {
         spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
-    ) -> &Source {
+    ) -> SourceRange {
         self.check_range(expansion_range);
 
         self.add_source(
@@ -120,22 +122,21 @@ impl SourceManager {
         )
     }
 
-    pub fn lookup_source(&self, pos: SourcePos) -> &Source {
+    pub fn lookup_source(&self, pos: SourcePos) -> Ref<Source> {
         let offset = pos.to_raw();
-        let sources = self.sources.borrow();
+        Ref::map(self.sources.borrow(), |sources| {
+            let last = sources.last().unwrap();
+            assert!(offset <= last.range.end().to_raw());
 
-        let last = sources.last().unwrap();
-        assert!(offset <= last.range.end().to_raw());
+            let idx = sources
+                .binary_search_by_key(&offset, |source| source.range.start().to_raw())
+                .unwrap_or_else(|i| i - 1);
 
-        let idx = sources
-            .binary_search_by_key(&offset, |source| source.range.start().to_raw())
-            .unwrap_or_else(|i| i - 1);
-
-        // Safety: the boxed sources are never dropped or reseated after being added
-        unsafe { &*(&*sources[idx] as *const _) }
+            &sources[idx]
+        })
     }
 
-    fn lookup_range_source(&self, range: SourceRange) -> &Source {
+    fn lookup_range_source(&self, range: SourceRange) -> Ref<Source> {
         let source = self.lookup_source(range.start());
         assert!(source.range.contains_range(range), "invalid source range");
         source
@@ -145,7 +146,7 @@ impl SourceManager {
         self.lookup_range_source(range);
     }
 
-    pub fn lookup_source_off(&self, pos: SourcePos) -> (&Source, u32) {
+    pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<Source>, u32) {
         let source = self.lookup_source(pos);
         let off = pos.offset_from(source.range.start());
         (source, off)
@@ -217,7 +218,7 @@ impl SourceManager {
         let (source, start_off) = self.lookup_source_off(caller_range.start());
 
         InterpretedFileRange {
-            file: source.as_file().unwrap(),
+            file: Ref::map(source, |raw_source| raw_source.as_file().unwrap()),
             off: start_off,
             len: caller_range.len(),
         }
