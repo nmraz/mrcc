@@ -108,7 +108,12 @@ impl SourceManager {
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> SourceRange {
-        self.check_range(expansion_range);
+        if cfg!(debug_assertions) {
+            // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
+            // extra search through the list of sources, so avoid them in release builds.
+            self.lookup_range_source(spelling_range);
+            self.lookup_range_source(expansion_range);
+        }
 
         self.add_source(
             || {
@@ -140,10 +145,6 @@ impl SourceManager {
         let source = self.lookup_source(range.start());
         assert!(source.range.contains_range(range), "invalid source range");
         source
-    }
-
-    fn check_range(&self, range: SourceRange) {
-        self.lookup_range_source(range);
     }
 
     pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<Source>, u32) {
