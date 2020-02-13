@@ -127,7 +127,7 @@ impl SourceManager {
         )
     }
 
-    pub fn lookup_source(&self, pos: SourcePos) -> Ref<Source> {
+    pub fn lookup_source(&self, pos: SourcePos) -> Ref<'_, Source> {
         let offset = pos.to_raw();
         Ref::map(self.sources.borrow(), |sources| {
             let last = sources.last().unwrap();
@@ -141,13 +141,13 @@ impl SourceManager {
         })
     }
 
-    fn lookup_range_source(&self, range: SourceRange) -> Ref<Source> {
+    fn lookup_range_source(&self, range: SourceRange) -> Ref<'_, Source> {
         let source = self.lookup_source(range.start());
         assert!(source.range.contains_range(range), "invalid source range");
         source
     }
 
-    pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<Source>, u32) {
+    pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<'_, Source>, u32) {
         let source = self.lookup_source(pos);
         let off = pos.offset_from(source.range.start());
         (source, off)
@@ -214,7 +214,7 @@ impl SourceManager {
         self.get_caller_chain(range).last().unwrap()
     }
 
-    pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange {
+    pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
         let caller_range = self.get_caller_range(range);
         let (source, start_off) = self.lookup_source_off(caller_range.start());
 

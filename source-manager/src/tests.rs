@@ -293,7 +293,7 @@ fn interpreted_range() {
     assert_eq!(interp_in_file.start_linecol(), LineCol { line: 0, col: 15 });
     assert_eq!(interp_in_file.end_linecol(), LineCol { line: 1, col: 10 });
 
-    let check_exp_interp = |interp: InterpretedFileRange| {
+    let check_exp_interp = |interp: InterpretedFileRange<'_>| {
         assert_eq!(interp.filename(), &filename);
         assert_eq!(interp.local_range(), 48..49);
     };
