@@ -31,8 +31,8 @@ fn create_expansion() {
 
     let exp_source_start = sm
         .create_expansion(
-            SourceRange::new(file_range.subpos(10), 1),
-            SourceRange::new(file_range.subpos(12), 1),
+            file_range.subrange(10, 1),
+            file_range.subrange(12, 1),
             ExpansionType::Macro,
         )
         .start();
