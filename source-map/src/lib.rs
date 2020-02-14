@@ -246,17 +246,17 @@ impl SourceMap {
             .get_expansion_source_offs(range.start, SourceRange::start)
             .collect();
 
-        let (lca_source, start_off, end_off) = self
+        let (lca_source_start, start_off, end_off) = self
             .get_expansion_source_offs(range.end, SourceRange::end)
-            .find_map(|(source, end_off)| {
+            .find_map(|(source_start, end_off)| {
                 start_source_offs
-                    .get(&source)
-                    .map(|&start_off| (source, start_off, end_off))
+                    .get(&source_start)
+                    .map(|&start_off| (source_start, start_off, end_off))
             })
             .expect("fragmented source range spans multiple files");
 
         assert!(start_off <= end_off, "invalid source range");
 
-        SourceRange::new(lca_source.offset(start_off), end_off - start_off)
+        SourceRange::new(lca_source_start.offset(start_off), end_off - start_off)
     }
 }
