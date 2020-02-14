@@ -52,7 +52,7 @@ impl InterpretedFileRange<'_> {
 pub struct SourcesTooLargeError;
 
 #[derive(Default)]
-pub struct SourceManager {
+pub struct SourceMap {
     sources: RefCell<Vec<Source>>,
 }
 
@@ -64,7 +64,7 @@ where
     itertools::iterate(Some(init), move |cur| cur.and_then(&f)).while_some()
 }
 
-impl SourceManager {
+impl SourceMap {
     pub fn new() -> Self {
         Default::default()
     }

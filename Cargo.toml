@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "source-manager",
+  "source-map",
   "lex",
   "mrcc"
 ]

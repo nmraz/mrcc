@@ -2,7 +2,7 @@ use super::*;
 
 #[test]
 fn create_file() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
 
     let filename = FileName::new_real("file");
     let file_start = sm
@@ -20,7 +20,7 @@ fn create_file() {
 
 #[test]
 fn create_expansion() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
 
     let file_range = sm
         .create_file(
@@ -46,7 +46,7 @@ fn create_expansion() {
 
 #[test]
 fn lookup_pos() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
 
     let source_c_range = sm
         .create_file(
@@ -96,7 +96,7 @@ fn lookup_pos() {
 
 #[test]
 fn lookup_pos_last() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let range = sm
         .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
@@ -106,14 +106,14 @@ fn lookup_pos_last() {
 #[test]
 #[should_panic]
 fn lookup_pos_past_last() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let range = sm
         .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
     sm.lookup_source(range.start().offset(2));
 }
 
-fn populate_sm(sm: &SourceManager) -> (SourceRange, SourceRange, SourceRange, SourceRange) {
+fn populate_sm(sm: &SourceMap) -> (SourceRange, SourceRange, SourceRange, SourceRange) {
     let file_range = sm
         .create_file(
             FileContents::new(
@@ -147,7 +147,7 @@ fn populate_sm(sm: &SourceManager) -> (SourceRange, SourceRange, SourceRange, So
 
 #[test]
 fn immediate_spelling_pos() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let in_file = file_range.subpos(5);
@@ -174,7 +174,7 @@ fn immediate_spelling_pos() {
 
 #[test]
 fn spelling_pos() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let in_file = file_range.subpos(5);
@@ -192,7 +192,7 @@ fn spelling_pos() {
 
 #[test]
 fn immediate_expansion_range() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let in_file = file_range.subrange(5, 2);
@@ -216,7 +216,7 @@ fn immediate_expansion_range() {
 
 #[test]
 fn expansion_range() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let exp_range = file_range.subrange(48, 1);
@@ -236,7 +236,7 @@ fn expansion_range() {
 
 #[test]
 fn immediate_caller_range() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let in_file = file_range.subrange(5, 2);
@@ -260,7 +260,7 @@ fn immediate_caller_range() {
 
 #[test]
 fn caller_range() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let exp_range = file_range.subrange(48, 1);
@@ -280,7 +280,7 @@ fn caller_range() {
 
 #[test]
 fn interpreted_range() {
-    let sm = SourceManager::new();
+    let sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
 
     let filename = FileName::new_real("file.c");
