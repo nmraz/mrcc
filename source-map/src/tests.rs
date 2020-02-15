@@ -307,3 +307,36 @@ fn interpreted_range() {
     let in_b_x = exp_b_x_range.subrange(2, 2);
     check_exp_interp(sm.get_interpreted_range(in_b_x));
 }
+
+#[test]
+fn unfragmented_range() {
+    let sm = SourceMap::new();
+    let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
+
+    let in_file = FragmentedSourceRange::new(file_range.subpos(3), file_range.subpos(10));
+    assert_eq!(
+        sm.get_unfragmented_range(in_file),
+        file_range.subrange(3, 7)
+    );
+
+    let in_b_x = FragmentedSourceRange::new(exp_b_x_range.subpos(2), exp_b_x_range.subpos(4));
+    assert_eq!(
+        sm.get_unfragmented_range(in_b_x),
+        exp_b_x_range.subrange(2, 2)
+    );
+
+    let cross_b_x = FragmentedSourceRange::new(exp_b_range.start(), exp_b_x_range.subpos(3));
+    assert_eq!(
+        sm.get_unfragmented_range(cross_b_x),
+        exp_b_range.subrange(0, 2)
+    );
+
+    let cross_a_b = FragmentedSourceRange::new(exp_a_range.start(), exp_b_range.subpos(3));
+    assert_eq!(sm.get_unfragmented_range(cross_a_b), exp_a_range);
+
+    let cross_b_file = FragmentedSourceRange::new(file_range.subpos(40), exp_b_range.subpos(4));
+    assert_eq!(
+        sm.get_unfragmented_range(cross_b_file),
+        file_range.subrange(40, 9)
+    );
+}
