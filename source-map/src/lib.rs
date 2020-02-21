@@ -72,7 +72,7 @@ impl SourceMap {
         Default::default()
     }
 
-    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> SourceRange {
+    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> SourceId {
         let mut sources = self.sources.borrow_mut();
 
         let off = sources
@@ -81,19 +81,21 @@ impl SourceMap {
 
         let range = SourceRange::new(SourcePos::from_raw(off), len);
 
+        let id = SourceId(sources.len());
+
         sources.push(Source {
             info: ctor(),
             range,
         });
 
-        range
+        id
     }
 
     pub fn create_file(
         &self,
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
-    ) -> Result<SourceRange, SourcesTooLargeError> {
+    ) -> Result<SourceId, SourcesTooLargeError> {
         let len = contents
             .src
             .len()
@@ -111,7 +113,7 @@ impl SourceMap {
         spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
-    ) -> SourceRange {
+    ) -> SourceId {
         if cfg!(debug_assertions) {
             // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
             // extra search through the list of sources, so avoid them in release builds.
