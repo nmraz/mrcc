@@ -5,15 +5,14 @@ fn create_file() {
     let sm = SourceMap::new();
 
     let filename = FileName::new_real("file");
-    let file_start = sm
+    let id = sm
         .create_file(
             FileContents::new(filename.clone(), "line\nline\nline"),
             None,
         )
-        .unwrap()
-        .start();
+        .unwrap();
 
-    let file_source = sm.lookup_source(file_start);
+    let file_source = sm.get_source(id);
     let file = file_source.as_file().unwrap();
     assert_eq!(file.contents.filename, filename);
 }
@@ -22,22 +21,22 @@ fn create_file() {
 fn create_expansion() {
     let sm = SourceMap::new();
 
-    let file_range = sm
+    let file_id = sm
         .create_file(
             FileContents::new(FileName::new_real("file.c"), "#define A 5\nA;"),
             None,
         )
         .unwrap();
 
-    let exp_source_start = sm
-        .create_expansion(
-            file_range.subrange(10, 1),
-            file_range.subrange(12, 1),
-            ExpansionType::Macro,
-        )
-        .start();
+    let file_range = sm.get_source(file_id).range;
 
-    let exp_source = sm.lookup_source(exp_source_start);
+    let exp_source_id = sm.create_expansion(
+        file_range.subrange(10, 1),
+        file_range.subrange(12, 1),
+        ExpansionType::Macro,
+    );
+
+    let exp_source = sm.get_source(exp_source_id);
     let exp = exp_source.as_expansion().unwrap();
 
     assert_eq!(exp.spelling_pos, file_range.subpos(10));
@@ -48,73 +47,62 @@ fn create_expansion() {
 fn lookup_pos() {
     let sm = SourceMap::new();
 
-    let source_c_range = sm
+    let source_c_id = sm
         .create_file(
             FileContents::new(FileName::new_real("file.c"), "#include <file.h>"),
             None,
         )
         .unwrap();
 
-    let source_empty_range = sm
+    let source_empty_id = sm
         .create_file(FileContents::new(FileName::new_real("empty.c"), ""), None)
         .unwrap();
 
-    let source_h_range = sm
+    let include_pos = sm.get_source(source_c_id).range.start();
+    let source_h_id = sm
         .create_file(
             FileContents::new(FileName::new_real("file.h"), "void f();"),
-            Some(source_c_range.start()),
+            Some(include_pos),
         )
         .unwrap();
 
     assert_eq!(
-        sm.lookup_source(source_c_range.subpos(3))
-            .as_file()
-            .unwrap()
-            .contents
-            .filename,
-        FileName::new_real("file.c")
+        sm.lookup_source_id(sm.get_source(source_c_id).range.subpos(3)),
+        source_c_id
     );
 
     assert_eq!(
-        sm.lookup_source(source_empty_range.start())
-            .as_file()
-            .unwrap()
-            .contents
-            .filename,
-        FileName::new_real("empty.c")
+        sm.lookup_source_id(sm.get_source(source_empty_id).range.start()),
+        source_empty_id
     );
 
     assert_eq!(
-        sm.lookup_source(source_h_range.subpos(3))
-            .as_file()
-            .unwrap()
-            .contents
-            .filename,
-        FileName::new_real("file.h")
+        sm.lookup_source_id(sm.get_source(source_h_id).range.subpos(3)),
+        source_h_id
     );
 }
 
 #[test]
 fn lookup_pos_last() {
     let sm = SourceMap::new();
-    let range = sm
+    let id = sm
         .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
-    sm.lookup_source(range.start()); // Shouldn't panic
+    sm.lookup_source_id(sm.get_source(id).range.start()); // Shouldn't panic
 }
 
 #[test]
 #[should_panic]
 fn lookup_pos_past_last() {
     let sm = SourceMap::new();
-    let range = sm
+    let id = sm
         .create_file(FileContents::new(FileName::new_real("file"), ""), None)
         .unwrap();
-    sm.lookup_source(range.start().offset(2));
+    sm.lookup_source_id(sm.get_source(id).range.start().offset(2));
 }
 
 fn populate_sm(sm: &SourceMap) -> (SourceRange, SourceRange, SourceRange, SourceRange) {
-    let file_range = sm
+    let file_id = sm
         .create_file(
             FileContents::new(
                 FileName::new_real("file.c"),
@@ -123,24 +111,28 @@ fn populate_sm(sm: &SourceMap) -> (SourceRange, SourceRange, SourceRange, Source
             None,
         )
         .unwrap();
+    let file_range = sm.get_source(file_id).range;
 
-    let exp_a_range = sm.create_expansion(
+    let exp_a_id = sm.create_expansion(
         file_range.subrange(31, 8),
         file_range.subrange(48, 1),
         ExpansionType::Macro,
     );
+    let exp_a_range = sm.get_source(exp_a_id).range;
 
-    let exp_b_range = sm.create_expansion(
+    let exp_b_id = sm.create_expansion(
         file_range.subrange(13, 7),
         exp_a_range,
         ExpansionType::Macro,
     );
+    let exp_b_range = sm.get_source(exp_b_id).range;
 
-    let exp_b_x_range = sm.create_expansion(
+    let exp_b_x_id = sm.create_expansion(
         exp_a_range.subrange(2, 5),
         exp_b_range.subrange(1, 1),
         ExpansionType::MacroArg,
     );
+    let exp_b_x_range = sm.get_source(exp_b_x_id).range;
 
     (file_range, exp_a_range, exp_b_range, exp_b_x_range)
 }
