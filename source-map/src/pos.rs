@@ -26,7 +26,6 @@ impl SourcePos {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SourceRange(SourcePos, u32);
 
-#[allow(clippy::len_without_is_empty)]
 impl SourceRange {
     #[inline]
     pub fn new(begin: SourcePos, len: u32) -> Self {
@@ -41,6 +40,11 @@ impl SourceRange {
     #[inline]
     pub fn len(self) -> u32 {
         self.1
+    }
+
+    #[inline]
+    pub fn is_empty(self) -> bool {
+        self.1 == 0
     }
 
     #[inline]
