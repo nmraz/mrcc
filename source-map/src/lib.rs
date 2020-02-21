@@ -117,8 +117,8 @@ impl SourceMap {
         if cfg!(debug_assertions) {
             // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
             // extra search through the list of sources, so avoid them in release builds.
-            self.lookup_range_source(spelling_range);
-            self.lookup_range_source(expansion_range);
+            self.lookup_source_range(spelling_range);
+            self.lookup_source_range(expansion_range);
         }
 
         self.add_source(
@@ -137,30 +137,33 @@ impl SourceMap {
         Ref::map(self.sources.borrow(), |sources| &sources[id.0])
     }
 
-    pub fn lookup_source(&self, pos: SourcePos) -> Ref<'_, Source> {
+    pub fn lookup_source_id(&self, pos: SourcePos) -> SourceId {
         let offset = pos.to_raw();
-        Ref::map(self.sources.borrow(), |sources| {
-            let last = sources.last().unwrap();
-            assert!(offset <= last.range.end().to_raw());
+        let sources = self.sources.borrow();
 
-            let idx = sources
+        let last = sources.last().unwrap();
+        assert!(offset <= last.range.end().to_raw());
+
+        SourceId(
+            sources
                 .binary_search_by_key(&offset, |source| source.range.start().to_raw())
-                .unwrap_or_else(|i| i - 1);
-
-            &sources[idx]
-        })
-    }
-
-    fn lookup_range_source(&self, range: SourceRange) -> Ref<'_, Source> {
-        let source = self.lookup_source(range.start());
-        assert!(source.range.contains_range(range), "invalid source range");
-        source
+                .unwrap_or_else(|i| i - 1),
+        )
     }
 
     pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<'_, Source>, u32) {
-        let source = self.lookup_source(pos);
+        let source = self.get_source(self.lookup_source_id(pos));
         let off = pos.offset_from(source.range.start());
         (source, off)
+    }
+
+    pub fn lookup_source_range(&self, range: SourceRange) -> (Ref<'_, Source>, Range<u32>) {
+        let source = self.get_source(self.lookup_source_id(range.start()));
+
+        assert!(source.range.contains_range(range), "invalid source range");
+
+        let off = range.start().offset_from(source.range.start());
+        (source, off..off + range.len())
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
@@ -183,9 +186,8 @@ impl SourceMap {
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
-        self.lookup_range_source(range)
-            .as_expansion()
-            .map(|exp| exp.expansion_range)
+        let (source, _) = self.lookup_source_range(range);
+        source.as_expansion().map(|exp| exp.expansion_range)
     }
 
     pub fn get_expansion_chain<'sm>(
@@ -200,12 +202,11 @@ impl SourceMap {
     }
 
     pub fn get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
-        let source = self.lookup_range_source(range);
-        let off = range.start().offset_from(source.range.start());
+        let (source, local_range) = self.lookup_source_range(range);
 
         source
             .as_expansion()
-            .map(|exp| exp.caller_range(off..off + range.len()))
+            .map(|exp| exp.caller_range(local_range))
     }
 
     pub fn get_caller_chain<'sm>(
@@ -221,11 +222,11 @@ impl SourceMap {
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
         let caller_range = self.get_caller_range(range);
-        let (source, start_off) = self.lookup_source_off(caller_range.start());
+        let (source, off) = self.lookup_source_off(caller_range.start());
 
         InterpretedFileRange {
             file: Ref::map(source, |raw_source| raw_source.as_file().unwrap()),
-            off: start_off,
+            off,
             len: caller_range.len(),
         }
     }
@@ -234,33 +235,36 @@ impl SourceMap {
         &'sm self,
         pos: SourcePos,
         extract_pos: F,
-    ) -> impl Iterator<Item = (SourcePos, u32)> + 'sm
+    ) -> impl Iterator<Item = (SourceId, SourcePos)> + 'sm
     where
         F: Fn(SourceRange) -> SourcePos + 'sm,
     {
         self.get_expansion_chain(SourceRange::new(pos, 0))
             .map(move |range| {
-                let (source, off) = self.lookup_source_off(extract_pos(range));
-                (source.range.start(), off)
+                let pos = extract_pos(range);
+                (self.lookup_source_id(pos), pos)
             })
     }
 
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
-        let start_source_offs: FxHashMap<_, _> = self
+        let start_sources: FxHashMap<_, _> = self
             .get_expansion_source_offs(range.start, SourceRange::start)
             .collect();
 
-        let (lca_source_start, start_off, end_off) = self
+        let (start_pos, end_pos) = self
             .get_expansion_source_offs(range.end, SourceRange::end)
-            .find_map(|(source_start, end_off)| {
-                start_source_offs
-                    .get(&source_start)
-                    .map(|&start_off| (source_start, start_off, end_off))
+            .find_map(|(id, end_pos)| {
+                start_sources
+                    .get(&id)
+                    .map(|&start_pos| (start_pos, end_pos))
             })
             .expect("fragmented source range spans multiple files");
 
-        assert!(start_off <= end_off, "invalid source range");
+        assert!(
+            start_pos.to_raw() <= end_pos.to_raw(),
+            "invalid source range"
+        );
 
-        SourceRange::new(lca_source_start.offset(start_off), end_off - start_off)
+        SourceRange::new(start_pos, end_pos.offset_from(start_pos))
     }
 }
