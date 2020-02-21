@@ -78,11 +78,9 @@ impl SourceMap {
         let off = sources
             .last()
             .map_or(0, |source| source.range.end().to_raw() + 1);
-
         let range = SourceRange::new(SourcePos::from_raw(off), len);
 
         let id = SourceId(sources.len());
-
         sources.push(Source {
             info: ctor(),
             range,
