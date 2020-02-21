@@ -229,7 +229,7 @@ impl SourceMap {
         }
     }
 
-    fn get_expansion_source_offs<'sm, F>(
+    fn get_expansion_sources<'sm, F>(
         &'sm self,
         pos: SourcePos,
         extract_pos: F,
@@ -246,11 +246,11 @@ impl SourceMap {
 
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
         let start_sources: FxHashMap<_, _> = self
-            .get_expansion_source_offs(range.start, SourceRange::start)
+            .get_expansion_sources(range.start, SourceRange::start)
             .collect();
 
         let (start_pos, end_pos) = self
-            .get_expansion_source_offs(range.end, SourceRange::end)
+            .get_expansion_sources(range.end, SourceRange::end)
             .find_map(|(id, end_pos)| {
                 start_sources
                     .get(&id)
