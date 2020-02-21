@@ -20,6 +20,9 @@ pub use source::{
     ExpansionSourceInfo, ExpansionType, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SourceId(usize);
+
 pub struct InterpretedFileRange<'f> {
     pub file: Ref<'f, FileSourceInfo>,
     pub off: u32,
@@ -126,6 +129,10 @@ impl SourceMap {
             },
             spelling_range.len(),
         )
+    }
+
+    pub fn get_source(&self, id: SourceId) -> Ref<'_, Source> {
+        Ref::map(self.sources.borrow(), |sources| &sources[id.0])
     }
 
     pub fn lookup_source(&self, pos: SourcePos) -> Ref<'_, Source> {
