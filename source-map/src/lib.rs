@@ -194,14 +194,9 @@ impl SourceMap {
         let source = self.lookup_range_source(range);
         let off = range.start().offset_from(source.range.start());
 
-        source.as_expansion().map(|exp| {
-            // For macro arguments, the caller is where the argument was spelled, while for
-            // everything else the caller recieves the expansion.
-            match exp.expansion_type {
-                ExpansionType::MacroArg => exp.get_spelling_range(off, range.len()),
-                _ => exp.expansion_range,
-            }
-        })
+        source
+            .as_expansion()
+            .map(|exp| exp.caller_range(off..off + range.len()))
     }
 
     pub fn get_caller_chain<'sm>(

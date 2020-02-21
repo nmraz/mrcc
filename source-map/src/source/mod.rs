@@ -135,8 +135,17 @@ impl ExpansionSourceInfo {
         }
     }
 
-    pub fn get_spelling_range(&self, off: u32, len: u32) -> SourceRange {
-        SourceRange::new(self.spelling_pos.offset(off), len)
+    pub fn spelling_range(&self, range: Range<u32>) -> SourceRange {
+        SourceRange::new(self.spelling_pos.offset(range.start), range.len() as u32)
+    }
+
+    pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
+        // For macro arguments, the caller is where the argument was spelled, while for
+        // everything else the caller recieves the expansion.
+        match self.expansion_type {
+            ExpansionType::MacroArg => self.spelling_range(range),
+            _ => self.expansion_range,
+        }
     }
 }
 
