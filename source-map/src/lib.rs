@@ -219,13 +219,12 @@ impl SourceMap {
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
-        let caller_range = self.get_caller_range(range);
-        let (source, off) = self.lookup_source_off(caller_range.start());
+        let (source, off) = self.lookup_source_off(range.start());
 
         InterpretedFileRange {
             file: Ref::map(source, |raw_source| raw_source.as_file().unwrap()),
             off,
-            len: caller_range.len(),
+            len: range.len(),
         }
     }
 

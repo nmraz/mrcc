@@ -273,7 +273,7 @@ fn caller_range() {
 #[test]
 fn interpreted_range() {
     let sm = SourceMap::new();
-    let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&sm);
+    let (file_range, ..) = populate_sm(&sm);
 
     let filename = FileName::new_real("file.c");
 
@@ -284,20 +284,6 @@ fn interpreted_range() {
     assert_eq!(interp_in_file.local_range(), 15..31);
     assert_eq!(interp_in_file.start_linecol(), LineCol { line: 0, col: 15 });
     assert_eq!(interp_in_file.end_linecol(), LineCol { line: 1, col: 10 });
-
-    let check_exp_interp = |interp: InterpretedFileRange<'_>| {
-        assert_eq!(interp.filename(), &filename);
-        assert_eq!(interp.local_range(), 48..49);
-    };
-
-    let in_a = exp_a_range.subrange(3, 3);
-    check_exp_interp(sm.get_interpreted_range(in_a));
-
-    let in_b = exp_b_range.subrange(2, 1);
-    check_exp_interp(sm.get_interpreted_range(in_b));
-
-    let in_b_x = exp_b_x_range.subrange(2, 2);
-    check_exp_interp(sm.get_interpreted_range(in_b_x));
 }
 
 #[test]
