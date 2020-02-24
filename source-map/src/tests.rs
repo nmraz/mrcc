@@ -30,11 +30,13 @@ fn create_expansion() {
 
     let file_range = sm.get_source(file_id).range;
 
-    let exp_source_id = sm.create_expansion(
-        file_range.subrange(10, 1),
-        file_range.subrange(12, 1),
-        ExpansionType::Macro,
-    );
+    let exp_source_id = sm
+        .create_expansion(
+            file_range.subrange(10, 1),
+            file_range.subrange(12, 1),
+            ExpansionType::Macro,
+        )
+        .unwrap();
 
     let exp_source = sm.get_source(exp_source_id);
     let exp = exp_source.as_expansion().unwrap();
@@ -113,25 +115,31 @@ fn populate_sm(sm: &SourceMap) -> (SourceRange, SourceRange, SourceRange, Source
         .unwrap();
     let file_range = sm.get_source(file_id).range;
 
-    let exp_a_id = sm.create_expansion(
-        file_range.subrange(31, 8),
-        file_range.subrange(48, 1),
-        ExpansionType::Macro,
-    );
+    let exp_a_id = sm
+        .create_expansion(
+            file_range.subrange(31, 8),
+            file_range.subrange(48, 1),
+            ExpansionType::Macro,
+        )
+        .unwrap();
     let exp_a_range = sm.get_source(exp_a_id).range;
 
-    let exp_b_id = sm.create_expansion(
-        file_range.subrange(13, 7),
-        exp_a_range,
-        ExpansionType::Macro,
-    );
+    let exp_b_id = sm
+        .create_expansion(
+            file_range.subrange(13, 7),
+            exp_a_range,
+            ExpansionType::Macro,
+        )
+        .unwrap();
     let exp_b_range = sm.get_source(exp_b_id).range;
 
-    let exp_b_x_id = sm.create_expansion(
-        exp_a_range.subrange(2, 5),
-        exp_b_range.subrange(1, 1),
-        ExpansionType::MacroArg,
-    );
+    let exp_b_x_id = sm
+        .create_expansion(
+            exp_a_range.subrange(2, 5),
+            exp_b_range.subrange(1, 1),
+            ExpansionType::MacroArg,
+        )
+        .unwrap();
     let exp_b_x_range = sm.get_source(exp_b_x_id).range;
 
     (file_range, exp_a_range, exp_b_range, exp_b_x_range)

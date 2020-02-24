@@ -55,8 +55,14 @@ impl InterpretedFileRange<'_> {
 pub struct SourcesTooLargeError;
 
 #[derive(Default)]
+struct SourceMapInner {
+    sources: Vec<Source>,
+    next_offset: u32,
+}
+
+#[derive(Default)]
 pub struct SourceMap {
-    sources: RefCell<Vec<Source>>,
+    inner: RefCell<SourceMapInner>,
 }
 
 fn get_location_chain<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
@@ -72,21 +78,28 @@ impl SourceMap {
         Default::default()
     }
 
-    fn add_source(&self, ctor: impl FnOnce() -> SourceInfo, len: u32) -> SourceId {
-        let mut sources = self.sources.borrow_mut();
+    fn add_source(
+        &self,
+        ctor: impl FnOnce() -> SourceInfo,
+        len: u32,
+    ) -> Result<SourceId, SourcesTooLargeError> {
+        let mut inner = self.inner.borrow_mut();
 
-        let off = sources
-            .last()
-            .map_or(0, |source| source.range.end().to_raw() + 1);
+        let off = inner.next_offset;
+        inner.next_offset = off
+            .checked_add(len)
+            .and_then(|val| val.checked_add(1))
+            .ok_or(SourcesTooLargeError)?;
+
         let range = SourceRange::new(SourcePos::from_raw(off), len);
 
-        let id = SourceId(sources.len());
-        sources.push(Source {
+        let id = SourceId(inner.sources.len());
+        inner.sources.push(Source {
             info: ctor(),
             range,
         });
 
-        id
+        Ok(id)
     }
 
     pub fn create_file(
@@ -100,10 +113,10 @@ impl SourceMap {
             .try_into()
             .map_err(|_| SourcesTooLargeError)?;
 
-        Ok(self.add_source(
+        self.add_source(
             || SourceInfo::File(FileSourceInfo::new(contents, include_pos)),
             len,
-        ))
+        )
     }
 
     pub fn create_expansion(
@@ -111,7 +124,7 @@ impl SourceMap {
         spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
-    ) -> SourceId {
+    ) -> Result<SourceId, SourcesTooLargeError> {
         if cfg!(debug_assertions) {
             // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
             // extra search through the list of sources, so avoid them in release builds.
@@ -132,12 +145,12 @@ impl SourceMap {
     }
 
     pub fn get_source(&self, id: SourceId) -> Ref<'_, Source> {
-        Ref::map(self.sources.borrow(), |sources| &sources[id.0])
+        Ref::map(self.inner.borrow(), |inner| &inner.sources[id.0])
     }
 
     pub fn lookup_source_id(&self, pos: SourcePos) -> SourceId {
         let offset = pos.to_raw();
-        let sources = self.sources.borrow();
+        let sources = Ref::map(self.inner.borrow(), |inner| &inner.sources);
 
         let last = sources.last().unwrap();
         assert!(offset <= last.range.end().to_raw());
