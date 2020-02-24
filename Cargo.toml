@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "source-map",
+  "diag",
   "lex",
   "mrcc"
 ]
