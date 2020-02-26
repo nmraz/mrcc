@@ -232,11 +232,11 @@ impl SourceMap {
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
-        let (source, off) = self.lookup_source_off(range.start());
+        let (source, local_range) = self.lookup_source_range(range);
 
         InterpretedFileRange {
             file: Ref::map(source, |raw_source| raw_source.as_file().unwrap()),
-            off,
+            off: local_range.start,
             len: range.len(),
         }
     }
