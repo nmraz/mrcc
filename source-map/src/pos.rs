@@ -77,6 +77,13 @@ impl SourceRange {
     }
 }
 
+impl From<SourcePos> for SourceRange {
+    #[inline]
+    fn from(pos: SourcePos) -> Self {
+        Self::new(pos, 0)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FragmentedSourceRange {
     pub start: SourcePos,
@@ -84,8 +91,16 @@ pub struct FragmentedSourceRange {
 }
 
 impl FragmentedSourceRange {
+    #[inline]
     pub fn new(start: SourcePos, end: SourcePos) -> Self {
         FragmentedSourceRange { start, end }
+    }
+}
+
+impl From<SourcePos> for FragmentedSourceRange {
+    #[inline]
+    fn from(pos: SourcePos) -> Self {
+        Self::new(pos, pos)
     }
 }
 

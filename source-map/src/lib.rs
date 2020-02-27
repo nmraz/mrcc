@@ -249,11 +249,10 @@ impl SourceMap {
     where
         F: Fn(SourceRange) -> SourcePos + 'sm,
     {
-        self.get_expansion_chain(SourceRange::new(pos, 0))
-            .map(move |range| {
-                let pos = extract_pos(range);
-                (self.lookup_source_id(pos), pos)
-            })
+        self.get_expansion_chain(pos.into()).map(move |range| {
+            let pos = extract_pos(range);
+            (self.lookup_source_id(pos), pos)
+        })
     }
 
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
