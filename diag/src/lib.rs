@@ -58,7 +58,8 @@ pub struct Diagnostic<D> {
     pub notes: Vec<D>,
 }
 
-pub type RawDiagnostic = Diagnostic<SubDiagnostic<FragmentedSourceRange>>;
+pub type RawSubDiagnostic = SubDiagnostic<FragmentedSourceRange>;
+pub type RawDiagnostic = Diagnostic<RawSubDiagnostic>;
 
 #[derive(Debug, Clone)]
 pub struct RenderedSubDiagnostic {
