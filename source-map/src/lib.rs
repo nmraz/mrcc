@@ -247,8 +247,10 @@ impl SourceMap {
             move |range| self.lookup_source_id(range.start()),
             move |id, range| {
                 let source = self.get_source(id);
-                let range = source.local_range(range);
-                source.as_expansion().map(|exp| exp.caller_range(range))
+                let local_range = source.local_range(range);
+                source
+                    .as_expansion()
+                    .map(|exp| exp.caller_range(local_range))
             },
         )
     }
