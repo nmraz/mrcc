@@ -10,18 +10,19 @@ impl<R> Suggestion<R>
 where
     SourcePos: Into<R>,
 {
-    pub fn new_insertion(pos: SourcePos, text: impl Into<String>) -> Self {
+    pub fn new(replacement_range: R, insert_text: impl Into<String>) -> Self {
         Suggestion {
-            replacement_range: pos.into(),
-            insert_text: text.into(),
+            replacement_range,
+            insert_text: insert_text.into(),
         }
     }
 
+    pub fn new_insertion(pos: SourcePos, text: impl Into<String>) -> Self {
+        Self::new(pos.into(), text)
+    }
+
     pub fn new_deletion(range: R) -> Self {
-        Suggestion {
-            replacement_range: range,
-            insert_text: "".to_owned(),
-        }
+        Self::new(range, "")
     }
 }
 
