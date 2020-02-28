@@ -65,12 +65,20 @@ pub struct SourceMap {
     inner: RefCell<SourceMapInner>,
 }
 
-fn get_location_chain<'sm, T, F>(init: T, f: F) -> impl Iterator<Item = T> + 'sm
+fn get_location_chain<'a, T, F, G>(
+    init: T,
+    lookup_id: F,
+    next: G,
+) -> impl Iterator<Item = (SourceId, T)> + 'a
 where
-    T: Copy + 'sm,
-    F: Fn(T) -> Option<T> + 'sm,
+    T: Copy + 'a,
+    F: Fn(T) -> SourceId + 'a,
+    G: Fn(SourceId, T) -> Option<T> + 'a,
 {
-    itertools::iterate(Some(init), move |cur| cur.and_then(&f)).while_some()
+    itertools::iterate(Some((lookup_id(init), init)), move |cur| {
+        cur.and_then(|(id, val)| next(id, val).map(|next_val| (lookup_id(next_val), next_val)))
+    })
+    .while_some()
 }
 
 impl SourceMap {
@@ -164,17 +172,14 @@ impl SourceMap {
 
     pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<'_, Source>, u32) {
         let source = self.get_source(self.lookup_source_id(pos));
-        let off = pos.offset_from(source.range.start());
+        let off = source.local_off(pos);
         (source, off)
     }
 
     pub fn lookup_source_range(&self, range: SourceRange) -> (Ref<'_, Source>, Range<u32>) {
         let source = self.get_source(self.lookup_source_id(range.start()));
-
-        assert!(source.range.contains_range(range), "invalid source range");
-
-        let off = range.start().offset_from(source.range.start());
-        (source, off..off + range.len())
+        let local_range = source.local_range(range);
+        (source, local_range)
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
@@ -182,12 +187,23 @@ impl SourceMap {
         source.as_expansion().map(|exp| exp.spelling_pos(off))
     }
 
-    pub fn get_spelling_chain(&self, pos: SourcePos) -> impl Iterator<Item = SourcePos> + '_ {
-        get_location_chain(pos, move |cur| self.get_immediate_spelling_pos(cur))
+    pub fn get_spelling_chain(
+        &self,
+        pos: SourcePos,
+    ) -> impl Iterator<Item = (SourceId, SourcePos)> + '_ {
+        get_location_chain(
+            pos,
+            move |pos| self.lookup_source_id(pos),
+            move |id, pos| {
+                let source = self.get_source(id);
+                let off = source.local_off(pos);
+                source.as_expansion().map(|exp| exp.spelling_pos(off))
+            },
+        )
     }
 
     pub fn get_spelling_pos(&self, pos: SourcePos) -> SourcePos {
-        self.get_spelling_chain(pos).last().unwrap()
+        self.get_spelling_chain(pos).last().unwrap().1
     }
 
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -198,12 +214,20 @@ impl SourceMap {
     pub fn get_expansion_chain(
         &self,
         range: SourceRange,
-    ) -> impl Iterator<Item = SourceRange> + '_ {
-        get_location_chain(range, move |cur| self.get_immediate_expansion_range(cur))
+    ) -> impl Iterator<Item = (SourceId, SourceRange)> + '_ {
+        get_location_chain(
+            range,
+            move |range| self.lookup_source_id(range.start()),
+            move |id, _| {
+                self.get_source(id)
+                    .as_expansion()
+                    .map(|exp| exp.expansion_range)
+            },
+        )
     }
 
     pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
-        self.get_expansion_chain(range).last().unwrap()
+        self.get_expansion_chain(range).last().unwrap().1
     }
 
     pub fn get_immediate_caller_range(&self, range: SourceRange) -> Option<SourceRange> {
@@ -214,12 +238,23 @@ impl SourceMap {
             .map(|exp| exp.caller_range(local_range))
     }
 
-    pub fn get_caller_chain(&self, range: SourceRange) -> impl Iterator<Item = SourceRange> + '_ {
-        get_location_chain(range, move |cur| self.get_immediate_caller_range(cur))
+    pub fn get_caller_chain(
+        &self,
+        range: SourceRange,
+    ) -> impl Iterator<Item = (SourceId, SourceRange)> + '_ {
+        get_location_chain(
+            range,
+            move |range| self.lookup_source_id(range.start()),
+            move |id, range| {
+                let source = self.get_source(id);
+                let range = source.local_range(range);
+                source.as_expansion().map(|exp| exp.caller_range(range))
+            },
+        )
     }
 
     pub fn get_caller_range(&self, range: SourceRange) -> SourceRange {
-        self.get_caller_chain(range).last().unwrap()
+        self.get_caller_chain(range).last().unwrap().1
     }
 
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
@@ -232,27 +267,25 @@ impl SourceMap {
         }
     }
 
-    fn get_expansion_sources<'sm, F>(
-        &'sm self,
+    fn get_expansion_pos_chain<'a, F>(
+        &'a self,
         pos: SourcePos,
         extract_pos: F,
-    ) -> impl Iterator<Item = (SourceId, SourcePos)> + 'sm
+    ) -> impl Iterator<Item = (SourceId, SourcePos)> + 'a
     where
-        F: Fn(SourceRange) -> SourcePos + 'sm,
+        F: Fn(SourceRange) -> SourcePos + 'a,
     {
-        self.get_expansion_chain(pos.into()).map(move |range| {
-            let pos = extract_pos(range);
-            (self.lookup_source_id(pos), pos)
-        })
+        self.get_expansion_chain(pos.into())
+            .map(move |(id, range)| (id, extract_pos(range)))
     }
 
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
         let start_sources: FxHashMap<_, _> = self
-            .get_expansion_sources(range.start, SourceRange::start)
+            .get_expansion_pos_chain(range.start, SourceRange::start)
             .collect();
 
         let (start_pos, end_pos) = self
-            .get_expansion_sources(range.end, SourceRange::end)
+            .get_expansion_pos_chain(range.end, SourceRange::end)
             .find_map(|(id, end_pos)| {
                 start_sources
                     .get(&id)
