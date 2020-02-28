@@ -65,7 +65,7 @@ pub type RawDiagnostic = Diagnostic<RawSubDiagnostic>;
 #[derive(Debug, Clone)]
 pub struct RenderedSubDiagnostic {
     pub inner: SubDiagnostic<SourceRange>,
-    pub expansions: Vec<SubDiagnostic<SourceRange>>,
+    pub expansions: Vec<Ranges<SourceRange>>,
 }
 
 impl RenderedSubDiagnostic {
