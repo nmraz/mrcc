@@ -166,6 +166,17 @@ pub struct Source {
 }
 
 impl Source {
+    pub fn local_off(&self, pos: SourcePos) -> u32 {
+        assert!(self.range.contains(pos));
+        pos.offset_from(self.range.start())
+    }
+
+    pub fn local_range(&self, range: SourceRange) -> Range<u32> {
+        assert!(self.range.contains_range(range));
+        let off = self.local_off(range.start());
+        off..off + range.len()
+    }
+
     pub fn as_file(&self) -> Option<&FileSourceInfo> {
         match self.info {
             SourceInfo::File(ref file) => Some(file),
