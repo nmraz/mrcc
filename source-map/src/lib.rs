@@ -185,10 +185,7 @@ impl SourceMap {
             .map(|exp| exp.spelling_pos.offset(offset))
     }
 
-    pub fn get_spelling_chain<'sm>(
-        &'sm self,
-        pos: SourcePos,
-    ) -> impl Iterator<Item = SourcePos> + 'sm {
+    pub fn get_spelling_chain(&self, pos: SourcePos) -> impl Iterator<Item = SourcePos> + '_ {
         get_location_chain(pos, move |cur| self.get_immediate_spelling_pos(cur))
     }
 
@@ -201,10 +198,10 @@ impl SourceMap {
         source.as_expansion().map(|exp| exp.expansion_range)
     }
 
-    pub fn get_expansion_chain<'sm>(
-        &'sm self,
+    pub fn get_expansion_chain(
+        &self,
         range: SourceRange,
-    ) -> impl Iterator<Item = SourceRange> + 'sm {
+    ) -> impl Iterator<Item = SourceRange> + '_ {
         get_location_chain(range, move |cur| self.get_immediate_expansion_range(cur))
     }
 
@@ -220,10 +217,7 @@ impl SourceMap {
             .map(|exp| exp.caller_range(local_range))
     }
 
-    pub fn get_caller_chain<'sm>(
-        &'sm self,
-        range: SourceRange,
-    ) -> impl Iterator<Item = SourceRange> + 'sm {
+    pub fn get_caller_chain(&self, range: SourceRange) -> impl Iterator<Item = SourceRange> + '_ {
         get_location_chain(range, move |cur| self.get_immediate_caller_range(cur))
     }
 
