@@ -10,10 +10,10 @@ impl<R> Suggestion<R>
 where
     SourcePos: Into<R>,
 {
-    pub fn new_insertion(pos: SourcePos, text: String) -> Self {
+    pub fn new_insertion(pos: SourcePos, text: impl Into<String>) -> Self {
         Suggestion {
             replacement_range: pos.into(),
-            insert_text: text,
+            insert_text: text.into(),
         }
     }
 
