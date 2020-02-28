@@ -135,8 +135,12 @@ impl ExpansionSourceInfo {
         }
     }
 
+    pub fn spelling_pos(&self, off: u32) -> SourcePos {
+        self.spelling_pos.offset(off)
+    }
+
     pub fn spelling_range(&self, range: Range<u32>) -> SourceRange {
-        SourceRange::new(self.spelling_pos.offset(range.start), range.len() as u32)
+        SourceRange::new(self.spelling_pos(range.start), range.len() as u32)
     }
 
     pub fn caller_range(&self, range: Range<u32>) -> SourceRange {

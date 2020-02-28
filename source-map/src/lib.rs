@@ -178,11 +178,8 @@ impl SourceMap {
     }
 
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
-        let (source, offset) = self.lookup_source_off(pos);
-
-        source
-            .as_expansion()
-            .map(|exp| exp.spelling_pos.offset(offset))
+        let (source, off) = self.lookup_source_off(pos);
+        source.as_expansion().map(|exp| exp.spelling_pos(off))
     }
 
     pub fn get_spelling_chain(&self, pos: SourcePos) -> impl Iterator<Item = SourcePos> + '_ {
