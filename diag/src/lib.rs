@@ -2,6 +2,8 @@ use std::cell::RefCell;
 
 use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 
+mod render;
+
 #[derive(Debug, Clone)]
 pub struct Suggestion<R> {
     pub replacement_range: R,
