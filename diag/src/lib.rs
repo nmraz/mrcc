@@ -1,3 +1,5 @@
+use std::cell::RefCell;
+
 use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 
 #[derive(Debug, Clone)]
@@ -141,3 +143,138 @@ impl RenderedSubDiagnostic {
 }
 
 pub type RenderedDiagnostic = Diagnostic<RenderedSubDiagnostic>;
+
+pub struct DiagnosticBuilder<'a> {
+    diag: RawDiagnostic,
+    manager: &'a Manager,
+}
+
+impl<'a> DiagnosticBuilder<'a> {
+    fn new(
+        manager: &'a Manager,
+        level: Level,
+        msg: String,
+        primary_range: Option<FragmentedSourceRange>,
+    ) -> Self {
+        let main_diag = RawSubDiagnostic {
+            msg,
+            ranges: primary_range.map(|range| Ranges {
+                primary_range: range,
+                subranges: Vec::new(),
+            }),
+            suggestions: Vec::new(),
+        };
+
+        let diag = RawDiagnostic {
+            level,
+            main: main_diag,
+            notes: Vec::new(),
+        };
+
+        DiagnosticBuilder { diag, manager }
+    }
+
+    pub fn add_labeled_range(
+        &mut self,
+        range: FragmentedSourceRange,
+        label: impl Into<String>,
+    ) -> &mut Self {
+        self.diag.main.add_labeled_range(range, label);
+        self
+    }
+
+    pub fn add_range(&mut self, range: FragmentedSourceRange) -> &mut Self {
+        self.add_labeled_range(range, "")
+    }
+
+    pub fn add_suggestion(&mut self, suggestion: RawSuggestion) -> &mut Self {
+        self.diag.main.add_suggestion(suggestion);
+        self
+    }
+
+    pub fn add_note(&mut self, note: RawSubDiagnostic) -> &mut Self {
+        self.diag.notes.push(note);
+        self
+    }
+}
+
+impl Drop for DiagnosticBuilder<'_> {
+    fn drop(&mut self) {
+        self.manager.emit(&self.diag);
+    }
+}
+
+pub trait RawHandler {
+    fn handle(&mut self, diag: &RawDiagnostic);
+}
+
+struct ManagerInner {
+    handler: Box<dyn RawHandler>,
+    warning_count: u32,
+    error_count: u32,
+}
+
+pub struct Manager {
+    inner: RefCell<ManagerInner>,
+}
+
+impl Manager {
+    pub fn new(handler: Box<dyn RawHandler>) -> Self {
+        Manager {
+            inner: RefCell::new(ManagerInner {
+                handler,
+                warning_count: 0,
+                error_count: 0,
+            }),
+        }
+    }
+
+    pub fn diag(
+        &self,
+        level: Level,
+        msg: impl Into<String>,
+        primary_range: FragmentedSourceRange,
+    ) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, level, msg.into(), Some(primary_range))
+    }
+
+    pub fn diag_anon(&self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, level, msg.into(), None)
+    }
+
+    pub fn warning(
+        &self,
+        msg: impl Into<String>,
+        primary_range: FragmentedSourceRange,
+    ) -> DiagnosticBuilder<'_> {
+        self.diag(Level::Warning, msg, primary_range)
+    }
+
+    pub fn error(
+        &self,
+        msg: impl Into<String>,
+        primary_range: FragmentedSourceRange,
+    ) -> DiagnosticBuilder<'_> {
+        self.diag(Level::Error, msg, primary_range)
+    }
+
+    pub fn warning_count(&self) -> u32 {
+        self.inner.borrow().warning_count
+    }
+
+    pub fn error_count(&self) -> u32 {
+        self.inner.borrow().error_count
+    }
+
+    fn emit(&self, diag: &RawDiagnostic) {
+        let mut inner = self.inner.borrow_mut();
+
+        match diag.level {
+            Level::Warning => inner.warning_count += 1,
+            Level::Error => inner.error_count += 1,
+            _ => {}
+        }
+
+        inner.handler.handle(diag);
+    }
+}
