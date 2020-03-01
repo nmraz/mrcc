@@ -34,12 +34,9 @@ pub type RawSuggestion = Suggestion<FragmentedSourceRange>;
 pub type RenderedSuggestion = Suggestion<SourceRange>;
 
 #[derive(Debug, Clone)]
-pub struct LabeledRange<R>(R, String);
-
-#[derive(Debug, Clone)]
 pub struct Ranges<R> {
     pub primary_range: R,
-    pub subranges: Vec<LabeledRange<R>>,
+    pub subranges: Vec<(R, String)>,
 }
 
 impl<R> Ranges<R> {
@@ -80,7 +77,7 @@ impl<R> SubDiagnostic<R> {
             .as_mut()
             .expect("cannot attach range to rangeless diagnostic")
             .subranges
-            .push(LabeledRange(range, label.into()));
+            .push((range, label.into()));
     }
 
     pub fn add_range(&mut self, range: R) {
