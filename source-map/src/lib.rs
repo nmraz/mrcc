@@ -2,7 +2,6 @@
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
-use std::cell::{Ref, RefCell};
 use std::convert::TryInto;
 use std::ops::Range;
 use std::option::Option;
@@ -24,7 +23,7 @@ pub use source::{
 pub struct SourceId(usize);
 
 pub struct InterpretedFileRange<'f> {
-    pub file: Ref<'f, FileSourceInfo>,
+    pub file: &'f FileSourceInfo,
     pub off: u32,
     pub len: u32,
 }
@@ -55,14 +54,9 @@ impl InterpretedFileRange<'_> {
 pub struct SourcesTooLargeError;
 
 #[derive(Default)]
-struct SourceMapInner {
+pub struct SourceMap {
     sources: Vec<Source>,
     next_offset: u32,
-}
-
-#[derive(Default)]
-pub struct SourceMap {
-    inner: RefCell<SourceMapInner>,
 }
 
 fn get_location_chain<'a, T, F, G>(
@@ -87,22 +81,20 @@ impl SourceMap {
     }
 
     fn add_source(
-        &self,
+        &mut self,
         ctor: impl FnOnce() -> SourceInfo,
         len: u32,
     ) -> Result<SourceId, SourcesTooLargeError> {
-        let mut inner = self.inner.borrow_mut();
-
-        let off = inner.next_offset;
-        inner.next_offset = off
+        let off = self.next_offset;
+        self.next_offset = off
             .checked_add(len)
             .and_then(|val| val.checked_add(1))
             .ok_or(SourcesTooLargeError)?;
 
         let range = SourceRange::new(SourcePos::from_raw(off), len);
 
-        let id = SourceId(inner.sources.len());
-        inner.sources.push(Source {
+        let id = SourceId(self.sources.len());
+        self.sources.push(Source {
             info: ctor(),
             range,
         });
@@ -111,7 +103,7 @@ impl SourceMap {
     }
 
     pub fn create_file(
-        &self,
+        &mut self,
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<SourceId, SourcesTooLargeError> {
@@ -128,7 +120,7 @@ impl SourceMap {
     }
 
     pub fn create_expansion(
-        &self,
+        &mut self,
         spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
@@ -152,31 +144,30 @@ impl SourceMap {
         )
     }
 
-    pub fn get_source(&self, id: SourceId) -> Ref<'_, Source> {
-        Ref::map(self.inner.borrow(), |inner| &inner.sources[id.0])
+    pub fn get_source(&self, id: SourceId) -> &Source {
+        &self.sources[id.0]
     }
 
     pub fn lookup_source_id(&self, pos: SourcePos) -> SourceId {
         let offset = pos.to_raw();
-        let sources = Ref::map(self.inner.borrow(), |inner| &inner.sources);
 
-        let last = sources.last().unwrap();
+        let last = self.sources.last().unwrap();
         assert!(offset <= last.range.end().to_raw());
 
         SourceId(
-            sources
+            self.sources
                 .binary_search_by_key(&offset, |source| source.range.start().to_raw())
                 .unwrap_or_else(|i| i - 1),
         )
     }
 
-    pub fn lookup_source_off(&self, pos: SourcePos) -> (Ref<'_, Source>, u32) {
+    pub fn lookup_source_off(&self, pos: SourcePos) -> (&Source, u32) {
         let source = self.get_source(self.lookup_source_id(pos));
         let off = source.local_off(pos);
         (source, off)
     }
 
-    pub fn lookup_source_range(&self, range: SourceRange) -> (Ref<'_, Source>, Range<u32>) {
+    pub fn lookup_source_range(&self, range: SourceRange) -> (&Source, Range<u32>) {
         let source = self.get_source(self.lookup_source_id(range.start()));
         let local_range = source.local_range(range);
         (source, local_range)
@@ -263,7 +254,7 @@ impl SourceMap {
         let (source, local_range) = self.lookup_source_range(range);
 
         InterpretedFileRange {
-            file: Ref::map(source, |raw_source| raw_source.as_file().unwrap()),
+            file: source.as_file().unwrap(),
             off: local_range.start,
             len: range.len(),
         }
