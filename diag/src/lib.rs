@@ -1,6 +1,5 @@
-use std::cell::RefCell;
-
 use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
+use source_map::SourceMap;
 
 mod render;
 
@@ -111,15 +110,16 @@ pub enum Level {
     Error,
 }
 
-#[derive(Debug, Clone)]
-pub struct Diagnostic<D> {
+#[derive(Clone)]
+pub struct Diagnostic<'s, D> {
     pub level: Level,
     pub main: D,
     pub notes: Vec<D>,
+    pub smap: Option<&'s SourceMap>,
 }
 
 pub type RawSubDiagnostic = SubDiagnostic<FragmentedSourceRange>;
-pub type RawDiagnostic = Diagnostic<RawSubDiagnostic>;
+pub type RawDiagnostic<'s> = Diagnostic<'s, RawSubDiagnostic>;
 
 #[derive(Debug, Clone)]
 pub struct RenderedSubDiagnostic {
@@ -141,23 +141,23 @@ impl RenderedSubDiagnostic {
     }
 }
 
-pub type RenderedDiagnostic = Diagnostic<RenderedSubDiagnostic>;
+pub type RenderedDiagnostic<'s> = Diagnostic<'s, RenderedSubDiagnostic>;
 
 pub struct DiagnosticBuilder<'a> {
-    diag: RawDiagnostic,
-    manager: &'a Manager,
+    diag: RawDiagnostic<'a>,
+    manager: &'a mut Manager,
 }
 
 impl<'a> DiagnosticBuilder<'a> {
     fn new(
-        manager: &'a Manager,
+        manager: &'a mut Manager,
         level: Level,
         msg: String,
-        primary_range: Option<FragmentedSourceRange>,
+        primary_range: Option<(FragmentedSourceRange, &'a SourceMap)>,
     ) -> Self {
         let main_diag = RawSubDiagnostic {
             msg,
-            ranges: primary_range.map(|range| Ranges {
+            ranges: primary_range.map(|(range, _)| Ranges {
                 primary_range: range,
                 subranges: Vec::new(),
             }),
@@ -168,6 +168,7 @@ impl<'a> DiagnosticBuilder<'a> {
             level,
             main: main_diag,
             notes: Vec::new(),
+            smap: primary_range.map(|(_, smap)| smap),
         };
 
         DiagnosticBuilder { diag, manager }
@@ -204,76 +205,71 @@ impl Drop for DiagnosticBuilder<'_> {
 }
 
 pub trait RawHandler {
-    fn handle(&mut self, diag: &RawDiagnostic);
+    fn handle(&mut self, diag: &RawDiagnostic<'_>);
 }
 
-struct ManagerInner {
+pub struct Manager {
     handler: Box<dyn RawHandler>,
     warning_count: u32,
     error_count: u32,
 }
 
-pub struct Manager {
-    inner: RefCell<ManagerInner>,
-}
-
 impl Manager {
     pub fn new(handler: Box<dyn RawHandler>) -> Self {
         Manager {
-            inner: RefCell::new(ManagerInner {
-                handler,
-                warning_count: 0,
-                error_count: 0,
-            }),
+            handler,
+            warning_count: 0,
+            error_count: 0,
         }
     }
 
-    pub fn diag(
-        &self,
+    pub fn diag<'a>(
+        &'a mut self,
+        smap: &'a SourceMap,
         level: Level,
         msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
-    ) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, level, msg.into(), Some(primary_range))
+    ) -> DiagnosticBuilder<'a> {
+        DiagnosticBuilder::new(self, level, msg.into(), Some((primary_range, smap)))
     }
 
-    pub fn diag_anon(&self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
+    pub fn diag_anon(&mut self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, level, msg.into(), None)
     }
 
-    pub fn warning(
-        &self,
+    pub fn warning<'a>(
+        &'a mut self,
+        smap: &'a SourceMap,
         msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
-    ) -> DiagnosticBuilder<'_> {
-        self.diag(Level::Warning, msg, primary_range)
+    ) -> DiagnosticBuilder<'a> {
+        self.diag(smap, Level::Warning, msg, primary_range)
     }
 
-    pub fn error(
-        &self,
+    pub fn error<'a>(
+        &'a mut self,
+        smap: &'a SourceMap,
         msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
-    ) -> DiagnosticBuilder<'_> {
-        self.diag(Level::Error, msg, primary_range)
+    ) -> DiagnosticBuilder<'a> {
+        self.diag(smap, Level::Error, msg, primary_range)
     }
 
     pub fn warning_count(&self) -> u32 {
-        self.inner.borrow().warning_count
+        self.warning_count
     }
 
     pub fn error_count(&self) -> u32 {
-        self.inner.borrow().error_count
+        self.error_count
     }
 
-    fn emit(&self, diag: &RawDiagnostic) {
-        let mut inner = self.inner.borrow_mut();
-
+    fn emit(&mut self, diag: &RawDiagnostic<'_>) {
         match diag.level {
-            Level::Warning => inner.warning_count += 1,
-            Level::Error => inner.error_count += 1,
+            Level::Warning => self.warning_count += 1,
+            Level::Error => self.error_count += 1,
             _ => {}
         }
 
-        inner.handler.handle(diag);
+        self.handler.handle(diag);
     }
 }
