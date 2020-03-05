@@ -10,3 +10,4 @@ edition = "2018"
 source-map = {path = "../source-map"}
 rustc-hash = "1.1.0"
 indexmap = "1.3.2"
+itertools = "0.8.2"

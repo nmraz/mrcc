@@ -1,13 +1,15 @@
+use std::cmp;
 use std::hash::BuildHasherDefault;
 
 use indexmap::IndexMap;
+use itertools::Itertools;
 use rustc_hash::FxHasher;
 
 use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 use source_map::{ExpansionType, SourceId, SourceMap};
 
+use crate::{Ranges, RawRanges, RenderedRanges};
 use crate::{RawDiagnostic, RenderedDiagnostic};
-use crate::{RawRanges, RenderedRanges};
 use crate::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
 
 fn render_stripped(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
@@ -41,8 +43,22 @@ fn trace_expansions(
         })
 }
 
-fn dedup_ranges(source_start: SourcePos, ranges: &mut RenderedRanges) {
-    unimplemented!()
+fn dedup_subranges(
+    mut subranges: Vec<(SourceRange, String)>,
+) -> impl Iterator<Item = (SourceRange, String)> {
+    subranges.sort_unstable_by_key(|(range, _)| range.start());
+    subranges.into_iter().coalesce(|(ra, la), (rb, lb)| {
+        if ra.end() > rb.start() {
+            let start = ra.start();
+            let end = cmp::max(ra.end(), rb.end());
+            Ok((
+                SourceRange::new(start, end.offset_from(start)),
+                "".to_owned(),
+            ))
+        } else {
+            Err(((ra, la), (rb, lb)))
+        }
+    })
 }
 
 fn get_spelling_range(smap: &SourceMap, range: SourceRange) -> SourceRange {
@@ -66,18 +82,22 @@ fn render_ranges(ranges: &RawRanges, smap: &SourceMap) -> (RenderedRanges, Vec<R
 
     let mut expansions: Vec<_> = expansion_map
         .into_iter()
-        .map(|(id, mut ranges)| {
-            let start = smap.get_source(id).range.start();
-            dedup_ranges(start, &mut ranges);
+        .map(|(_, ranges)| {
+            let Ranges {
+                primary_range,
+                subranges,
+            } = ranges;
 
-            // Now that we've finished munging everything together, move our rendered ranges to
-            // their actual, displayable spelling locations in the code.
-            ranges.primary_range = get_spelling_range(smap, ranges.primary_range);
-            for (range, _) in ranges.subranges.iter_mut() {
-                *range = get_spelling_range(smap, *range);
+            // We currently don't attempt to merge the primary range with subranges, even when there
+            // may be overlap, as the primary range has special status and may be rendered
+            // differently.
+
+            RenderedRanges {
+                primary_range: get_spelling_range(smap, primary_range),
+                subranges: dedup_subranges(subranges)
+                    .map(|(range, label)| (get_spelling_range(smap, range), label))
+                    .collect(),
             }
-
-            ranges
         })
         .collect();
 
