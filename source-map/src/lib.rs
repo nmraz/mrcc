@@ -149,14 +149,12 @@ impl SourceMap {
     }
 
     pub fn lookup_source_id(&self, pos: SourcePos) -> SourceId {
-        let offset = pos.to_raw();
-
         let last = self.sources.last().unwrap();
-        assert!(offset <= last.range.end().to_raw());
+        assert!(pos <= last.range.end());
 
         SourceId(
             self.sources
-                .binary_search_by_key(&offset, |source| source.range.start().to_raw())
+                .binary_search_by_key(&pos, |source| source.range.start())
                 .unwrap_or_else(|i| i - 1),
         )
     }
@@ -286,11 +284,7 @@ impl SourceMap {
             })
             .expect("fragmented source range spans multiple files");
 
-        assert!(
-            start_pos.to_raw() <= end_pos.to_raw(),
-            "invalid source range"
-        );
-
+        assert!(start_pos <= end_pos, "invalid source range");
         SourceRange::new(start_pos, end_pos.offset_from(start_pos))
     }
 }

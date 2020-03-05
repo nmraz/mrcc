@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct SourcePos(u32);
 
 impl SourcePos {
@@ -66,14 +66,12 @@ impl SourceRange {
 
     #[inline]
     pub fn contains(self, pos: SourcePos) -> bool {
-        let raw = pos.to_raw();
-        self.start().to_raw() <= raw && raw < self.end().to_raw()
+        self.start() <= pos && pos < self.end()
     }
 
     #[inline]
     pub fn contains_range(self, other: SourceRange) -> bool {
-        self.start().to_raw() <= other.start().to_raw()
-            && other.end().to_raw() <= self.end().to_raw()
+        self.start() <= other.start() && other.end() <= self.end()
     }
 }
 
