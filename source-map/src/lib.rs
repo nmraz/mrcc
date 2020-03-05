@@ -144,6 +144,7 @@ impl SourceMap {
         )
     }
 
+    #[inline]
     pub fn get_source(&self, id: SourceId) -> &Source {
         &self.sources[id.0]
     }
