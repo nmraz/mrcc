@@ -47,6 +47,9 @@ impl<R> Ranges<R> {
     }
 }
 
+pub type RawRanges = Ranges<FragmentedSourceRange>;
+pub type RenderedRanges = Ranges<SourceRange>;
+
 #[derive(Debug, Clone)]
 pub struct SubDiagnostic<R> {
     pub msg: String,
@@ -124,7 +127,7 @@ pub type RawDiagnostic<'s> = Diagnostic<'s, RawSubDiagnostic>;
 #[derive(Debug, Clone)]
 pub struct RenderedSubDiagnostic {
     pub inner: SubDiagnostic<SourceRange>,
-    pub expansions: Vec<Ranges<SourceRange>>,
+    pub expansions: Vec<RenderedRanges>,
 }
 
 impl RenderedSubDiagnostic {
