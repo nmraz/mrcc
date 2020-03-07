@@ -162,10 +162,7 @@ impl<'a> DiagnosticBuilder<'a> {
     ) -> Self {
         let main_diag = RawSubDiagnostic {
             msg,
-            ranges: primary_range.map(|(range, _)| Ranges {
-                primary_range: range,
-                subranges: Vec::new(),
-            }),
+            ranges: primary_range.map(|(range, _)| Ranges::new(range)),
             suggestions: Vec::new(),
         };
 
