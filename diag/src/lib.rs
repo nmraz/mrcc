@@ -3,6 +3,8 @@ use source_map::SourceMap;
 
 mod render;
 
+pub use render::render;
+
 #[derive(Debug, Clone)]
 pub struct Suggestion<R> {
     pub replacement_range: R,

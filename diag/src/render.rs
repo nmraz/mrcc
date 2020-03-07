@@ -5,23 +5,13 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHasher;
 
-use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
+use source_map::pos::{FragmentedSourceRange, SourceRange};
 use source_map::{ExpansionType, SourceId, SourceMap};
 
 use crate::{Ranges, RawRanges, RenderedRanges};
 use crate::{RawDiagnostic, RenderedDiagnostic};
 use crate::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
-
-fn render_stripped(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
-    RenderedSubDiagnostic {
-        inner: SubDiagnostic {
-            msg: raw.msg.clone(),
-            ranges: None,
-            suggestions: Vec::new(),
-        },
-        expansions: Vec::new(),
-    }
-}
+use crate::{RawSuggestion, RenderedSuggestion};
 
 fn trace_expansions(
     range: FragmentedSourceRange,
@@ -111,9 +101,75 @@ fn render_ranges(ranges: &RawRanges, smap: &SourceMap) -> (RenderedRanges, Vec<R
     (outermost, expansions)
 }
 
-fn do_render(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagnostic {
-    match &raw.ranges {
-        None => render_stripped(raw),
-        Some(ranges) => unimplemented!(),
+fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<RenderedSuggestion> {
+    let range = suggestion.replacement_range;
+    let start_id = smap.lookup_source_id(range.start);
+    let end_id = smap.lookup_source_id(range.end);
+
+    // Suggestions don't play very well with expansions - it is unclear exactly *where* along the
+    // expansion stack the suggestion should be applied, and sometimes there is no good way to apply
+    // the suggestion without restructuring other code; conservatively bail out for now.
+    if !smap.get_source(start_id).is_file() || !smap.get_source(end_id).is_file() {
+        return None;
     }
+
+    assert!(start_id == end_id, "Suggestion spans multiple files");
+
+    Some(RenderedSuggestion {
+        replacement_range: SourceRange::new(range.start, range.end.offset_from(range.start)),
+        insert_text: suggestion.insert_text.clone(),
+    })
+}
+
+fn render_stripped_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
+    RenderedSubDiagnostic {
+        inner: SubDiagnostic {
+            msg: raw.msg.clone(),
+            ranges: None,
+            suggestions: Vec::new(),
+        },
+        expansions: Vec::new(),
+    }
+}
+
+fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagnostic {
+    match &raw.ranges {
+        None => render_stripped_subdiag(raw),
+        Some(ranges) => {
+            let (primary_ranges, expansion_ranges) = render_ranges(ranges, smap);
+            let rendered_suggestions: Vec<_> = raw
+                .suggestions
+                .iter()
+                .filter_map(|sugg| render_suggestion(sugg, smap))
+                .collect();
+
+            RenderedSubDiagnostic {
+                inner: SubDiagnostic {
+                    msg: raw.msg.clone(),
+                    ranges: Some(primary_ranges),
+                    suggestions: rendered_suggestions,
+                },
+                expansions: expansion_ranges,
+            }
+        }
+    }
+}
+
+fn render_with<'s>(
+    raw: &RawDiagnostic<'s>,
+    mut f: impl FnMut(&RawSubDiagnostic) -> RenderedSubDiagnostic,
+) -> RenderedDiagnostic<'s> {
+    RenderedDiagnostic {
+        level: raw.level,
+        main: f(&raw.main),
+        notes: raw.notes.iter().map(f).collect(),
+        smap: raw.smap,
+    }
+}
+
+pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
+    raw.smap.map_or_else(
+        || render_with(raw, render_stripped_subdiag),
+        |smap| render_with(raw, |subdiag| render_subdiag(subdiag, smap)),
+    )
 }
