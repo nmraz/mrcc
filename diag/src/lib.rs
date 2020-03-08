@@ -210,6 +210,20 @@ pub trait RawHandler {
     fn handle(&mut self, diag: &RawDiagnostic<'_>);
 }
 
+pub trait RenderedHandler {
+    fn handle(&mut self, diag: &RenderedDiagnostic<'_>);
+}
+
+struct RenderingHandlerAdaptor<H> {
+    rendered_handler: H,
+}
+
+impl<H: RenderedHandler> RawHandler for RenderingHandlerAdaptor<H> {
+    fn handle(&mut self, diag: &RawDiagnostic<'_>) {
+        self.rendered_handler.handle(&render(diag));
+    }
+}
+
 pub struct Manager {
     handler: Box<dyn RawHandler>,
     warning_count: u32,
@@ -223,6 +237,12 @@ impl Manager {
             warning_count: 0,
             error_count: 0,
         }
+    }
+
+    pub fn with_rendered_handler(handler: impl RenderedHandler + 'static) -> Self {
+        Self::new(Box::new(RenderingHandlerAdaptor {
+            rendered_handler: handler,
+        }))
     }
 
     pub fn diag<'a>(
