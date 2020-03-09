@@ -85,13 +85,14 @@ impl SourceMap {
         ctor: impl FnOnce() -> SourceInfo,
         len: u32,
     ) -> Result<SourceId, SourcesTooLargeError> {
+        // Make room for an extra past-the-end character, useful for end-of-file positions and
+        // disambiguation of empty sources.
+        let extended_len = len.checked_add(1).ok_or(SourcesTooLargeError)?;
         let off = self.next_offset;
-        self.next_offset = off
-            .checked_add(len)
-            .and_then(|val| val.checked_add(1))
-            .ok_or(SourcesTooLargeError)?;
 
-        let range = SourceRange::new(SourcePos::from_raw(off), len);
+        self.next_offset = off.checked_add(extended_len).ok_or(SourcesTooLargeError)?;
+
+        let range = SourceRange::new(SourcePos::from_raw(off), extended_len);
 
         let id = SourceId(self.sources.len());
         self.sources.push(Source {
