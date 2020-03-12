@@ -2,6 +2,7 @@
 members = [
   "source-map",
   "diag",
+  "intern",
   "lex",
   "mrcc"
 ]

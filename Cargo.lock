@@ -32,6 +32,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "intern"
+version = "0.1.0"
+
+[[package]]
 name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
