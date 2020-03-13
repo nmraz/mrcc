@@ -34,6 +34,10 @@ dependencies = [
 [[package]]
 name = "intern"
 version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "rustc-hash",
+]
 
 [[package]]
 name = "itertools"
