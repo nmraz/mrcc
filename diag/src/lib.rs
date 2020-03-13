@@ -1,3 +1,5 @@
+#![warn(clippy::all)]
+
 use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 use source_map::SourceMap;
 
