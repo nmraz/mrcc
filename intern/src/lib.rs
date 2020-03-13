@@ -1,7 +1,6 @@
 #![warn(clippy::all)]
 
 use std::borrow::Borrow;
-use std::borrow::Cow;
 use std::hash::BuildHasherDefault;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -43,33 +42,16 @@ where
         }
     }
 
-    pub fn intern_with<U, K>(
-        &mut self,
-        val: U,
-        extract_key: impl FnOnce(&U) -> &K,
-        make: impl FnOnce(U) -> T::Owned,
-    ) -> Symbol<T>
+    pub fn intern<U>(&mut self, val: U) -> Symbol<T>
     where
-        T::Owned: Borrow<K>,
-        K: ?Sized + Hash + Eq,
+        U: Borrow<T> + Into<T::Owned>,
     {
-        let idx = match self.pool.get_full(extract_key(&val)) {
+        let idx = match self.pool.get_full(val.borrow()) {
             Some((idx, _)) => idx,
-            None => self.pool.insert_full(make(val)).0,
+            None => self.pool.insert_full(val.into()).0,
         };
 
         Symbol::new(idx)
-    }
-
-    pub fn intern(&mut self, val: &T) -> Symbol<T> {
-        self.intern_with(val, |val| *val, |val| val.to_owned())
-    }
-
-    pub fn intern_cow<'a>(&mut self, val: impl Into<Cow<'a, T>>) -> Symbol<T>
-    where
-        T: 'a,
-    {
-        self.intern_with(val.into(), |val| val.borrow(), |val| val.into_owned())
     }
 
     pub fn resolve(&self, sym: Symbol<T>) -> Option<&T> {
