@@ -70,3 +70,22 @@ where
         self.resolve(sym).unwrap()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn basic_str() {
+        let mut interner = Interner::<str>::new();
+
+        let hi = interner.intern("hi");
+        let bye = interner.intern("bye");
+        let hi2 = interner.intern("hi");
+
+        assert_eq!(hi, hi2);
+        assert_ne!(hi, bye);
+        assert_eq!(&interner[hi], "hi");
+        assert_eq!(&interner[bye], "bye");
+    }
+}
