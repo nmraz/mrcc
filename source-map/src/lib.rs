@@ -197,6 +197,14 @@ impl SourceMap {
         self.get_spelling_chain(pos).last().unwrap().1
     }
 
+    pub fn get_spelling(&self, range: SourceRange) -> &str {
+        let (id, pos) = self.get_spelling_chain(range.start()).last().unwrap();
+        let source = self.get_source(id);
+        let file = source.as_file().unwrap();
+        let off = source.local_off(pos);
+        file.contents.get_snippet(off..off + range.len())
+    }
+
     pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
         let (source, _) = self.lookup_source_range(range);
         source.as_expansion().map(|exp| exp.expansion_range)

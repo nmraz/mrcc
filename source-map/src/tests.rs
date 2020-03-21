@@ -191,6 +191,17 @@ fn spelling_pos() {
 }
 
 #[test]
+fn get_spelling() {
+    let mut sm = SourceMap::new();
+    let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&mut sm);
+
+    assert_eq!(sm.get_spelling(file_range.subrange(0, 7)), "#define");
+    assert_eq!(sm.get_spelling(exp_a_range.subrange(2, 5)), "5 * 2");
+    assert_eq!(sm.get_spelling(exp_b_range.subrange(0, 4)), "(x +");
+    assert_eq!(sm.get_spelling(exp_b_x_range.subrange(0, 5)), "5 * 2");
+}
+
+#[test]
 fn immediate_expansion_range() {
     let mut sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&mut sm);
