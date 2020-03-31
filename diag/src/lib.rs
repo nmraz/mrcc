@@ -247,7 +247,7 @@ impl Manager {
         }))
     }
 
-    pub fn diag<'a>(
+    pub fn report<'a>(
         &'a mut self,
         smap: &'a SourceMap,
         level: Level,
@@ -257,7 +257,7 @@ impl Manager {
         DiagnosticBuilder::new(self, level, msg.into(), Some((primary_range, smap)))
     }
 
-    pub fn diag_anon(&mut self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
+    pub fn report_anon(&mut self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, level, msg.into(), None)
     }
 
@@ -267,7 +267,7 @@ impl Manager {
         msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
     ) -> DiagnosticBuilder<'a> {
-        self.diag(smap, Level::Warning, msg, primary_range)
+        self.report(smap, Level::Warning, msg, primary_range)
     }
 
     pub fn error<'a>(
@@ -276,7 +276,7 @@ impl Manager {
         msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
     ) -> DiagnosticBuilder<'a> {
-        self.diag(smap, Level::Error, msg, primary_range)
+        self.report(smap, Level::Error, msg, primary_range)
     }
 
     pub fn warning_count(&self) -> u32 {
