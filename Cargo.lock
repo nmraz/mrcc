@@ -51,6 +51,10 @@ dependencies = [
 [[package]]
 name = "lex"
 version = "0.1.0"
+dependencies = [
+ "intern",
+ "source-map",
+]
 
 [[package]]
 name = "mrcc"
