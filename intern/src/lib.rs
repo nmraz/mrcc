@@ -9,7 +9,7 @@ use std::ops::Index;
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Symbol<T: ?Sized> {
     idx: usize,
     marker: PhantomData<fn() -> T>,
@@ -21,6 +21,15 @@ impl<T: ?Sized> Symbol<T> {
             idx,
             marker: PhantomData,
         }
+    }
+}
+
+// Implement manually because deriving requires all generic paramaters to be `Copy` as well.
+impl<T: ?Sized> Copy for Symbol<T> {}
+
+impl<T: ?Sized> Clone for Symbol<T> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
