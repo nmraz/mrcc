@@ -1,7 +1,9 @@
 #![warn(clippy::all)]
 
+use diag::Manager as DiagManager;
 use intern::{Interner, Symbol};
 use source_map::pos::SourceRange;
+use source_map::SourceMap;
 
 pub type IdentInterner = Interner<str>;
 pub type IdentSym = Symbol<str>;
@@ -15,6 +17,7 @@ pub enum CommentKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     Unknown,
+    Eof,
     Comment(CommentKind),
 
     Ident(IdentSym),
@@ -80,4 +83,9 @@ pub enum TokenKind {
 pub struct Token {
     pub kind: TokenKind,
     pub range: SourceRange,
+}
+
+pub trait Lexer {
+    fn next(&mut self, interner: &mut IdentInterner, diags: &mut DiagManager) -> Token;
+    fn source_map(&self) -> &SourceMap;
 }
