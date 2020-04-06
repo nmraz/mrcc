@@ -73,6 +73,7 @@ pub enum TokenKind {
     PlusEq,
     MinusEq,
     StarEq,
+    SlashEq,
     PercEq,
     AmpEq,
     PipeEq,
