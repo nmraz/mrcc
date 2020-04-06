@@ -5,6 +5,8 @@ use intern::{Interner, Symbol};
 use source_map::pos::SourceRange;
 use source_map::SourceMap;
 
+pub mod raw;
+
 pub type IdentInterner = Interner<str>;
 pub type IdentSym = Symbol<str>;
 
