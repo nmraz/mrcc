@@ -128,12 +128,17 @@ impl<'a> Reader<'a> {
     pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
         use TokenKind::*;
 
+        if self.eat_line_ws() {
+            return self.tok(RawTokenKind::Ws, true);
+        }
+
         let c = match self.bump() {
             None => return self.real_tok(Eof),
             Some(c) => c,
         };
 
         match c {
+            '\n' => self.tok(RawTokenKind::Newline, true),
             '#' => {
                 if self.eat('#') {
                     self.real_tok(HashHash)
