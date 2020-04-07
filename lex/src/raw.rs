@@ -1,4 +1,3 @@
-use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::{CommentKind, TokenKind};
@@ -50,19 +49,10 @@ impl Iterator for SkipEscapedNewlines<'_> {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        loop {
-            match self.chars.next() {
-                Some('\\') => {
-                    let mut chars = self.chars.clone();
-                    if chars.next() == Some('\n') {
-                        self.chars = chars;
-                    } else {
-                        return Some('\\');
-                    }
-                }
-                val => return val,
-            }
+        while self.chars.as_str().starts_with("\\\n") {
+            self.chars.nth(1);
         }
+        self.chars.next()
     }
 }
 
@@ -80,8 +70,12 @@ impl<'a> Reader<'a> {
         }
     }
 
+    pub fn remaining_len(&self) -> usize {
+        self.iter.as_str().len()
+    }
+
     pub fn cur_len(&self) -> usize {
-        self.input.len() - self.iter.as_str().len()
+        self.input.len() - self.remaining_len()
     }
 
     pub fn cur_str_raw(&self) -> &'a str {
