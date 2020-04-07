@@ -22,6 +22,13 @@ pub fn clean(tok: &str) -> String {
     tok.replace("\\\n", "")
 }
 
+fn is_line_ws(c: char) -> bool {
+    match c {
+        ' ' | '\t' | '\x0b' | '\x0c' => true,
+        _ => false,
+    }
+}
+
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     chars: Chars<'a>,
@@ -126,7 +133,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn eat_line_ws(&mut self) -> bool {
-        self.eat_while(|c| c.is_ascii_whitespace() && c != '\n') > 0
+        self.eat_while(is_line_ws) > 0
     }
 
     fn tok(&mut self, kind: RawTokenKind, terminated: bool) -> RawToken {
