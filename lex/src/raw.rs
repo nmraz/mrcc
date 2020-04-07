@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::str::Chars;
 
 use crate::{CommentKind, TokenKind};
@@ -31,17 +32,27 @@ fn is_line_ws(c: char) -> bool {
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     chars: Chars<'a>,
+    tainted: bool,
 }
 
 impl<'a> SkipEscapedNewlines<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             chars: input.chars(),
+            tainted: false,
         }
     }
 
     pub fn as_str(&self) -> &'a str {
         self.chars.as_str()
+    }
+
+    pub fn tainted(&self) -> bool {
+        self.tainted
+    }
+
+    pub fn untaint(&mut self) {
+        self.tainted = false
     }
 }
 
@@ -50,6 +61,7 @@ impl Iterator for SkipEscapedNewlines<'_> {
 
     fn next(&mut self) -> Option<char> {
         while self.chars.as_str().starts_with("\\\n") {
+            self.tainted = true;
             self.chars.nth(1);
         }
         self.chars.next()
@@ -82,8 +94,12 @@ impl<'a> Reader<'a> {
         &self.input[..self.cur_len()]
     }
 
-    pub fn cur_str_cleaned(&self) -> String {
-        clean(self.cur_str_raw())
+    pub fn cur_str_cleaned(&self) -> Cow<'_, str> {
+        if self.iter.tainted() {
+            Cow::Owned(clean(self.cur_str_raw()))
+        } else {
+            Cow::Borrowed(self.cur_str_raw())
+        }
     }
 
     pub fn bump(&mut self) -> Option<char> {
@@ -91,6 +107,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn finish_cur(&mut self) {
+        self.iter.untaint();
         self.input = self.iter.as_str();
     }
 
