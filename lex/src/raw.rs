@@ -95,10 +95,12 @@ impl<'a> Reader<'a> {
     }
 
     pub fn cur_str_cleaned(&self) -> Cow<'_, str> {
+        let raw = self.cur_str_raw();
+
         if self.iter.tainted() {
-            Cow::Owned(clean(self.cur_str_raw()))
+            Cow::Owned(clean(raw))
         } else {
-            Cow::Borrowed(self.cur_str_raw())
+            Cow::Borrowed(raw)
         }
     }
 
