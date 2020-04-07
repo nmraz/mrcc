@@ -23,16 +23,53 @@ pub fn clean(tok: &str) -> String {
 }
 
 #[derive(Clone)]
+struct SkipEscapedNewlines<'a> {
+    chars: Chars<'a>,
+}
+
+impl<'a> SkipEscapedNewlines<'a> {
+    pub fn new(input: &'a str) -> Self {
+        Self {
+            chars: input.chars(),
+        }
+    }
+
+    pub fn as_str(&self) -> &'a str {
+        self.chars.as_str()
+    }
+}
+
+impl Iterator for SkipEscapedNewlines<'_> {
+    type Item = char;
+
+    fn next(&mut self) -> Option<char> {
+        loop {
+            match self.chars.next() {
+                Some('\\') => {
+                    let mut chars = self.chars.clone();
+                    if chars.next() == Some('\n') {
+                        self.chars = chars;
+                    } else {
+                        return Some('\\');
+                    }
+                }
+                val => return val,
+            }
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct Reader<'a> {
     input: &'a str,
-    iter: Chars<'a>,
+    iter: SkipEscapedNewlines<'a>,
 }
 
 impl<'a> Reader<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
-            iter: input.chars(),
+            iter: SkipEscapedNewlines::new(input),
         }
     }
 
@@ -48,24 +85,7 @@ impl<'a> Reader<'a> {
         clean(self.cur_str_raw())
     }
 
-    fn eat_escaped_newlines(&mut self) {
-        fn consume_escaped(iter: &mut Chars<'_>) -> bool {
-            iter.next() == Some('\\') && iter.next() == Some('\n')
-        }
-
-        let mut iter = self.iter.clone();
-        while consume_escaped(&mut iter) {
-            self.iter = iter.clone();
-        }
-    }
-
-    pub fn peek(&mut self) -> Option<char> {
-        self.eat_escaped_newlines();
-        self.iter.clone().next()
-    }
-
     pub fn bump(&mut self) -> Option<char> {
-        self.eat_escaped_newlines();
         self.iter.next()
     }
 
@@ -78,7 +98,6 @@ impl<'a> Reader<'a> {
     }
 
     pub fn eat_if(&mut self, mut pred: impl FnMut(char) -> bool) -> bool {
-        self.eat_escaped_newlines();
         let mut iter = self.iter.clone();
         if iter.next().map_or(false, &mut pred) {
             self.iter = iter;
@@ -96,13 +115,13 @@ impl<'a> Reader<'a> {
     }
 
     pub fn eat_multi(&mut self, chars: &[char]) -> bool {
-        let mut tmp = self.clone();
+        let mut iter = self.iter.clone();
         for &c in chars {
-            if !tmp.eat(c) {
+            if iter.next() != Some(c) {
                 return false;
             }
         }
-        *self = tmp;
+        self.iter = iter;
         true
     }
 
