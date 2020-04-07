@@ -154,16 +154,16 @@ impl<'a> Reader<'a> {
     pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
         use TokenKind::*;
 
-        if self.eat_line_ws() {
-            return self.tok(RawTokenKind::Ws, true);
-        }
-
         let c = match self.bump() {
             None => return self.real_tok(Eof),
             Some(c) => c,
         };
 
         match c {
+            ws if is_line_ws(ws) => {
+                self.eat_line_ws();
+                self.tok(RawTokenKind::Ws, true)
+            }
             '\n' => self.tok(RawTokenKind::Newline, true),
             ',' => self.real_tok(Comma),
             ':' => self.real_tok(Colon),
