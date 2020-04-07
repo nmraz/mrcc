@@ -95,9 +95,9 @@ impl<'a> Reader<'a> {
         eaten
     }
 
-    pub fn eat_str(&mut self, s: &str) -> bool {
+    pub fn eat_multi(&mut self, chars: &[char]) -> bool {
         let mut tmp = self.clone();
-        for c in s.chars() {
+        for &c in chars {
             if !tmp.eat(c) {
                 return false;
             }
@@ -196,7 +196,7 @@ impl<'a> Reader<'a> {
             }
             '%' => {
                 if self.eat(':') {
-                    if self.eat_str("%:") {
+                    if self.eat_multi(&['%', ':']) {
                         self.real_tok(HashHash)
                     } else {
                         self.real_tok(Hash)
