@@ -139,13 +139,6 @@ impl<'a> Reader<'a> {
 
         match c {
             '\n' => self.tok(RawTokenKind::Newline, true),
-            '#' => {
-                if self.eat('#') {
-                    self.real_tok(HashHash)
-                } else {
-                    self.real_tok(Hash)
-                }
-            }
             ',' => self.real_tok(Comma),
             ':' => self.real_tok(Colon),
             ';' => self.real_tok(Semi),
@@ -155,6 +148,13 @@ impl<'a> Reader<'a> {
             ')' => self.real_tok(RParen),
             '~' => self.real_tok(Tilde),
             '?' => self.real_tok(Question),
+            '#' => {
+                if self.eat('#') {
+                    self.real_tok(HashHash)
+                } else {
+                    self.real_tok(Hash)
+                }
+            }
             '+' => {
                 if self.eat('+') {
                     self.real_tok(PlusPlus)
