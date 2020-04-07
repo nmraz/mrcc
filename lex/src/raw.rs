@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 use std::str::Chars;
 
-use crate::TokenKind;
+use crate::{CommentKind, TokenKind};
 use crate::{IdentInterner, IdentSym};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -153,6 +153,8 @@ impl<'a> Reader<'a> {
             ']' => self.real_tok(RSquare),
             '(' => self.real_tok(LParen),
             ')' => self.real_tok(RParen),
+            '~' => self.real_tok(Tilde),
+            '?' => self.real_tok(Question),
             '+' => {
                 if self.eat('+') {
                     self.real_tok(PlusPlus)
@@ -173,7 +175,128 @@ impl<'a> Reader<'a> {
                     self.real_tok(Minus)
                 }
             }
+            '*' => {
+                if self.eat('=') {
+                    self.real_tok(StarEq)
+                } else {
+                    self.real_tok(Star)
+                }
+            }
+            '/' => {
+                if self.eat('/') {
+                    self.eat_while(|c| c != '\n');
+                    self.real_tok(Comment(CommentKind::Line))
+                } else if self.eat('*') {
+                    self.handle_block_comment()
+                } else if self.eat('=') {
+                    self.real_tok(SlashEq)
+                } else {
+                    self.real_tok(Slash)
+                }
+            }
+            '%' => {
+                if self.eat(':') {
+                    if self.eat_str("%:") {
+                        self.real_tok(HashHash)
+                    } else {
+                        self.real_tok(Hash)
+                    }
+                } else if self.eat('=') {
+                    self.real_tok(PercEq)
+                } else {
+                    self.real_tok(Perc)
+                }
+            }
+            '&' => {
+                if self.eat('&') {
+                    self.real_tok(AmpAmp)
+                } else if self.eat('=') {
+                    self.real_tok(AmpEq)
+                } else {
+                    self.real_tok(Amp)
+                }
+            }
+            '|' => {
+                if self.eat('|') {
+                    self.real_tok(PipePipe)
+                } else if self.eat('=') {
+                    self.real_tok(PipeEq)
+                } else {
+                    self.real_tok(Pipe)
+                }
+            }
+            '^' => {
+                if self.eat('=') {
+                    self.real_tok(CaretEq)
+                } else {
+                    self.real_tok(Caret)
+                }
+            }
+            '!' => {
+                if self.eat('=') {
+                    self.real_tok(ExclEq)
+                } else {
+                    self.real_tok(Excl)
+                }
+            }
+            '<' => {
+                if self.eat(':') {
+                    self.real_tok(LSquare)
+                } else if self.eat('%') {
+                    self.real_tok(LCurly)
+                } else if self.eat('<') {
+                    if self.eat('=') {
+                        self.real_tok(LessLessEq)
+                    } else {
+                        self.real_tok(LessLess)
+                    }
+                } else if self.eat('=') {
+                    self.real_tok(LessEq)
+                } else {
+                    self.real_tok(Less)
+                }
+            }
+            '>' => {
+                if self.eat(':') {
+                    self.real_tok(RSquare)
+                } else if self.eat('%') {
+                    self.real_tok(RCurly)
+                } else if self.eat('>') {
+                    if self.eat('=') {
+                        self.real_tok(GreaterGreaterEq)
+                    } else {
+                        self.real_tok(GreaterGreater)
+                    }
+                } else if self.eat('=') {
+                    self.real_tok(GreaterEq)
+                } else {
+                    self.real_tok(Greater)
+                }
+            }
+            '=' => {
+                if self.eat('=') {
+                    self.real_tok(EqEq)
+                } else {
+                    self.real_tok(Eq)
+                }
+            }
             _ => self.real_tok(Unknown),
         }
+    }
+
+    fn handle_block_comment(&mut self) -> RawToken {
+        let terminated = loop {
+            self.eat_while(|c| c != '*');
+            match self.bump() {
+                None => break false,
+                Some('/') => break true,
+                _ => {}
+            }
+        };
+
+        self.tok(
+            RawTokenKind::Real(TokenKind::Comment(CommentKind::Block)),
+            terminated,
+        )
     }
 }
