@@ -108,7 +108,7 @@ impl<'a> Reader<'a> {
         self.iter.next()
     }
 
-    pub fn finish_cur(&mut self) {
+    pub fn begin_tok(&mut self) {
         self.iter.untaint();
         self.input = self.iter.as_str();
     }
@@ -150,12 +150,9 @@ impl<'a> Reader<'a> {
     }
 
     fn tok(&mut self, kind: RawTokenKind, terminated: bool) -> RawToken {
-        let len = self.cur_len() as u32;
-        self.finish_cur();
-
         RawToken {
             kind,
-            len,
+            len: self.cur_len() as u32,
             terminated,
         }
     }
@@ -166,6 +163,8 @@ impl<'a> Reader<'a> {
 
     pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
         use TokenKind::*;
+
+        self.begin_tok();
 
         let c = match self.bump() {
             None => return self.real_tok(Eof),
