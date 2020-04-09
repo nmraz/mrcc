@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::str::Chars;
 
 use crate::{CommentKind, TokenKind};
 use crate::{IdentInterner, IdentSym};
@@ -31,20 +30,30 @@ fn is_line_ws(c: char) -> bool {
 
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
-    chars: Chars<'a>,
+    input: &'a str,
+    pos: usize,
     tainted: bool,
 }
 
 impl<'a> SkipEscapedNewlines<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
-            chars: input.chars(),
+            input,
+            pos: 0,
             tainted: false,
         }
     }
 
-    pub fn as_str(&self) -> &'a str {
-        self.chars.as_str()
+    pub fn input(&self) -> &'a str {
+        self.input
+    }
+
+    pub fn remaining(&self) -> &'a str {
+        &self.input[self.pos..]
+    }
+
+    pub fn pos(&self) -> usize {
+        self.pos
     }
 
     pub fn tainted(&self) -> bool {
@@ -59,39 +68,45 @@ impl<'a> SkipEscapedNewlines<'a> {
 impl Iterator for SkipEscapedNewlines<'_> {
     type Item = char;
 
+    #[inline]
     fn next(&mut self) -> Option<char> {
-        while self.chars.as_str().starts_with("\\\n") {
+        while self.remaining().starts_with("\\\n") {
             self.tainted = true;
-            self.chars.nth(1);
+            self.pos += 2;
         }
-        self.chars.next()
+
+        let next = self.remaining().chars().next();
+        if let Some(c) = next {
+            self.pos += c.len_utf8();
+        }
+        next
     }
 }
 
 #[derive(Clone)]
 pub struct Reader<'a> {
-    input: &'a str,
     iter: SkipEscapedNewlines<'a>,
+    tok_start: usize,
 }
 
 impl<'a> Reader<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
-            input,
             iter: SkipEscapedNewlines::new(input),
+            tok_start: 0,
         }
     }
 
-    pub fn remaining_len(&self) -> usize {
-        self.iter.as_str().len()
+    pub fn pos(&self) -> usize {
+        self.iter.pos()
     }
 
     pub fn cur_len(&self) -> usize {
-        self.input.len() - self.remaining_len()
+        self.pos() - self.tok_start
     }
 
     pub fn cur_str_raw(&self) -> &'a str {
-        &self.input[..self.cur_len()]
+        &self.iter.input()[self.tok_start..self.pos()]
     }
 
     pub fn cur_str_cleaned(&self) -> Cow<'_, str> {
@@ -109,8 +124,8 @@ impl<'a> Reader<'a> {
     }
 
     pub fn begin_tok(&mut self) {
+        self.tok_start = self.pos();
         self.iter.untaint();
-        self.input = self.iter.as_str();
     }
 
     pub fn eat(&mut self, c: char) -> bool {
