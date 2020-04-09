@@ -162,12 +162,10 @@ impl<'a> Reader<'a> {
     }
 
     pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
-        use TokenKind::*;
-
         self.begin_tok();
 
         let c = match self.bump() {
-            None => return self.real_tok(Eof),
+            None => return self.real_tok(TokenKind::Eof),
             Some(c) => c,
         };
 
@@ -177,6 +175,14 @@ impl<'a> Reader<'a> {
                 self.tok(RawTokenKind::Ws, true)
             }
             '\n' => self.tok(RawTokenKind::Newline, true),
+            c => self.handle_punct(c),
+        }
+    }
+
+    fn handle_punct(&mut self, c: char) -> RawToken {
+        use TokenKind::*;
+
+        match c {
             ',' => self.real_tok(Comma),
             ':' => self.real_tok(Colon),
             ';' => self.real_tok(Semi),
