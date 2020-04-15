@@ -13,6 +13,7 @@ pub enum RawTokenKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawToken {
     pub kind: RawTokenKind,
+    pub start: u32,
     pub len: u32,
     pub terminated: bool,
 }
@@ -86,14 +87,14 @@ impl Iterator for SkipEscapedNewlines<'_> {
 #[derive(Clone)]
 pub struct Reader<'a> {
     iter: SkipEscapedNewlines<'a>,
-    tok_start: usize,
+    start: usize,
 }
 
 impl<'a> Reader<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             iter: SkipEscapedNewlines::new(input),
-            tok_start: 0,
+            start: 0,
         }
     }
 
@@ -101,12 +102,16 @@ impl<'a> Reader<'a> {
         self.iter.pos()
     }
 
+    pub fn start(&self) -> usize {
+        self.start
+    }
+
     pub fn cur_len(&self) -> usize {
-        self.pos() - self.tok_start
+        self.pos() - self.start
     }
 
     pub fn cur_str_raw(&self) -> &'a str {
-        &self.iter.input()[self.tok_start..self.pos()]
+        &self.iter.input()[self.start..self.pos()]
     }
 
     pub fn cur_str_cleaned(&self) -> Cow<'_, str> {
@@ -124,7 +129,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn begin_tok(&mut self) {
-        self.tok_start = self.pos();
+        self.start = self.pos();
         self.iter.untaint();
     }
 
@@ -164,15 +169,16 @@ impl<'a> Reader<'a> {
         self.eat_while(is_line_ws) > 0
     }
 
-    fn tok(&mut self, kind: RawTokenKind, terminated: bool) -> RawToken {
+    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken {
         RawToken {
             kind,
+            start: self.start as u32,
             len: self.cur_len() as u32,
             terminated,
         }
     }
 
-    fn real_tok(&mut self, kind: TokenKind) -> RawToken {
+    fn real_tok(&self, kind: TokenKind) -> RawToken {
         self.tok(RawTokenKind::Real(kind), true)
     }
 
