@@ -204,9 +204,9 @@ impl<'a> Reader<'a> {
         match c {
             ws if is_line_ws(ws) => {
                 self.eat_line_ws();
-                self.cur_tok(RawTokenKind::Ws, true)
+                self.cur_tok_term(RawTokenKind::Ws)
             }
-            '\n' => self.cur_tok(RawTokenKind::Newline, true),
+            '\n' => self.cur_tok_term(RawTokenKind::Newline),
             c => self.handle_punct(c),
         }
     }
