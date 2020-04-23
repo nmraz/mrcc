@@ -215,7 +215,12 @@ impl<'a> Reader<'a> {
                 self.cur_tok_term(RawTokenKind::Ws)
             }
             '\n' => self.cur_tok_term(RawTokenKind::Newline),
+
+            '"' => self.handle_str_like('"', RawTokenKind::Str),
+            '\'' => self.handle_str_like('\'', RawTokenKind::Char),
+
             c if is_ident_start(c) => self.handle_ident(),
+
             c => self.handle_punct(c),
         }
     }
@@ -223,6 +228,21 @@ impl<'a> Reader<'a> {
     fn handle_ident(&mut self) -> RawToken<'_> {
         self.eat_while(is_ident_continue);
         self.cur_tok_term(RawTokenKind::Ident)
+    }
+
+    fn handle_str_like(&mut self, terminator: char, kind: RawTokenKind) -> RawToken<'_> {
+        let mut escaped = false;
+
+        while let Some(c) = self.bump() {
+            match c {
+                '\\' => escaped = !escaped,
+                '\n' => break,
+                c if c == terminator && !escaped => return self.cur_tok_term(kind),
+                _ => {}
+            }
+        }
+
+        self.cur_tok(kind, false)
     }
 
     fn handle_punct(&mut self, c: char) -> RawToken<'_> {
