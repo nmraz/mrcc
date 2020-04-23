@@ -49,6 +49,14 @@ fn is_line_ws(c: char) -> bool {
     }
 }
 
+fn is_ident_start(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '_'
+}
+
+fn is_ident_continue(c: char) -> bool {
+    is_ident_start(c) || c.is_ascii_digit()
+}
+
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     input: &'a str,
@@ -207,8 +215,14 @@ impl<'a> Reader<'a> {
                 self.cur_tok_term(RawTokenKind::Ws)
             }
             '\n' => self.cur_tok_term(RawTokenKind::Newline),
+            c if is_ident_start(c) => self.handle_ident(),
             c => self.handle_punct(c),
         }
+    }
+
+    fn handle_ident(&mut self) -> RawToken<'_> {
+        self.eat_while(is_ident_continue);
+        self.cur_tok_term(RawTokenKind::Ident)
     }
 
     fn handle_punct(&mut self, c: char) -> RawToken<'_> {
