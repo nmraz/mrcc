@@ -130,7 +130,7 @@ impl<'a> Reader<'a> {
         self.pos() - self.start
     }
 
-    pub fn cur_tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken {
+    pub fn cur_tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'_> {
         RawToken {
             kind,
             start: self.start as u32,
@@ -140,7 +140,7 @@ impl<'a> Reader<'a> {
         }
     }
 
-    pub fn cur_tok_term(&self, kind: RawTokenKind) -> RawToken {
+    pub fn cur_tok_term(&self, kind: RawTokenKind) -> RawToken<'_> {
         self.cur_tok(kind, true)
     }
 
@@ -189,11 +189,11 @@ impl<'a> Reader<'a> {
         self.eat_while(is_line_ws) > 0
     }
 
-    fn punct(&self, kind: PunctKind) -> RawToken {
+    fn punct(&self, kind: PunctKind) -> RawToken<'_> {
         self.cur_tok_term(RawTokenKind::Punct(kind))
     }
 
-    pub fn next_token(&mut self) -> RawToken {
+    pub fn next_token(&mut self) -> RawToken<'_> {
         self.begin_tok();
 
         let c = match self.bump() {
@@ -211,7 +211,7 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn handle_punct(&mut self, c: char) -> RawToken {
+    fn handle_punct(&mut self, c: char) -> RawToken<'_> {
         use PunctKind::*;
 
         match c {
@@ -359,12 +359,12 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn handle_line_comment(&mut self) -> RawToken {
+    fn handle_line_comment(&mut self) -> RawToken<'_> {
         self.eat_while(|c| c != '\n');
         self.cur_tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
-    fn handle_block_comment(&mut self) -> RawToken {
+    fn handle_block_comment(&mut self) -> RawToken<'_> {
         let terminated = loop {
             self.eat_while(|c| c != '*');
             match self.bump() {
