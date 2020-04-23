@@ -17,16 +17,7 @@ pub enum CommentKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenKind {
-    Unknown,
-    Eof,
-    Comment(CommentKind),
-
-    Ident(IdentSym),
-    Number,
-    Str,
-    Char,
-
+pub enum PunctKind {
     Hash,
     HashHash,
 
@@ -80,6 +71,20 @@ pub enum TokenKind {
     CaretEq,
     LessLessEq,
     GreaterGreaterEq,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenKind {
+    Unknown,
+    Eof,
+    Comment(CommentKind),
+
+    Punct(PunctKind),
+
+    Ident(IdentSym),
+    Number,
+    Str,
+    Char,
 }
 
 #[derive(Debug, Clone, Copy)]

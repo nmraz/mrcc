@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{CommentKind, TokenKind};
+use crate::{CommentKind, PunctKind, TokenKind};
 use crate::{IdentInterner, IdentSym};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,6 +182,10 @@ impl<'a> Reader<'a> {
         self.tok(RawTokenKind::Real(kind), true)
     }
 
+    fn punct(&self, kind: PunctKind) -> RawToken {
+        self.real_tok(TokenKind::Punct(kind))
+    }
+
     pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
         self.begin_tok();
 
@@ -201,151 +205,151 @@ impl<'a> Reader<'a> {
     }
 
     fn handle_punct(&mut self, c: char) -> RawToken {
-        use TokenKind::*;
+        use PunctKind::*;
 
         match c {
-            ',' => self.real_tok(Comma),
-            ':' => self.real_tok(Colon),
-            ';' => self.real_tok(Semi),
-            '[' => self.real_tok(LSquare),
-            ']' => self.real_tok(RSquare),
-            '(' => self.real_tok(LParen),
-            ')' => self.real_tok(RParen),
-            '~' => self.real_tok(Tilde),
-            '?' => self.real_tok(Question),
+            ',' => self.punct(Comma),
+            ':' => self.punct(Colon),
+            ';' => self.punct(Semi),
+            '[' => self.punct(LSquare),
+            ']' => self.punct(RSquare),
+            '(' => self.punct(LParen),
+            ')' => self.punct(RParen),
+            '~' => self.punct(Tilde),
+            '?' => self.punct(Question),
             '#' => {
                 if self.eat('#') {
-                    self.real_tok(HashHash)
+                    self.punct(HashHash)
                 } else {
-                    self.real_tok(Hash)
+                    self.punct(Hash)
                 }
             }
             '+' => {
                 if self.eat('+') {
-                    self.real_tok(PlusPlus)
+                    self.punct(PlusPlus)
                 } else if self.eat('=') {
-                    self.real_tok(PlusEq)
+                    self.punct(PlusEq)
                 } else {
-                    self.real_tok(Plus)
+                    self.punct(Plus)
                 }
             }
             '-' => {
                 if self.eat('-') {
-                    self.real_tok(MinusMinus)
+                    self.punct(MinusMinus)
                 } else if self.eat('=') {
-                    self.real_tok(MinusEq)
+                    self.punct(MinusEq)
                 } else if self.eat('>') {
-                    self.real_tok(Arrow)
+                    self.punct(Arrow)
                 } else {
-                    self.real_tok(Minus)
+                    self.punct(Minus)
                 }
             }
             '*' => {
                 if self.eat('=') {
-                    self.real_tok(StarEq)
+                    self.punct(StarEq)
                 } else {
-                    self.real_tok(Star)
+                    self.punct(Star)
                 }
             }
             '/' => {
                 if self.eat('/') {
                     self.eat_while(|c| c != '\n');
-                    self.real_tok(Comment(CommentKind::Line))
+                    self.real_tok(TokenKind::Comment(CommentKind::Line))
                 } else if self.eat('*') {
                     self.handle_block_comment()
                 } else if self.eat('=') {
-                    self.real_tok(SlashEq)
+                    self.punct(SlashEq)
                 } else {
-                    self.real_tok(Slash)
+                    self.punct(Slash)
                 }
             }
             '%' => {
                 if self.eat(':') {
                     if self.eat_str("%:") {
-                        self.real_tok(HashHash)
+                        self.punct(HashHash)
                     } else {
-                        self.real_tok(Hash)
+                        self.punct(Hash)
                     }
                 } else if self.eat('=') {
-                    self.real_tok(PercEq)
+                    self.punct(PercEq)
                 } else {
-                    self.real_tok(Perc)
+                    self.punct(Perc)
                 }
             }
             '&' => {
                 if self.eat('&') {
-                    self.real_tok(AmpAmp)
+                    self.punct(AmpAmp)
                 } else if self.eat('=') {
-                    self.real_tok(AmpEq)
+                    self.punct(AmpEq)
                 } else {
-                    self.real_tok(Amp)
+                    self.punct(Amp)
                 }
             }
             '|' => {
                 if self.eat('|') {
-                    self.real_tok(PipePipe)
+                    self.punct(PipePipe)
                 } else if self.eat('=') {
-                    self.real_tok(PipeEq)
+                    self.punct(PipeEq)
                 } else {
-                    self.real_tok(Pipe)
+                    self.punct(Pipe)
                 }
             }
             '^' => {
                 if self.eat('=') {
-                    self.real_tok(CaretEq)
+                    self.punct(CaretEq)
                 } else {
-                    self.real_tok(Caret)
+                    self.punct(Caret)
                 }
             }
             '!' => {
                 if self.eat('=') {
-                    self.real_tok(ExclEq)
+                    self.punct(ExclEq)
                 } else {
-                    self.real_tok(Excl)
+                    self.punct(Excl)
                 }
             }
             '<' => {
                 if self.eat(':') {
-                    self.real_tok(LSquare)
+                    self.punct(LSquare)
                 } else if self.eat('%') {
-                    self.real_tok(LCurly)
+                    self.punct(LCurly)
                 } else if self.eat('<') {
                     if self.eat('=') {
-                        self.real_tok(LessLessEq)
+                        self.punct(LessLessEq)
                     } else {
-                        self.real_tok(LessLess)
+                        self.punct(LessLess)
                     }
                 } else if self.eat('=') {
-                    self.real_tok(LessEq)
+                    self.punct(LessEq)
                 } else {
-                    self.real_tok(Less)
+                    self.punct(Less)
                 }
             }
             '>' => {
                 if self.eat(':') {
-                    self.real_tok(RSquare)
+                    self.punct(RSquare)
                 } else if self.eat('%') {
-                    self.real_tok(RCurly)
+                    self.punct(RCurly)
                 } else if self.eat('>') {
                     if self.eat('=') {
-                        self.real_tok(GreaterGreaterEq)
+                        self.punct(GreaterGreaterEq)
                     } else {
-                        self.real_tok(GreaterGreater)
+                        self.punct(GreaterGreater)
                     }
                 } else if self.eat('=') {
-                    self.real_tok(GreaterEq)
+                    self.punct(GreaterEq)
                 } else {
-                    self.real_tok(Greater)
+                    self.punct(Greater)
                 }
             }
             '=' => {
                 if self.eat('=') {
-                    self.real_tok(EqEq)
+                    self.punct(EqEq)
                 } else {
-                    self.real_tok(Eq)
+                    self.punct(Eq)
                 }
             }
-            _ => self.real_tok(Unknown),
+            _ => self.real_tok(TokenKind::Unknown),
         }
     }
 
