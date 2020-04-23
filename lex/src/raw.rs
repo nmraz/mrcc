@@ -1,21 +1,41 @@
 use std::borrow::Cow;
 
-use crate::{CommentKind, PunctKind, TokenKind};
-use crate::{IdentInterner, IdentSym};
+use crate::{CommentKind, PunctKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RawTokenKind {
-    Real(TokenKind),
+    Unknown,
+    Eof,
+
     Ws,
     Newline,
+    Comment(CommentKind),
+
+    Punct(PunctKind),
+
+    Ident,
+    Number,
+    Str,
+    Char,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RawToken {
+pub struct RawToken<'a> {
     pub kind: RawTokenKind,
     pub start: u32,
-    pub len: u32,
     pub terminated: bool,
+    pub raw_str: &'a str,
+    pub tainted: bool,
+}
+
+impl<'a> RawToken<'a> {
+    pub fn str(&self) -> Cow<'a, str> {
+        if self.tainted {
+            Cow::Owned(clean(self.raw_str))
+        } else {
+            Cow::Borrowed(self.raw_str)
+        }
+    }
 }
 
 pub fn clean(tok: &str) -> String {
@@ -110,18 +130,18 @@ impl<'a> Reader<'a> {
         self.pos() - self.start
     }
 
-    pub fn cur_str_raw(&self) -> &'a str {
-        &self.iter.input()[self.start..self.pos()]
+    pub fn cur_tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken {
+        RawToken {
+            kind,
+            start: self.start as u32,
+            terminated,
+            raw_str: &self.iter.input()[self.start..self.pos()],
+            tainted: self.iter.tainted(),
+        }
     }
 
-    pub fn cur_str_cleaned(&self) -> Cow<'_, str> {
-        let raw = self.cur_str_raw();
-
-        if self.iter.tainted() {
-            Cow::Owned(clean(raw))
-        } else {
-            Cow::Borrowed(raw)
-        }
+    pub fn cur_tok_term(&self, kind: RawTokenKind) -> RawToken {
+        self.cur_tok(kind, true)
     }
 
     pub fn bump(&mut self) -> Option<char> {
@@ -169,37 +189,24 @@ impl<'a> Reader<'a> {
         self.eat_while(is_line_ws) > 0
     }
 
-    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken {
-        RawToken {
-            kind,
-            start: self.start as u32,
-            len: self.cur_len() as u32,
-            terminated,
-        }
-    }
-
-    fn real_tok(&self, kind: TokenKind) -> RawToken {
-        self.tok(RawTokenKind::Real(kind), true)
-    }
-
     fn punct(&self, kind: PunctKind) -> RawToken {
-        self.real_tok(TokenKind::Punct(kind))
+        self.cur_tok_term(RawTokenKind::Punct(kind))
     }
 
-    pub fn next_token(&mut self, interner: &mut IdentInterner) -> RawToken {
+    pub fn next_token(&mut self) -> RawToken {
         self.begin_tok();
 
         let c = match self.bump() {
-            None => return self.real_tok(TokenKind::Eof),
+            None => return self.cur_tok_term(RawTokenKind::Eof),
             Some(c) => c,
         };
 
         match c {
             ws if is_line_ws(ws) => {
                 self.eat_line_ws();
-                self.tok(RawTokenKind::Ws, true)
+                self.cur_tok(RawTokenKind::Ws, true)
             }
-            '\n' => self.tok(RawTokenKind::Newline, true),
+            '\n' => self.cur_tok(RawTokenKind::Newline, true),
             c => self.handle_punct(c),
         }
     }
@@ -253,8 +260,7 @@ impl<'a> Reader<'a> {
             }
             '/' => {
                 if self.eat('/') {
-                    self.eat_while(|c| c != '\n');
-                    self.real_tok(TokenKind::Comment(CommentKind::Line))
+                    self.handle_line_comment()
                 } else if self.eat('*') {
                     self.handle_block_comment()
                 } else if self.eat('=') {
@@ -349,8 +355,13 @@ impl<'a> Reader<'a> {
                     self.punct(Eq)
                 }
             }
-            _ => self.real_tok(TokenKind::Unknown),
+            _ => self.cur_tok_term(RawTokenKind::Unknown),
         }
+    }
+
+    fn handle_line_comment(&mut self) -> RawToken {
+        self.eat_while(|c| c != '\n');
+        self.cur_tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
     fn handle_block_comment(&mut self) -> RawToken {
@@ -363,9 +374,6 @@ impl<'a> Reader<'a> {
             }
         };
 
-        self.tok(
-            RawTokenKind::Real(TokenKind::Comment(CommentKind::Block)),
-            terminated,
-        )
+        self.cur_tok(RawTokenKind::Comment(CommentKind::Block), terminated)
     }
 }

@@ -10,6 +10,9 @@ pub mod raw;
 pub type IdentInterner = Interner<str>;
 pub type IdentSym = Symbol<str>;
 
+pub type TokInterner = Interner<str>;
+pub type TokSym = Symbol<str>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommentKind {
     Line,
@@ -82,9 +85,9 @@ pub enum TokenKind {
     Punct(PunctKind),
 
     Ident(IdentSym),
-    Number,
-    Str,
-    Char,
+    Number(TokSym),
+    Str(TokSym),
+    Char(TokSym),
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -93,7 +96,13 @@ pub struct Token {
     pub range: SourceRange,
 }
 
+pub struct LexCtx<'a> {
+    pub ident_interner: &'a mut IdentInterner,
+    pub tok_interner: &'a mut TokInterner,
+    pub diags: &'a mut DiagManager,
+    pub smap: &'a mut SourceMap,
+}
+
 pub trait Lexer {
-    fn next(&mut self, interner: &mut IdentInterner, diags: &mut DiagManager) -> Token;
-    fn source_map(&self) -> &SourceMap;
+    fn next(&mut self, ctx: &mut LexCtx<'_>) -> Token;
 }
