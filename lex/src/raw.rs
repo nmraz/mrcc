@@ -20,20 +20,25 @@ pub enum RawTokenKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RawToken<'a> {
-    pub kind: RawTokenKind,
+pub struct RawContent<'a> {
     pub start: u32,
-    pub terminated: bool,
-    pub raw_str: &'a str,
+    pub str: &'a str,
     pub tainted: bool,
 }
 
-impl<'a> RawToken<'a> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RawToken<'a> {
+    pub kind: RawTokenKind,
+    pub content: RawContent<'a>,
+    pub terminated: bool,
+}
+
+impl<'a> RawContent<'a> {
     pub fn str(&self) -> Cow<'a, str> {
         if self.tainted {
-            Cow::Owned(clean(self.raw_str))
+            Cow::Owned(clean(self.str))
         } else {
-            Cow::Borrowed(self.raw_str)
+            Cow::Borrowed(self.str)
         }
     }
 }
@@ -119,6 +124,7 @@ pub struct Reader<'a> {
 }
 
 impl<'a> Reader<'a> {
+    #[inline]
     pub fn new(input: &'a str) -> Self {
         Self {
             iter: SkipEscapedNewlines::new(input),
@@ -126,30 +132,18 @@ impl<'a> Reader<'a> {
         }
     }
 
+    #[inline]
     pub fn pos(&self) -> usize {
         self.iter.pos()
     }
 
-    pub fn start(&self) -> usize {
-        self.start
-    }
-
-    pub fn cur_len(&self) -> usize {
-        self.pos() - self.start
-    }
-
-    pub fn cur_tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'_> {
-        RawToken {
-            kind,
+    #[inline]
+    pub fn cur_content(&self) -> RawContent<'_> {
+        RawContent {
             start: self.start as u32,
-            terminated,
-            raw_str: &self.iter.input()[self.start..self.pos()],
+            str: &self.iter.input()[self.start..self.pos()],
             tainted: self.iter.tainted(),
         }
-    }
-
-    pub fn cur_tok_term(&self, kind: RawTokenKind) -> RawToken<'_> {
-        self.cur_tok(kind, true)
     }
 
     pub fn bump(&mut self) -> Option<char> {
@@ -197,24 +191,36 @@ impl<'a> Reader<'a> {
         self.eat_while(is_line_ws) > 0
     }
 
+    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'_> {
+        RawToken {
+            kind,
+            content: self.cur_content(),
+            terminated,
+        }
+    }
+
+    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'_> {
+        self.tok(kind, true)
+    }
+
     fn punct(&self, kind: PunctKind) -> RawToken<'_> {
-        self.cur_tok_term(RawTokenKind::Punct(kind))
+        self.tok_term(RawTokenKind::Punct(kind))
     }
 
     pub fn next_token(&mut self) -> RawToken<'_> {
         self.begin_tok();
 
         let c = match self.bump() {
-            None => return self.cur_tok_term(RawTokenKind::Eof),
+            None => return self.tok_term(RawTokenKind::Eof),
             Some(c) => c,
         };
 
         match c {
             ws if is_line_ws(ws) => {
                 self.eat_line_ws();
-                self.cur_tok_term(RawTokenKind::Ws)
+                self.tok_term(RawTokenKind::Ws)
             }
-            '\n' => self.cur_tok_term(RawTokenKind::Newline),
+            '\n' => self.tok_term(RawTokenKind::Newline),
 
             '"' => self.handle_str_like('"', RawTokenKind::Str),
             '\'' => self.handle_str_like('\'', RawTokenKind::Char),
@@ -227,22 +233,22 @@ impl<'a> Reader<'a> {
 
     fn handle_ident(&mut self) -> RawToken<'_> {
         self.eat_while(is_ident_continue);
-        self.cur_tok_term(RawTokenKind::Ident)
+        self.tok_term(RawTokenKind::Ident)
     }
 
-    fn handle_str_like(&mut self, terminator: char, kind: RawTokenKind) -> RawToken<'_> {
+    fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'_> {
         let mut escaped = false;
 
         while let Some(c) = self.bump() {
             match c {
                 '\\' => escaped = !escaped,
                 '\n' => break,
-                c if c == terminator && !escaped => return self.cur_tok_term(kind),
+                c if c == term && !escaped => return self.tok_term(kind),
                 _ => {}
             }
         }
 
-        self.cur_tok(kind, false)
+        self.tok(kind, false)
     }
 
     fn handle_punct(&mut self, c: char) -> RawToken<'_> {
@@ -389,13 +395,13 @@ impl<'a> Reader<'a> {
                     self.punct(Eq)
                 }
             }
-            _ => self.cur_tok_term(RawTokenKind::Unknown),
+            _ => self.tok_term(RawTokenKind::Unknown),
         }
     }
 
     fn handle_line_comment(&mut self) -> RawToken<'_> {
         self.eat_while(|c| c != '\n');
-        self.cur_tok_term(RawTokenKind::Comment(CommentKind::Line))
+        self.tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
     fn handle_block_comment(&mut self) -> RawToken<'_> {
@@ -408,6 +414,6 @@ impl<'a> Reader<'a> {
             }
         };
 
-        self.cur_tok(RawTokenKind::Comment(CommentKind::Block), terminated)
+        self.tok(RawTokenKind::Comment(CommentKind::Block), terminated)
     }
 }
