@@ -176,6 +176,16 @@ impl<'a> Reader<'a> {
         eaten
     }
 
+    pub fn eat_to_after(&mut self, term: char) -> bool {
+        while let Some(c) = self.bump() {
+            if c == term {
+                return true;
+            }
+        }
+
+        false
+    }
+
     pub fn eat_str(&mut self, s: &str) -> bool {
         let mut iter = self.iter.clone();
         for c in s.chars() {
@@ -400,13 +410,15 @@ impl<'a> Reader<'a> {
     }
 
     fn handle_line_comment(&mut self) -> RawToken<'_> {
+        // Note: we intentionally don't consume the newline - it will be emitted as a separate
+        // newline token.
         self.eat_while(|c| c != '\n');
         self.tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
     fn handle_block_comment(&mut self) -> RawToken<'_> {
         let terminated = loop {
-            self.eat_while(|c| c != '*');
+            self.eat_to_after('*');
             match self.bump() {
                 None => break false,
                 Some('/') => break true,
