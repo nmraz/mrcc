@@ -232,11 +232,16 @@ impl<'a> Reader<'a> {
             }
             '\n' => self.tok_term(RawTokenKind::Newline),
 
+            'U' | 'L' => self.handle_encoding_prefix(true),
+            'u' => {
+                let allow_char = !self.eat('8');
+                self.handle_encoding_prefix(allow_char)
+            }
+
             '"' => self.handle_str_like('"', RawTokenKind::Str),
             '\'' => self.handle_str_like('\'', RawTokenKind::Char),
 
             c if is_ident_start(c) => self.handle_ident(),
-
             c => self.handle_punct(c),
         }
     }
@@ -244,6 +249,16 @@ impl<'a> Reader<'a> {
     fn handle_ident(&mut self) -> RawToken<'a> {
         self.eat_while(is_ident_continue);
         self.tok_term(RawTokenKind::Ident)
+    }
+
+    fn handle_encoding_prefix(&mut self, allow_char: bool) -> RawToken<'a> {
+        if self.eat('"') {
+            self.handle_str_like('"', RawTokenKind::Str)
+        } else if allow_char && self.eat('\'') {
+            self.handle_str_like('\'', RawTokenKind::Char)
+        } else {
+            self.handle_ident()
+        }
     }
 
     fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'a> {
