@@ -200,11 +200,24 @@ impl<'a> Reader<'a> {
     pub fn eat_line_ws(&mut self) -> bool {
         self.eat_while(is_line_ws) > 0
     }
+}
+
+pub struct Tokenizer<'a> {
+    pub reader: Reader<'a>,
+}
+
+impl<'a> Tokenizer<'a> {
+    #[inline]
+    pub fn new(input: &'a str) -> Self {
+        Self {
+            reader: Reader::new(input),
+        }
+    }
 
     fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
         RawToken {
             kind,
-            content: self.cur_content(),
+            content: self.reader.cur_content(),
             terminated,
         }
     }
@@ -218,23 +231,23 @@ impl<'a> Reader<'a> {
     }
 
     pub fn next_token(&mut self) -> RawToken<'a> {
-        self.begin_tok();
+        self.reader.begin_tok();
 
-        let c = match self.bump() {
+        let c = match self.reader.bump() {
             None => return self.tok_term(RawTokenKind::Eof),
             Some(c) => c,
         };
 
         match c {
             ws if is_line_ws(ws) => {
-                self.eat_line_ws();
+                self.reader.eat_line_ws();
                 self.tok_term(RawTokenKind::Ws)
             }
             '\n' => self.tok_term(RawTokenKind::Newline),
 
             'U' | 'L' => self.handle_encoding_prefix(true),
             'u' => {
-                let allow_char = !self.eat('8');
+                let allow_char = !self.reader.eat('8');
                 self.handle_encoding_prefix(allow_char)
             }
 
@@ -247,14 +260,14 @@ impl<'a> Reader<'a> {
     }
 
     fn handle_ident(&mut self) -> RawToken<'a> {
-        self.eat_while(is_ident_continue);
+        self.reader.eat_while(is_ident_continue);
         self.tok_term(RawTokenKind::Ident)
     }
 
     fn handle_encoding_prefix(&mut self, allow_char: bool) -> RawToken<'a> {
-        if self.eat('"') {
+        if self.reader.eat('"') {
             self.handle_str_like('"', RawTokenKind::Str)
-        } else if allow_char && self.eat('\'') {
+        } else if allow_char && self.reader.eat('\'') {
             self.handle_str_like('\'', RawTokenKind::Char)
         } else {
             self.handle_ident()
@@ -264,7 +277,7 @@ impl<'a> Reader<'a> {
     fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'a> {
         let mut escaped = false;
 
-        while let Some(c) = self.bump() {
+        while let Some(c) = self.reader.bump() {
             match c {
                 '\\' => escaped = !escaped,
                 '\n' => break,
@@ -290,131 +303,131 @@ impl<'a> Reader<'a> {
             '~' => self.punct(Tilde),
             '?' => self.punct(Question),
             '#' => {
-                if self.eat('#') {
+                if self.reader.eat('#') {
                     self.punct(HashHash)
                 } else {
                     self.punct(Hash)
                 }
             }
             '+' => {
-                if self.eat('+') {
+                if self.reader.eat('+') {
                     self.punct(PlusPlus)
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(PlusEq)
                 } else {
                     self.punct(Plus)
                 }
             }
             '-' => {
-                if self.eat('-') {
+                if self.reader.eat('-') {
                     self.punct(MinusMinus)
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(MinusEq)
-                } else if self.eat('>') {
+                } else if self.reader.eat('>') {
                     self.punct(Arrow)
                 } else {
                     self.punct(Minus)
                 }
             }
             '*' => {
-                if self.eat('=') {
+                if self.reader.eat('=') {
                     self.punct(StarEq)
                 } else {
                     self.punct(Star)
                 }
             }
             '/' => {
-                if self.eat('/') {
+                if self.reader.eat('/') {
                     self.handle_line_comment()
-                } else if self.eat('*') {
+                } else if self.reader.eat('*') {
                     self.handle_block_comment()
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(SlashEq)
                 } else {
                     self.punct(Slash)
                 }
             }
             '%' => {
-                if self.eat(':') {
-                    if self.eat_str("%:") {
+                if self.reader.eat(':') {
+                    if self.reader.eat_str("%:") {
                         self.punct(HashHash)
                     } else {
                         self.punct(Hash)
                     }
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(PercEq)
                 } else {
                     self.punct(Perc)
                 }
             }
             '&' => {
-                if self.eat('&') {
+                if self.reader.eat('&') {
                     self.punct(AmpAmp)
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(AmpEq)
                 } else {
                     self.punct(Amp)
                 }
             }
             '|' => {
-                if self.eat('|') {
+                if self.reader.eat('|') {
                     self.punct(PipePipe)
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(PipeEq)
                 } else {
                     self.punct(Pipe)
                 }
             }
             '^' => {
-                if self.eat('=') {
+                if self.reader.eat('=') {
                     self.punct(CaretEq)
                 } else {
                     self.punct(Caret)
                 }
             }
             '!' => {
-                if self.eat('=') {
+                if self.reader.eat('=') {
                     self.punct(ExclEq)
                 } else {
                     self.punct(Excl)
                 }
             }
             '<' => {
-                if self.eat(':') {
+                if self.reader.eat(':') {
                     self.punct(LSquare)
-                } else if self.eat('%') {
+                } else if self.reader.eat('%') {
                     self.punct(LCurly)
-                } else if self.eat('<') {
-                    if self.eat('=') {
+                } else if self.reader.eat('<') {
+                    if self.reader.eat('=') {
                         self.punct(LessLessEq)
                     } else {
                         self.punct(LessLess)
                     }
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(LessEq)
                 } else {
                     self.punct(Less)
                 }
             }
             '>' => {
-                if self.eat(':') {
+                if self.reader.eat(':') {
                     self.punct(RSquare)
-                } else if self.eat('%') {
+                } else if self.reader.eat('%') {
                     self.punct(RCurly)
-                } else if self.eat('>') {
-                    if self.eat('=') {
+                } else if self.reader.eat('>') {
+                    if self.reader.eat('=') {
                         self.punct(GreaterGreaterEq)
                     } else {
                         self.punct(GreaterGreater)
                     }
-                } else if self.eat('=') {
+                } else if self.reader.eat('=') {
                     self.punct(GreaterEq)
                 } else {
                     self.punct(Greater)
                 }
             }
             '=' => {
-                if self.eat('=') {
+                if self.reader.eat('=') {
                     self.punct(EqEq)
                 } else {
                     self.punct(Eq)
@@ -427,14 +440,14 @@ impl<'a> Reader<'a> {
     fn handle_line_comment(&mut self) -> RawToken<'a> {
         // Note: we intentionally don't consume the newline - it will be emitted as a separate
         // newline token.
-        self.eat_while(|c| c != '\n');
+        self.reader.eat_while(|c| c != '\n');
         self.tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
     fn handle_block_comment(&mut self) -> RawToken<'a> {
         let terminated = loop {
-            self.eat_to_after('*');
-            match self.bump() {
+            self.reader.eat_to_after('*');
+            match self.reader.bump() {
                 None => break false,
                 Some('/') => break true,
                 _ => {}
