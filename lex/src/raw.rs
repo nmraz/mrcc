@@ -138,7 +138,7 @@ impl<'a> Reader<'a> {
     }
 
     #[inline]
-    pub fn cur_content(&self) -> RawContent<'_> {
+    pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
             start: self.start as u32,
             str: &self.iter.input()[self.start..self.pos()],
@@ -201,7 +201,7 @@ impl<'a> Reader<'a> {
         self.eat_while(is_line_ws) > 0
     }
 
-    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'_> {
+    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
         RawToken {
             kind,
             content: self.cur_content(),
@@ -209,15 +209,15 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'_> {
+    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'a> {
         self.tok(kind, true)
     }
 
-    fn punct(&self, kind: PunctKind) -> RawToken<'_> {
+    fn punct(&self, kind: PunctKind) -> RawToken<'a> {
         self.tok_term(RawTokenKind::Punct(kind))
     }
 
-    pub fn next_token(&mut self) -> RawToken<'_> {
+    pub fn next_token(&mut self) -> RawToken<'a> {
         self.begin_tok();
 
         let c = match self.bump() {
@@ -241,12 +241,12 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn handle_ident(&mut self) -> RawToken<'_> {
+    fn handle_ident(&mut self) -> RawToken<'a> {
         self.eat_while(is_ident_continue);
         self.tok_term(RawTokenKind::Ident)
     }
 
-    fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'_> {
+    fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'a> {
         let mut escaped = false;
 
         while let Some(c) = self.bump() {
@@ -261,7 +261,7 @@ impl<'a> Reader<'a> {
         self.tok(kind, false)
     }
 
-    fn handle_punct(&mut self, c: char) -> RawToken<'_> {
+    fn handle_punct(&mut self, c: char) -> RawToken<'a> {
         use PunctKind::*;
 
         match c {
@@ -409,14 +409,14 @@ impl<'a> Reader<'a> {
         }
     }
 
-    fn handle_line_comment(&mut self) -> RawToken<'_> {
+    fn handle_line_comment(&mut self) -> RawToken<'a> {
         // Note: we intentionally don't consume the newline - it will be emitted as a separate
         // newline token.
         self.eat_while(|c| c != '\n');
         self.tok_term(RawTokenKind::Comment(CommentKind::Line))
     }
 
-    fn handle_block_comment(&mut self) -> RawToken<'_> {
+    fn handle_block_comment(&mut self) -> RawToken<'a> {
         let terminated = loop {
             self.eat_to_after('*');
             match self.bump() {
