@@ -254,7 +254,19 @@ impl<'a> Tokenizer<'a> {
             '"' => self.handle_str_like('"', RawTokenKind::Str),
             '\'' => self.handle_str_like('\'', RawTokenKind::Char),
 
+            '.' => {
+                if self.reader.eat_if(|c| c.is_ascii_digit()) {
+                    self.handle_number()
+                } else if self.reader.eat_str("..") {
+                    self.punct(PunctKind::Ellipsis)
+                } else {
+                    self.punct(PunctKind::Dot)
+                }
+            }
+
             c if is_ident_start(c) => self.handle_ident(),
+            d if d.is_ascii_digit() => self.handle_number(),
+
             c => self.handle_punct(c),
         }
     }
@@ -262,6 +274,22 @@ impl<'a> Tokenizer<'a> {
     fn handle_ident(&mut self) -> RawToken<'a> {
         self.reader.eat_while(is_ident_continue);
         self.tok_term(RawTokenKind::Ident)
+    }
+
+    fn handle_number(&mut self) -> RawToken<'a> {
+        while self.eat_number_char() {}
+        self.tok_term(RawTokenKind::Number)
+    }
+
+    fn eat_number_char(&mut self) -> bool {
+        // If any of these characters are followed by a sign, they designate an exponent. Otherwise,
+        // they are a part of the pp-number anyway.
+        if self.reader.eat_if(|c| ['e', 'E', 'p', 'P'].contains(&c)) {
+            self.reader.eat_if(|c| c == '+' || c == '-');
+            return true;
+        }
+
+        self.reader.eat_if(|c| c == '.' || is_ident_continue(c))
     }
 
     fn handle_encoding_prefix(&mut self, allow_char: bool) -> RawToken<'a> {
