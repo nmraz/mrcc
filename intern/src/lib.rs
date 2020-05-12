@@ -1,5 +1,3 @@
-#![warn(clippy::all)]
-
 use std::borrow::Borrow;
 use std::hash::BuildHasherDefault;
 use std::hash::Hash;

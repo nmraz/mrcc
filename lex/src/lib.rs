@@ -1,5 +1,3 @@
-#![warn(clippy::all)]
-
 use std::fmt;
 
 use diag::Manager as DiagManager;
