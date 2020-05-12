@@ -2,8 +2,8 @@ use std::fmt;
 
 use diag::Manager as DiagManager;
 use intern::{Interner, Symbol};
-use source_map::pos::SourceRange;
-use source_map::SourceMap;
+use smap::pos::SourceRange;
+use smap::SourceMap;
 
 pub mod raw;
 

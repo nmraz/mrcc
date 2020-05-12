@@ -5,8 +5,8 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHasher;
 
-use source_map::pos::{FragmentedSourceRange, SourceRange};
-use source_map::{ExpansionType, SourceId, SourceMap};
+use smap::pos::{FragmentedSourceRange, SourceRange};
+use smap::{ExpansionType, SourceId, SourceMap};
 
 use crate::{Ranges, RawRanges, RenderedRanges};
 use crate::{RawDiagnostic, RenderedDiagnostic};

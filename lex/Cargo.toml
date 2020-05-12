@@ -9,4 +9,4 @@ edition = "2018"
 [dependencies]
 diag = {path = "../diag"}
 intern = {path = "../intern"}
-source-map = {path = "../source-map"}
+smap = {path = "../smap"}

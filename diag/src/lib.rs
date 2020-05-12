@@ -1,5 +1,5 @@
-use source_map::pos::{FragmentedSourceRange, SourcePos, SourceRange};
-use source_map::SourceMap;
+use smap::pos::{FragmentedSourceRange, SourcePos, SourceRange};
+use smap::SourceMap;
 
 mod render;
 
