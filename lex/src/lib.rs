@@ -1,8 +1,8 @@
 use std::fmt;
 
-use diag::Manager as DiagManager;
+use diag::{DiagnosticBuilder, Manager as DiagManager};
 use intern::{Interner, Symbol};
-use smap::pos::SourceRange;
+use smap::pos::{FragmentedSourceRange, SourceRange};
 use smap::SourceMap;
 
 pub mod raw;
@@ -164,6 +164,24 @@ pub struct LexCtx<'a> {
     pub tok_interner: &'a mut TokInterner,
     pub diags: &'a mut DiagManager,
     pub smap: &'a mut SourceMap,
+}
+
+impl LexCtx<'_> {
+    pub fn warning(
+        &mut self,
+        msg: impl Into<String>,
+        primary_range: FragmentedSourceRange,
+    ) -> DiagnosticBuilder<'_> {
+        self.diags.warning(self.smap, msg, primary_range)
+    }
+
+    pub fn error(
+        &mut self,
+        msg: impl Into<String>,
+        primary_range: FragmentedSourceRange,
+    ) -> DiagnosticBuilder<'_> {
+        self.diags.error(self.smap, msg, primary_range)
+    }
 }
 
 pub trait Lexer {
