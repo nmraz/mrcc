@@ -34,7 +34,7 @@ pub struct RawToken<'a> {
 }
 
 impl<'a> RawContent<'a> {
-    pub fn str(&self) -> Cow<'a, str> {
+    pub fn cleaned_str(&self) -> Cow<'a, str> {
         if self.tainted {
             Cow::Owned(clean(self.str))
         } else {
