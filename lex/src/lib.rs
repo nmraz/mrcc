@@ -12,12 +12,12 @@ pub use token_kind::{CommentKind, PunctKind, TokenKind};
 pub type IdentInterner = Interner<str>;
 pub type IdentSym = Symbol<str>;
 
-pub type TokInterner = Interner<str>;
-pub type TokSym = Symbol<str>;
+pub type LitInterner = Interner<str>;
+pub type LitSym = Symbol<str>;
 
 pub struct LexCtx<'a> {
     pub ident_interner: &'a mut IdentInterner,
-    pub tok_interner: &'a mut TokInterner,
+    pub lit_interner: &'a mut LitInterner,
     pub diags: &'a mut DiagManager,
     pub smap: &'a mut SourceMap,
 }
@@ -64,19 +64,19 @@ impl Token {
                 TokenKind::Ident(ctx.ident_interner.intern(raw.content.cleaned_str()))
             }
             RawTokenKind::Number => {
-                TokenKind::Number(ctx.tok_interner.intern(raw.content.cleaned_str()))
+                TokenKind::Number(ctx.lit_interner.intern(raw.content.cleaned_str()))
             }
             RawTokenKind::Str => {
                 if !raw.terminated {
                     ctx.error("unterminated string literal", pos.into());
                 }
-                TokenKind::Str(ctx.tok_interner.intern(raw.content.cleaned_str()))
+                TokenKind::Str(ctx.lit_interner.intern(raw.content.cleaned_str()))
             }
             RawTokenKind::Char => {
                 if !raw.terminated {
                     ctx.error("unterminated character literal", pos.into());
                 }
-                TokenKind::Char(ctx.tok_interner.intern(raw.content.cleaned_str()))
+                TokenKind::Char(ctx.lit_interner.intern(raw.content.cleaned_str()))
             }
         };
 
