@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::{IdentSym, LitSym};
+use crate::Symbol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommentKind {
@@ -136,8 +136,8 @@ pub enum TokenKind {
 
     Punct(PunctKind),
 
-    Ident(IdentSym),
-    Number(LitSym),
-    Str(LitSym),
-    Char(LitSym),
+    Ident(Symbol),
+    Number(Symbol),
+    Str(Symbol),
+    Char(Symbol),
 }

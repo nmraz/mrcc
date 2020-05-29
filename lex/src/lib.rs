@@ -1,5 +1,4 @@
 use diag::{DiagnosticBuilder, Manager as DiagManager};
-use intern::{Interner, Symbol};
 use smap::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 use smap::SourceMap;
 
@@ -9,15 +8,12 @@ mod token_kind;
 use raw::{RawToken, RawTokenKind};
 pub use token_kind::{CommentKind, PunctKind, TokenKind};
 
-pub type IdentInterner = Interner<str>;
-pub type IdentSym = Symbol<str>;
-
-pub type LitInterner = Interner<str>;
-pub type LitSym = Symbol<str>;
+pub type Interner = intern::Interner<str>;
+pub type Symbol = intern::Symbol<str>;
 
 pub struct LexCtx<'a> {
-    pub ident_interner: &'a mut IdentInterner,
-    pub lit_interner: &'a mut LitInterner,
+    pub ident_interner: &'a mut Interner,
+    pub lit_interner: &'a mut Interner,
     pub diags: &'a mut DiagManager,
     pub smap: &'a mut SourceMap,
 }
@@ -47,36 +43,38 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn from_raw(raw: RawToken, pos: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
+    pub fn from_raw(raw: &RawToken, pos: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
+        let intern_content = |interner: &mut Interner| interner.intern(raw.content.cleaned_str());
+
+        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
+            if !raw.terminated {
+                ctx.error(format!("unterminated {}", kind), pos.into());
+            }
+        };
+
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
             RawTokenKind::Eof => TokenKind::Eof,
             RawTokenKind::Ws => return None,
             RawTokenKind::Newline => return None,
+
             RawTokenKind::Comment(comment) => {
-                if !raw.terminated {
-                    ctx.error("unterminated block comment", pos.into());
-                }
+                check_terminated(ctx, "block comment");
                 TokenKind::Comment(comment)
             }
+
             RawTokenKind::Punct(punct) => TokenKind::Punct(punct),
-            RawTokenKind::Ident => {
-                TokenKind::Ident(ctx.ident_interner.intern(raw.content.cleaned_str()))
-            }
-            RawTokenKind::Number => {
-                TokenKind::Number(ctx.lit_interner.intern(raw.content.cleaned_str()))
-            }
+            RawTokenKind::Ident => TokenKind::Ident(intern_content(&mut ctx.ident_interner)),
+            RawTokenKind::Number => TokenKind::Number(intern_content(&mut ctx.lit_interner)),
+
             RawTokenKind::Str => {
-                if !raw.terminated {
-                    ctx.error("unterminated string literal", pos.into());
-                }
-                TokenKind::Str(ctx.lit_interner.intern(raw.content.cleaned_str()))
+                check_terminated(ctx, "string literal");
+                TokenKind::Str(intern_content(&mut ctx.lit_interner))
             }
+
             RawTokenKind::Char => {
-                if !raw.terminated {
-                    ctx.error("unterminated character literal", pos.into());
-                }
-                TokenKind::Char(ctx.lit_interner.intern(raw.content.cleaned_str()))
+                check_terminated(ctx, "character literal");
+                TokenKind::Char(intern_content(&mut ctx.lit_interner))
             }
         };
 
