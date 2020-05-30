@@ -317,6 +317,7 @@ impl<'a> Tokenizer<'a> {
         self.tok(kind, false)
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn handle_punct(&mut self, c: char) -> RawToken<'a> {
         use PunctKind::*;
 
