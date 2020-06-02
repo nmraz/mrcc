@@ -21,18 +21,18 @@ pub struct LexCtx<'a> {
 impl LexCtx<'_> {
     pub fn warning(
         &mut self,
-        msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_> {
-        self.diags.warning(self.smap, msg, primary_range)
+        self.diags.warning(self.smap, primary_range, msg)
     }
 
     pub fn error(
         &mut self,
-        msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_> {
-        self.diags.error(self.smap, msg, primary_range)
+        self.diags.error(self.smap, primary_range, msg)
     }
 }
 
@@ -48,7 +48,7 @@ impl Token {
 
         let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
             if !raw.terminated {
-                ctx.error(format!("unterminated {}", kind), pos.into());
+                ctx.error(pos.into(), format!("unterminated {}", kind));
             }
         };
 

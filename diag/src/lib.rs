@@ -249,8 +249,8 @@ impl Manager {
         &'a mut self,
         smap: &'a SourceMap,
         level: Level,
-        msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
     ) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(self, level, msg.into(), Some((primary_range, smap)))
     }
@@ -262,19 +262,19 @@ impl Manager {
     pub fn warning<'a>(
         &'a mut self,
         smap: &'a SourceMap,
-        msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
     ) -> DiagnosticBuilder<'a> {
-        self.report(smap, Level::Warning, msg, primary_range)
+        self.report(smap, Level::Warning, primary_range, msg)
     }
 
     pub fn error<'a>(
         &'a mut self,
         smap: &'a SourceMap,
-        msg: impl Into<String>,
         primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
     ) -> DiagnosticBuilder<'a> {
-        self.report(smap, Level::Error, msg, primary_range)
+        self.report(smap, Level::Error, primary_range, msg)
     }
 
     pub fn warning_count(&self) -> u32 {
