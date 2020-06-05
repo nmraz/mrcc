@@ -1,9 +1,9 @@
 use smap::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 use smap::SourceMap;
 
-mod render;
-
 pub use render::render;
+
+mod render;
 
 #[derive(Debug, Clone)]
 pub struct Suggestion<R> {

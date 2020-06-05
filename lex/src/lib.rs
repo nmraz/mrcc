@@ -2,13 +2,13 @@ use diag::{DiagnosticBuilder, Manager as DiagManager};
 use smap::pos::{FragmentedSourceRange, SourcePos, SourceRange};
 use smap::SourceMap;
 
-mod pp;
-pub mod raw;
-mod token_kind;
-
 pub use pp::Preprocessor;
 use raw::{RawToken, RawTokenKind};
 pub use token_kind::{CommentKind, PunctKind, TokenKind};
+
+mod pp;
+pub mod raw;
+mod token_kind;
 
 pub type Interner = intern::Interner<str>;
 pub type Symbol = intern::Symbol<str>;

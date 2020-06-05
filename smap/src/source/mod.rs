@@ -3,13 +3,13 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::rc::Rc;
 
+use crate::pos::{LineCol, SourcePos, SourceRange};
+use line_table::LineTable;
+
 mod line_table;
 
 #[cfg(test)]
 mod tests;
-
-use crate::pos::{LineCol, SourcePos, SourceRange};
-use line_table::LineTable;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FileName {
