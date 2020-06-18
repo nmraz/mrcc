@@ -1,10 +1,11 @@
-use itertools::Itertools;
-use rustc_hash::FxHashMap;
 use std::convert::TryInto;
 use std::ops::Range;
 use std::option::Option;
 use std::rc::Rc;
 use std::vec::Vec;
+
+use itertools::Itertools;
+use rustc_hash::FxHashMap;
 
 use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
