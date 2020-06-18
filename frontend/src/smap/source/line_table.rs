@@ -1,6 +1,6 @@
 use std::vec::Vec;
 
-use crate::pos::LineCol;
+use crate::LineCol;
 
 pub struct LineTable {
     line_offsets: Vec<u32>,

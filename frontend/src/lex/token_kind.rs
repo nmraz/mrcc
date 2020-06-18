@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::Symbol;
+use super::Symbol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommentKind {

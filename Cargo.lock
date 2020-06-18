@@ -7,20 +7,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8aac770f1885fd7e387acedd76065302551364496e46b3dd00860b2f8359b9d"
 
 [[package]]
-name = "diag"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "itertools",
- "rustc-hash",
- "smap",
-]
-
-[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb1f6b1ce1c140482ea30ddd3335fc0024ac7ee112895426e0a629a6c20adfe3"
+
+[[package]]
+name = "frontend"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "itertools",
+ "normalize-line-endings",
+ "rustc-hash",
+]
 
 [[package]]
 name = "indexmap"
@@ -32,29 +32,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "intern"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "rustc-hash",
-]
-
-[[package]]
 name = "itertools"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f56a2d0bc861f9165be4eb3442afd3c236d8a98afd426f65d92324ae1091a484"
 dependencies = [
  "either",
-]
-
-[[package]]
-name = "lex"
-version = "0.1.0"
-dependencies = [
- "diag",
- "intern",
- "smap",
 ]
 
 [[package]]
@@ -72,12 +55,3 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "smap"
-version = "0.1.0"
-dependencies = [
- "itertools",
- "normalize-line-endings",
- "rustc-hash",
-]

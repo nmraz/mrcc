@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::pos::{LineCol, SourcePos, SourceRange};
+use crate::{LineCol, SourcePos, SourceRange};
 use line_table::LineTable;
 
 mod line_table;

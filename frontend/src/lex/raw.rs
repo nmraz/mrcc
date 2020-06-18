@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use crate::{CommentKind, PunctKind};
+use super::{CommentKind, PunctKind};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RawTokenKind {

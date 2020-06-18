@@ -1,5 +1,6 @@
-use crate::raw::{RawToken, Tokenizer};
-use crate::{LexCtx, Lexer, Token, TokenKind};
+use crate::lex;
+use lex::raw::{RawToken, Tokenizer};
+use lex::{LexCtx, Lexer, Token, TokenKind};
 
 pub struct Preprocessor {}
 

@@ -1,12 +1,12 @@
-use diag::{DiagnosticBuilder, Manager as DiagManager};
-use smap::pos::{FragmentedSourceRange, SourcePos, SourceRange};
-use smap::SourceMap;
+use crate::diag::DiagnosticBuilder;
+use crate::intern;
+use crate::DiagManager;
+use crate::SourceMap;
+use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
-pub use pp::Preprocessor;
 use raw::{RawToken, RawTokenKind};
 pub use token_kind::{CommentKind, PunctKind, TokenKind};
 
-mod pp;
 pub mod raw;
 mod token_kind;
 

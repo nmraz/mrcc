@@ -5,13 +5,14 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHasher;
 
-use smap::pos::{FragmentedSourceRange, SourceRange};
-use smap::{ExpansionType, SourceId, SourceMap};
+use crate::smap::{ExpansionType, SourceId};
+use crate::SourceMap;
+use crate::{FragmentedSourceRange, SourceRange};
 
-use crate::{Ranges, RawRanges, RenderedRanges};
-use crate::{RawDiagnostic, RenderedDiagnostic};
-use crate::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
-use crate::{RawSuggestion, RenderedSuggestion};
+use super::{Ranges, RawRanges, RenderedRanges};
+use super::{RawDiagnostic, RenderedDiagnostic};
+use super::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
+use super::{RawSuggestion, RenderedSuggestion};
 
 fn trace_expansions(
     range: FragmentedSourceRange,

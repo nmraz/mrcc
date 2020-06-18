@@ -6,12 +6,11 @@ use std::option::Option;
 use std::rc::Rc;
 use std::vec::Vec;
 
-use pos::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
+use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
     ExpansionSourceInfo, ExpansionType, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
 
-pub mod pos;
 mod source;
 
 #[cfg(test)]

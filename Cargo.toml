@@ -1,8 +1,5 @@
 [workspace]
 members = [
-  "smap",
-  "diag",
-  "intern",
-  "lex",
+  "frontend",
   "mrcc"
 ]
