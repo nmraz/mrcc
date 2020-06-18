@@ -21,7 +21,7 @@ pub enum RawTokenKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawContent<'a> {
-    pub start: u32,
+    pub off: u32,
     pub str: &'a str,
     pub tainted: bool,
 }
@@ -140,7 +140,7 @@ impl<'a> Reader<'a> {
     #[inline]
     pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
-            start: self.start as u32,
+            off: self.start as u32,
             str: &self.iter.input()[self.start..self.pos()],
             tainted: self.iter.tainted(),
         }

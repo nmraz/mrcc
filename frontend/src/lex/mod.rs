@@ -45,14 +45,16 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn from_raw(raw: &RawToken, pos: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
-        let intern_content = |interner: &mut Interner| interner.intern(raw.content.cleaned_str());
+    pub fn from_raw(raw: &RawToken, source_start: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
+        let pos = source_start.offset(raw.content.off);
 
         let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
             if !raw.terminated {
                 ctx.error(pos.into(), format!("unterminated {}", kind));
             }
         };
+
+        let intern_content = |interner: &mut Interner| interner.intern(raw.content.cleaned_str());
 
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
