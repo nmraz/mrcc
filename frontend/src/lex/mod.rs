@@ -1,7 +1,7 @@
 use crate::diag::DiagnosticBuilder;
 use crate::intern;
-use crate::DiagManager;
 use crate::SourceMap;
+use crate::{DiagManager, DiagResult};
 use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
 use raw::{RawToken, RawTokenKind};
@@ -45,13 +45,19 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn from_raw(raw: &RawToken, stream_start: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
+    pub fn from_raw(
+        raw: &RawToken,
+        stream_start: SourcePos,
+        ctx: &mut LexCtx<'_>,
+    ) -> DiagResult<Option<Self>> {
         let pos = stream_start.offset(raw.content.off);
 
-        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
+        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| -> DiagResult<()> {
             if !raw.terminated {
-                ctx.error(pos.into(), format!("unterminated {}", kind));
+                ctx.error(pos.into(), format!("unterminated {}", kind))
+                    .emit()?;
             }
+            Ok(())
         };
 
         let intern_content = |interner: &mut Interner| interner.intern(raw.content.cleaned_str());
@@ -59,11 +65,11 @@ impl Token {
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
             RawTokenKind::Eof => TokenKind::Eof,
-            RawTokenKind::Ws => return None,
-            RawTokenKind::Newline => return None,
+            RawTokenKind::Ws => return Ok(None),
+            RawTokenKind::Newline => return Ok(None),
 
             RawTokenKind::Comment(comment) => {
-                check_terminated(ctx, "block comment");
+                check_terminated(ctx, "block comment")?;
                 TokenKind::Comment(comment)
             }
 
@@ -72,21 +78,21 @@ impl Token {
             RawTokenKind::Number => TokenKind::Number(intern_content(&mut ctx.lit_interner)),
 
             RawTokenKind::Str => {
-                check_terminated(ctx, "string literal");
+                check_terminated(ctx, "string literal")?;
                 TokenKind::Str(intern_content(&mut ctx.lit_interner))
             }
 
             RawTokenKind::Char => {
-                check_terminated(ctx, "character literal");
+                check_terminated(ctx, "character literal")?;
                 TokenKind::Char(intern_content(&mut ctx.lit_interner))
             }
         };
 
         let range = SourceRange::new(pos, raw.content.str.len() as u32);
-        Some(Token { kind, range })
+        Ok(Some(Token { kind, range }))
     }
 }
 
 pub trait Lexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_>) -> Token;
+    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DiagResult<Token>;
 }

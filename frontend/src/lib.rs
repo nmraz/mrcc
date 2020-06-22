@@ -6,7 +6,7 @@ mod intern;
 mod pp;
 mod spos;
 
-pub use diag::Manager as DiagManager;
+pub use diag::{Manager as DiagManager, Result as DiagResult};
 pub use pp::Preprocessor;
 pub use smap::SourceMap;
 pub use spos::*;

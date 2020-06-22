@@ -113,7 +113,12 @@ pub enum Level {
     Note,
     Warning,
     Error,
+    Fatal,
 }
+
+pub struct FatalErrorEmitted;
+
+pub type Result<T> = std::result::Result<T, FatalErrorEmitted>;
 
 #[derive(Clone)]
 pub struct Diagnostic<'s, D> {
@@ -148,8 +153,9 @@ impl RenderedSubDiagnostic {
 
 pub type RenderedDiagnostic<'s> = Diagnostic<'s, RenderedSubDiagnostic>;
 
+#[must_use = "diagnostics should be emitted with `.emit()`"]
 pub struct DiagnosticBuilder<'a> {
-    diag: RawDiagnostic<'a>,
+    diag: Box<RawDiagnostic<'a>>,
     manager: &'a mut Manager,
 }
 
@@ -166,43 +172,41 @@ impl<'a> DiagnosticBuilder<'a> {
             suggestions: Vec::new(),
         };
 
-        let diag = RawDiagnostic {
+        let diag = Box::new(RawDiagnostic {
             level,
             main: main_diag,
             notes: Vec::new(),
             smap: primary_range.map(|(_, smap)| smap),
-        };
+        });
 
         DiagnosticBuilder { diag, manager }
     }
 
     pub fn add_labeled_range(
-        &mut self,
+        mut self,
         range: FragmentedSourceRange,
         label: impl Into<String>,
-    ) -> &mut Self {
+    ) -> Self {
         self.diag.main.add_labeled_range(range, label);
         self
     }
 
-    pub fn add_range(&mut self, range: FragmentedSourceRange) -> &mut Self {
+    pub fn add_range(self, range: FragmentedSourceRange) -> Self {
         self.add_labeled_range(range, "")
     }
 
-    pub fn add_suggestion(&mut self, suggestion: RawSuggestion) -> &mut Self {
+    pub fn add_suggestion(mut self, suggestion: RawSuggestion) -> Self {
         self.diag.main.add_suggestion(suggestion);
         self
     }
 
-    pub fn add_note(&mut self, note: RawSubDiagnostic) -> &mut Self {
+    pub fn add_note(mut self, note: RawSubDiagnostic) -> Self {
         self.diag.notes.push(note);
         self
     }
-}
 
-impl Drop for DiagnosticBuilder<'_> {
-    fn drop(&mut self) {
-        self.manager.emit(&self.diag);
+    pub fn emit(self) -> Result<()> {
+        self.manager.emit(&self.diag)
     }
 }
 
@@ -285,13 +289,15 @@ impl Manager {
         self.error_count
     }
 
-    fn emit(&mut self, diag: &RawDiagnostic<'_>) {
+    fn emit(&mut self, diag: &RawDiagnostic<'_>) -> Result<()> {
         match diag.level {
             Level::Warning => self.warning_count += 1,
             Level::Error => self.error_count += 1,
+            Level::Fatal => return Err(FatalErrorEmitted),
             _ => {}
         }
 
         self.handler.handle(diag);
+        Ok(())
     }
 }
