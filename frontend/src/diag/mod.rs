@@ -230,23 +230,31 @@ impl<H: RenderedHandler> RawHandler for RenderingHandlerAdaptor<H> {
 
 pub struct Manager {
     handler: Box<dyn RawHandler>,
+    error_limit: Option<u32>,
     warning_count: u32,
     error_count: u32,
 }
 
 impl Manager {
-    pub fn new(handler: Box<dyn RawHandler>) -> Self {
+    pub fn new(handler: Box<dyn RawHandler>, error_limit: Option<u32>) -> Self {
         Manager {
             handler,
+            error_limit,
             warning_count: 0,
             error_count: 0,
         }
     }
 
-    pub fn with_rendered_handler(handler: impl RenderedHandler + 'static) -> Self {
-        Self::new(Box::new(RenderingHandlerAdaptor {
-            rendered_handler: handler,
-        }))
+    pub fn with_rendered_handler(
+        handler: impl RenderedHandler + 'static,
+        error_limit: Option<u32>,
+    ) -> Self {
+        Self::new(
+            Box::new(RenderingHandlerAdaptor {
+                rendered_handler: handler,
+            }),
+            error_limit,
+        )
     }
 
     pub fn report<'a>(
@@ -295,6 +303,14 @@ impl Manager {
             Level::Error => self.error_count += 1,
             Level::Fatal => return Err(FatalErrorEmitted),
             _ => {}
+        }
+
+        if let Some(limit) = self.error_limit {
+            if self.error_count >= limit {
+                return self
+                    .report_anon(Level::Fatal, "too many errors emitted")
+                    .emit();
+            }
         }
 
         self.handler.handle(diag);
