@@ -52,7 +52,7 @@ impl Token {
     ) -> DiagResult<Option<Self>> {
         let pos = stream_start.offset(raw.content.off);
 
-        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| -> DiagResult<()> {
+        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
             if !raw.terminated {
                 ctx.error(pos.into(), format!("unterminated {}", kind))
                     .emit()?;
