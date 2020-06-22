@@ -45,8 +45,8 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn from_raw(raw: &RawToken, source_start: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
-        let pos = source_start.offset(raw.content.off);
+    pub fn from_raw(raw: &RawToken, stream_start: SourcePos, ctx: &mut LexCtx<'_>) -> Option<Self> {
+        let pos = stream_start.offset(raw.content.off);
 
         let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
             if !raw.terminated {
