@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::lex::{LexCtx, Lexer, Token};
 use crate::smap::FileContents;
-use crate::DiagResult;
+use crate::DResult;
 use crate::SourcePos;
 
 use file::Files;
@@ -22,7 +22,7 @@ impl Preprocessor {
 }
 
 impl Lexer for Preprocessor {
-    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DiagResult<Token> {
+    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DResult<Token> {
         self.files.top().with_tokenizer(|pos, tokenizer| loop {
             let raw = tokenizer.next_token();
             if let Some(tok) = Token::from_raw(&raw, pos, ctx)? {

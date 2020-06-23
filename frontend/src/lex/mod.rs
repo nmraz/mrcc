@@ -1,7 +1,7 @@
 use crate::diag::DiagnosticBuilder;
 use crate::intern;
 use crate::SourceMap;
-use crate::{DiagManager, DiagResult};
+use crate::{DResult, DiagManager};
 use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
 use raw::{RawToken, RawTokenKind};
@@ -49,7 +49,7 @@ impl Token {
         raw: &RawToken,
         stream_start: SourcePos,
         ctx: &mut LexCtx<'_>,
-    ) -> DiagResult<Option<Self>> {
+    ) -> DResult<Option<Self>> {
         let pos = stream_start.offset(raw.content.off);
 
         let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
@@ -94,5 +94,5 @@ impl Token {
 }
 
 pub trait Lexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DiagResult<Token>;
+    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DResult<Token>;
 }
