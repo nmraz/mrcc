@@ -5,9 +5,9 @@ use crate::smap::FileContents;
 use crate::DResult;
 use crate::SourcePos;
 
-use file::Files;
+use files::Files;
 
-mod file;
+mod files;
 
 pub struct Preprocessor {
     files: Files,
