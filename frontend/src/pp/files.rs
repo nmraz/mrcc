@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::lex::raw::Tokenizer;
-use crate::smap::{FileContents, SourcesTooLargeError};
+use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
 pub struct File {
@@ -36,9 +36,14 @@ pub struct Files {
 }
 
 impl Files {
-    pub fn new(main_contents: Rc<FileContents>, main_start_pos: SourcePos) -> Self {
+    pub fn new(smap: &SourceMap, main_id: SourceId) -> Self {
+        let source = smap.get_source(main_id);
+        let file = source
+            .as_file()
+            .expect("preprocessor requires a file source");
+
         Files {
-            main: File::new(main_contents, main_start_pos),
+            main: File::new(Rc::clone(&file.contents), source.range.start()),
             includes: vec![],
         }
     }

@@ -1,9 +1,6 @@
-use std::rc::Rc;
-
 use crate::lex::{LexCtx, Lexer, Token};
-use crate::smap::FileContents;
+use crate::smap::SourceId;
 use crate::DResult;
-use crate::SourcePos;
 
 use files::Files;
 
@@ -14,9 +11,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> Self {
+    pub fn new(ctx: &mut LexCtx<'_>, main_id: SourceId) -> Self {
         Self {
-            files: Files::new(contents, start_pos),
+            files: Files::new(&ctx.smap, main_id),
         }
     }
 }
