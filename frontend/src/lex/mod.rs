@@ -13,19 +13,19 @@ mod token_kind;
 pub type Interner = intern::Interner<str>;
 pub type Symbol = intern::Symbol<str>;
 
-pub struct LexCtx<'a> {
+pub struct LexCtx<'a, 'h> {
     pub ident_interner: &'a mut Interner,
     pub lit_interner: &'a mut Interner,
-    pub diags: &'a mut DiagManager,
+    pub diags: &'a mut DiagManager<'h>,
     pub smap: &'a mut SourceMap,
 }
 
-impl LexCtx<'_> {
+impl<'a, 'h> LexCtx<'a, 'h> {
     pub fn warning(
         &mut self,
         primary_range: FragmentedSourceRange,
         msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, 'h> {
         self.diags.warning(self.smap, primary_range, msg)
     }
 
@@ -33,7 +33,7 @@ impl LexCtx<'_> {
         &mut self,
         primary_range: FragmentedSourceRange,
         msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'_> {
+    ) -> DiagnosticBuilder<'_, 'h> {
         self.diags.error(self.smap, primary_range, msg)
     }
 }
@@ -48,11 +48,11 @@ impl Token {
     pub fn from_raw(
         raw: &RawToken,
         stream_start: SourcePos,
-        ctx: &mut LexCtx<'_>,
+        ctx: &mut LexCtx<'_, '_>,
     ) -> DResult<Option<Self>> {
         let pos = stream_start.offset(raw.content.off);
 
-        let check_terminated = |ctx: &mut LexCtx<'_>, kind: &str| {
+        let check_terminated = |ctx: &mut LexCtx<'_, '_>, kind: &str| {
             if !raw.terminated {
                 ctx.error(pos.into(), format!("unterminated {}", kind))
                     .emit()?;
@@ -94,5 +94,5 @@ impl Token {
 }
 
 pub trait Lexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_>) -> DResult<Token>;
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token>;
 }

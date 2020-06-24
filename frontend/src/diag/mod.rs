@@ -154,14 +154,14 @@ impl RenderedSubDiagnostic {
 pub type RenderedDiagnostic<'s> = Diagnostic<'s, RenderedSubDiagnostic>;
 
 #[must_use = "diagnostics should be emitted with `.emit()`"]
-pub struct DiagnosticBuilder<'a> {
+pub struct DiagnosticBuilder<'a, 'h> {
     diag: Box<RawDiagnostic<'a>>,
-    manager: &'a mut Manager,
+    manager: &'a mut Manager<'h>,
 }
 
-impl<'a> DiagnosticBuilder<'a> {
+impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
     fn new(
-        manager: &'a mut Manager,
+        manager: &'a mut Manager<'h>,
         level: Level,
         msg: String,
         primary_range: Option<(FragmentedSourceRange, &'a SourceMap)>,
@@ -228,15 +228,15 @@ impl<H: RenderedHandler> RawHandler for RenderingHandlerAdaptor<H> {
     }
 }
 
-pub struct Manager {
-    handler: Box<dyn RawHandler>,
+pub struct Manager<'h> {
+    handler: Box<dyn RawHandler + 'h>,
     error_limit: Option<u32>,
     warning_count: u32,
     error_count: u32,
 }
 
-impl Manager {
-    pub fn new(handler: Box<dyn RawHandler>, error_limit: Option<u32>) -> Self {
+impl<'h> Manager<'h> {
+    pub fn new(handler: Box<dyn RawHandler + 'h>, error_limit: Option<u32>) -> Self {
         Manager {
             handler,
             error_limit,
@@ -246,7 +246,7 @@ impl Manager {
     }
 
     pub fn with_rendered_handler(
-        handler: impl RenderedHandler + 'static,
+        handler: impl RenderedHandler + 'h,
         error_limit: Option<u32>,
     ) -> Self {
         Self::new(
@@ -263,11 +263,15 @@ impl Manager {
         level: Level,
         primary_range: FragmentedSourceRange,
         msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, 'h> {
         DiagnosticBuilder::new(self, level, msg.into(), Some((primary_range, smap)))
     }
 
-    pub fn report_anon(&mut self, level: Level, msg: impl Into<String>) -> DiagnosticBuilder<'_> {
+    pub fn report_anon(
+        &mut self,
+        level: Level,
+        msg: impl Into<String>,
+    ) -> DiagnosticBuilder<'_, 'h> {
         DiagnosticBuilder::new(self, level, msg.into(), None)
     }
 
@@ -276,7 +280,7 @@ impl Manager {
         smap: &'a SourceMap,
         primary_range: FragmentedSourceRange,
         msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, 'h> {
         self.report(smap, Level::Warning, primary_range, msg)
     }
 
@@ -285,7 +289,7 @@ impl Manager {
         smap: &'a SourceMap,
         primary_range: FragmentedSourceRange,
         msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'a> {
+    ) -> DiagnosticBuilder<'a, 'h> {
         self.report(smap, Level::Error, primary_range, msg)
     }
 
