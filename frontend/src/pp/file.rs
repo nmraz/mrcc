@@ -4,8 +4,11 @@ use crate::lex::raw::Tokenizer;
 use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
+use super::state::FileState;
+
 pub struct File {
     contents: Rc<FileContents>,
+    state: FileState,
     start_pos: SourcePos,
     off: u32,
 }
@@ -14,16 +17,20 @@ impl File {
     pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> File {
         File {
             contents,
+            state: FileState::default(),
             start_pos,
             off: 0,
         }
     }
 
-    pub fn with_tokenizer<R>(&mut self, f: impl FnOnce(SourcePos, &mut Tokenizer) -> R) -> R {
+    pub fn with_tokenizer<R>(
+        &mut self,
+        f: impl FnOnce(SourcePos, &mut Tokenizer, &mut FileState) -> R,
+    ) -> R {
         let pos = self.start_pos.offset(self.off);
-        let mut tokenizer = Tokenizer::new(&self.contents.src[self.off as usize..]);
 
-        let ret = f(pos, &mut tokenizer);
+        let mut tokenizer = Tokenizer::new(&self.contents.src[self.off as usize..]);
+        let ret = f(pos, &mut tokenizer, &mut self.state);
         self.off += tokenizer.reader.pos() as u32;
 
         ret
