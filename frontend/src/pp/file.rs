@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::lex::raw::Tokenizer;
+use crate::lex::raw::{RawToken, Reader, Tokenizer};
 use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
@@ -13,6 +13,12 @@ pub struct File {
     off: u32,
 }
 
+pub struct FileProcessor<'a> {
+    pub state: &'a mut FileState,
+    pub base_pos: SourcePos,
+    tokenizer: Tokenizer<'a>,
+}
+
 impl File {
     pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> File {
         File {
@@ -23,17 +29,28 @@ impl File {
         }
     }
 
-    pub fn with_tokenizer<R>(
-        &mut self,
-        f: impl FnOnce(SourcePos, &mut Tokenizer, &mut FileState) -> R,
-    ) -> R {
+    pub fn with_processor<R>(&mut self, f: impl FnOnce(&mut FileProcessor) -> R) -> R {
         let pos = self.start_pos.offset(self.off);
 
-        let mut tokenizer = Tokenizer::new(&self.contents.src[self.off as usize..]);
-        let ret = f(pos, &mut tokenizer, &mut self.state);
-        self.off += tokenizer.reader.pos() as u32;
+        let mut processor = FileProcessor {
+            state: &mut self.state,
+            base_pos: pos,
+            tokenizer: Tokenizer::new(&self.contents.src[self.off as usize..]),
+        };
+        let ret = f(&mut processor);
+        self.off += processor.reader().pos() as u32;
 
         ret
+    }
+}
+
+impl<'a> FileProcessor<'a> {
+    pub fn next_token(&mut self) -> RawToken<'a> {
+        self.tokenizer.next_token()
+    }
+
+    pub fn reader(&mut self) -> &mut Reader<'a> {
+        &mut self.tokenizer.reader
     }
 }
 
