@@ -5,18 +5,15 @@ use crate::smap::SourceId;
 use crate::DResult;
 
 use file::Files;
+use next::{next_action, Action};
 
 mod file;
+mod next;
 mod state;
 
-enum IncludeKind {
+pub enum IncludeKind {
     Str,
     Angle,
-}
-
-enum Action {
-    Tok(Token),
-    Include(PathBuf, IncludeKind),
 }
 
 pub struct Preprocessor {
@@ -31,7 +28,9 @@ impl Preprocessor {
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
-        self.files.top().with_processor(|processor| todo!())
+        self.files
+            .top()
+            .with_processor(|processor| next_action(ctx, processor))
     }
 }
 
