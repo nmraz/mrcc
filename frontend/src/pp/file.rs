@@ -1,22 +1,16 @@
 use std::rc::Rc;
 
-use crate::lex::raw::{RawToken, Reader, Tokenizer};
+use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
 use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
-use super::state::FileState;
+use super::state::{FileState, PendingIf};
 
 pub struct File {
     contents: Rc<FileContents>,
     state: FileState,
     start_pos: SourcePos,
     off: u32,
-}
-
-pub struct FileProcessor<'a> {
-    pub state: &'a mut FileState,
-    pub base_pos: SourcePos,
-    tokenizer: Tokenizer<'a>,
 }
 
 impl File {
@@ -44,13 +38,55 @@ impl File {
     }
 }
 
+pub struct FileProcessor<'a> {
+    state: &'a mut FileState,
+    base_pos: SourcePos,
+    tokenizer: Tokenizer<'a>,
+}
+
 impl<'a> FileProcessor<'a> {
     pub fn next_token(&mut self) -> RawToken<'a> {
-        self.tokenizer.next_token()
+        let tok = self.tokenizer.next_token();
+
+        if tok.kind == RawTokenKind::Newline {
+            self.state.is_line_start = true;
+        } else if !is_trivia(tok.kind) {
+            self.state.is_line_start = false;
+        }
+
+        tok
+    }
+
+    pub fn next_token_skip_ws(&mut self) -> RawToken<'a> {
+        loop {
+            let tok = self.next_token();
+            if tok.kind != RawTokenKind::Ws {
+                break tok;
+            }
+        }
     }
 
     pub fn reader(&mut self) -> &mut Reader<'a> {
         &mut self.tokenizer.reader
+    }
+
+    pub fn pending_ifs(&mut self) -> &mut Vec<PendingIf> {
+        &mut self.state.pending_ifs
+    }
+
+    pub fn base_pos(&self) -> SourcePos {
+        self.base_pos
+    }
+
+    pub fn is_line_start(&self) -> bool {
+        self.state.is_line_start
+    }
+}
+
+fn is_trivia(kind: RawTokenKind) -> bool {
+    match kind {
+        RawTokenKind::Ws | RawTokenKind::Comment(..) => true,
+        _ => false,
     }
 }
 

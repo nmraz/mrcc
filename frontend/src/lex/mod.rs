@@ -47,10 +47,10 @@ pub struct Token {
 impl Token {
     pub fn from_raw(
         raw: &RawToken,
-        stream_start: SourcePos,
+        base_pos: SourcePos,
         ctx: &mut LexCtx<'_, '_>,
     ) -> DResult<Option<Self>> {
-        let pos = stream_start.offset(raw.content.off);
+        let pos = base_pos.offset(raw.content.off);
 
         let check_terminated = |ctx: &mut LexCtx<'_, '_>, kind: &str| {
             if !raw.terminated {
