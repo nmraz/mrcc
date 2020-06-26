@@ -20,7 +20,7 @@ impl State {
     ) -> DResult<Action> {
         loop {
             let (tok, is_line_start) = loop {
-                let is_line_start = processor.is_line_start();
+                let is_line_start = processor.state.is_line_start;
                 let raw = processor.next_token_skip_ws();
                 if let Some(tok) = Token::from_raw(&raw, processor.base_pos(), ctx)? {
                     break (tok, is_line_start);

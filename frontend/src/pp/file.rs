@@ -4,7 +4,7 @@ use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
 use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
-use super::state::{FileState, PendingIf};
+use super::state::FileState;
 
 pub struct File {
     contents: Rc<FileContents>,
@@ -39,7 +39,7 @@ impl File {
 }
 
 pub struct FileProcessor<'a> {
-    state: &'a mut FileState,
+    pub state: &'a mut FileState,
     base_pos: SourcePos,
     tokenizer: Tokenizer<'a>,
 }
@@ -70,16 +70,8 @@ impl<'a> FileProcessor<'a> {
         &mut self.tokenizer.reader
     }
 
-    pub fn pending_ifs(&mut self) -> &mut Vec<PendingIf> {
-        &mut self.state.pending_ifs
-    }
-
     pub fn base_pos(&self) -> SourcePos {
         self.base_pos
-    }
-
-    pub fn is_line_start(&self) -> bool {
-        self.state.is_line_start
     }
 }
 
