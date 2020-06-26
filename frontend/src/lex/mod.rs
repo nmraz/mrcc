@@ -15,6 +15,10 @@ mod token_kind;
 pub type Interner = intern::Interner<str>;
 pub type Symbol = intern::Symbol<str>;
 
+pub trait Lexer {
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token>;
+}
+
 pub struct LexCtx<'a, 'h> {
     pub ident_interner: &'a mut Interner,
     pub lit_interner: &'a mut Interner,
@@ -120,8 +124,4 @@ impl<'a, 'h> LexCtx<'a, 'h> {
     pub fn display_token<'t>(&'t self, tok: &'t Token) -> DisplayToken<'t, 'a, 'h> {
         DisplayToken { ctx: self, tok }
     }
-}
-
-pub trait Lexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token>;
 }
