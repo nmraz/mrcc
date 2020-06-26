@@ -1,3 +1,5 @@
+#![warn(rust_2018_idioms)]
+
 pub mod diag;
 pub mod lex;
 pub mod smap;

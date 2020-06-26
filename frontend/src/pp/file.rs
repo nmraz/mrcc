@@ -23,7 +23,7 @@ impl File {
         }
     }
 
-    pub fn with_processor<R>(&mut self, f: impl FnOnce(&mut FileProcessor) -> R) -> R {
+    pub fn with_processor<R>(&mut self, f: impl FnOnce(&mut FileProcessor<'_>) -> R) -> R {
         let pos = self.start_pos.offset(self.off);
 
         let mut processor = FileProcessor {

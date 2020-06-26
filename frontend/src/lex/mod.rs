@@ -46,7 +46,7 @@ pub struct Token {
 
 impl Token {
     pub fn from_raw(
-        raw: &RawToken,
+        raw: &RawToken<'_>,
         base_pos: SourcePos,
         ctx: &mut LexCtx<'_, '_>,
     ) -> DResult<Option<Self>> {
