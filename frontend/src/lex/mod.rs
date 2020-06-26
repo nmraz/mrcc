@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::diag::DiagnosticBuilder;
 use crate::intern;
 use crate::SourceMap;
@@ -90,6 +92,33 @@ impl Token {
 
         let range = SourceRange::new(pos, raw.content.str.len() as u32);
         Ok(Some(Token { kind, range }))
+    }
+}
+
+pub struct DisplayToken<'t, 'a, 'h> {
+    ctx: &'t LexCtx<'a, 'h>,
+    tok: &'t Token,
+}
+
+impl fmt::Display for DisplayToken<'_, '_, '_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.tok.kind {
+            TokenKind::Eof => Ok(()),
+            TokenKind::Unknown | TokenKind::Comment(_) => {
+                write!(f, "{}", self.ctx.smap.get_spelling(self.tok.range))
+            }
+            TokenKind::Punct(kind) => write!(f, "{}", kind),
+            TokenKind::Ident(sym) => write!(f, "{}", &self.ctx.ident_interner[sym]),
+            TokenKind::Number(sym) | TokenKind::Str(sym) | TokenKind::Char(sym) => {
+                write!(f, "{}", &self.ctx.lit_interner[sym])
+            }
+        }
+    }
+}
+
+impl<'a, 'h> LexCtx<'a, 'h> {
+    pub fn display_token<'t>(&'t self, tok: &'t Token) -> DisplayToken<'t, 'a, 'h> {
+        DisplayToken { ctx: self, tok }
     }
 }
 
