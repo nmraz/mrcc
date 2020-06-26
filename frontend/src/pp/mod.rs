@@ -3,7 +3,8 @@ use crate::smap::SourceId;
 use crate::DResult;
 
 use file::Files;
-use next::{next_action, Action};
+use next::Action;
+use state::State;
 
 mod file;
 mod next;
@@ -16,19 +17,22 @@ pub enum IncludeKind {
 
 pub struct Preprocessor {
     files: Files,
+    state: State,
 }
 
 impl Preprocessor {
     pub fn new(ctx: &mut LexCtx<'_, '_>, main_id: SourceId) -> Self {
         Self {
             files: Files::new(&ctx.smap, main_id),
+            state: State::new(ctx),
         }
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
+        let state = &mut self.state;
         self.files
             .top()
-            .with_processor(|processor| next_action(ctx, processor))
+            .with_processor(|processor| state.next_action(ctx, processor))
     }
 }
 
