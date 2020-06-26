@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
