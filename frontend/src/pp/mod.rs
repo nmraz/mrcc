@@ -2,11 +2,12 @@ use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
 
-use file::Files;
+use files::Files;
 use next::Action;
 use state::State;
 
 mod file;
+mod files;
 mod next;
 mod state;
 
