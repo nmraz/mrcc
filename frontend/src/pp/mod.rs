@@ -2,13 +2,12 @@ use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
 
+use file::Action;
 use files::Files;
-use next::Action;
 use state::State;
 
 mod file;
 mod files;
-mod next;
 mod state;
 
 pub enum IncludeKind {
@@ -30,10 +29,7 @@ impl Preprocessor {
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
-        let state = &mut self.state;
-        self.files
-            .top()
-            .with_processor(|processor| state.next_action(ctx, processor))
+        self.files.top().next_action(ctx, &mut self.state)
     }
 }
 
