@@ -108,9 +108,11 @@ impl fmt::Display for DisplayToken<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.tok.kind {
             TokenKind::Eof => Ok(()),
-            TokenKind::Unknown | TokenKind::Comment(_) => {
-                write!(f, "{}", self.ctx.smap.get_spelling(self.tok.range))
-            }
+            TokenKind::Unknown | TokenKind::Comment(_) => write!(
+                f,
+                "{}",
+                raw::clean(self.ctx.smap.get_spelling(self.tok.range))
+            ),
             TokenKind::Punct(kind) => write!(f, "{}", kind),
             TokenKind::Ident(sym) => write!(f, "{}", &self.ctx.ident_interner[sym]),
             TokenKind::Number(sym) | TokenKind::Str(sym) | TokenKind::Char(sym) => {
