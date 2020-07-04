@@ -5,6 +5,11 @@ use crate::SourcePos;
 
 use super::{Action, FileState, State};
 
+enum FileToken {
+    Tok { tok: Token, is_line_start: bool },
+    Newline,
+}
+
 pub struct NextActionCtx<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     state: &'a mut State,
@@ -37,9 +42,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
             let (tok, is_line_start) = loop {
-                let is_line_start = self.file_state.is_line_start;
-                let raw = self.next_token_skip_ws();
-                if let Some(tok) = Token::from_raw(&raw, self.base_pos, self.ctx)? {
+                if let FileToken::Tok { tok, is_line_start } = self.next_file_token()? {
                     break (tok, is_line_start);
                 }
             };
@@ -58,6 +61,24 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         todo!()
     }
 
+    fn next_file_token(&mut self) -> DResult<FileToken> {
+        let is_line_start = self.file_state.is_line_start;
+        let raw = self.next_token_skip_ws();
+        Token::from_raw(&raw, self.base_pos, self.ctx).map(|res| {
+            res.map(|tok| FileToken::Tok { tok, is_line_start })
+                .unwrap_or(FileToken::Newline)
+        })
+    }
+
+    fn next_token_skip_ws(&mut self) -> RawToken<'a> {
+        loop {
+            let tok = self.next_token();
+            if tok.kind != RawTokenKind::Ws {
+                break tok;
+            }
+        }
+    }
+
     fn next_token(&mut self) -> RawToken<'a> {
         let tok = self.tokenizer.next_token();
 
@@ -68,15 +89,6 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         }
 
         tok
-    }
-
-    fn next_token_skip_ws(&mut self) -> RawToken<'a> {
-        loop {
-            let tok = self.next_token();
-            if tok.kind != RawTokenKind::Ws {
-                break tok;
-            }
-        }
     }
 
     fn reader(&mut self) -> &mut Reader<'a> {
