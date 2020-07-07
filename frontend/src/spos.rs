@@ -102,6 +102,13 @@ impl From<SourcePos> for FragmentedSourceRange {
     }
 }
 
+impl From<SourceRange> for FragmentedSourceRange {
+    #[inline]
+    fn from(range: SourceRange) -> Self {
+        Self::new(range.start(), range.end())
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct LineCol {
     pub line: u32,
