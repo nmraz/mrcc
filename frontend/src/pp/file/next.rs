@@ -1,9 +1,12 @@
+use std::path::PathBuf;
+
+use crate::diag::RawSuggestion;
 use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::DResult;
 use crate::{SourcePos, SourceRange};
 
-use super::{Action, FileState, State};
+use super::{Action, FileState, IncludeKind, State};
 
 enum FileToken {
     Tok { tok: Token, is_line_start: bool },
@@ -71,13 +74,66 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
             }
         };
 
-        todo!()
+        let known_idents = &self.state.known_idents;
+
+        if ident == known_idents.dir_include {
+            self.handle_include()
+        } else {
+            self.invalid_directive(tok.range)?;
+            Ok(None)
+        }
+    }
+
+    fn handle_include(&mut self) -> DResult<Option<Action>> {
+        let reader = self.reader();
+        reader.eat_line_ws();
+
+        let (name, kind) = if reader.eat('<') {
+            (self.consume_include_name('>')?, IncludeKind::Angle)
+        } else if reader.eat('"') {
+            (self.consume_include_name('"')?, IncludeKind::Str)
+        } else {
+            self.ctx
+                .error(
+                    self.base_pos.offset(self.off()).into(),
+                    "expected a file name",
+                )
+                .emit()?;
+            self.advance_line();
+            return Ok(None);
+        };
+
+        Ok(Some(Action::Include(name, kind)))
+    }
+
+    fn consume_include_name(&mut self, term: char) -> DResult<PathBuf> {
+        let reader = self.reader();
+
+        reader.begin_tok();
+        reader.eat_while(|c| c != '\n' && c != term);
+        let filename = reader.cur_content().cleaned_str().into_owned().into();
+
+        let after_name = reader.pos() as u32;
+        if reader.bump() != Some(term) {
+            let pos = self.base_pos.offset(after_name);
+            self.ctx
+                .error(pos.into(), format!("expected a '{}'", term))
+                .add_suggestion(RawSuggestion::new_insertion(pos, term.to_string()))
+                .emit()?;
+        }
+
+        Ok(filename)
     }
 
     fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
+        self.advance_line();
         self.ctx
             .error(range.into(), "invalid preprocessing directive")
             .emit()
+    }
+
+    fn advance_line(&mut self) {
+        self.reader().eat_to_after('\n');
     }
 
     fn next_file_token(&mut self) -> DResult<FileToken> {
