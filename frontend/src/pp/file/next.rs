@@ -1,7 +1,7 @@
 use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::DResult;
-use crate::SourcePos;
+use crate::{SourcePos, SourceRange};
 
 use super::{Action, FileState, State};
 
@@ -58,7 +58,26 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
+        let tok = match self.next_file_token()? {
+            FileToken::Tok { tok, .. } => tok,
+            FileToken::Newline => return Ok(None),
+        };
+
+        let ident = match tok.kind {
+            TokenKind::Ident(ident) => ident,
+            _ => {
+                self.invalid_directive(tok.range)?;
+                return Ok(None);
+            }
+        };
+
         todo!()
+    }
+
+    fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
+        self.ctx
+            .error(range.into(), "invalid preprocessing directive")
+            .emit()
     }
 
     fn next_file_token(&mut self) -> DResult<FileToken> {
