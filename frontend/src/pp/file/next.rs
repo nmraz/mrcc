@@ -84,6 +84,13 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         }
     }
 
+    fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
+        self.advance_line();
+        self.reporter()
+            .error(range, "invalid preprocessing directive")
+            .emit()
+    }
+
     fn handle_include(&mut self) -> DResult<Option<Action>> {
         let reader = self.reader();
         reader.eat_line_ws();
@@ -93,7 +100,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         } else if reader.eat('"') {
             (self.consume_include_name('"')?, IncludeKind::Str)
         } else {
-            let pos = self.base_pos.offset(self.off());
+            let pos = self.pos();
             self.reporter().error(pos, "expected a file name").emit()?;
             self.advance_line();
             return Ok(None);
@@ -109,9 +116,8 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         reader.eat_while(|c| c != '\n' && c != term);
         let filename = reader.cur_content().cleaned_str().into_owned().into();
 
-        let after_name = reader.pos() as u32;
         if !reader.eat(term) {
-            let pos = self.base_pos.offset(after_name);
+            let pos = self.pos();
             self.reporter()
                 .error(pos, format!("expected a '{}'", term))
                 .add_suggestion(RawSuggestion::new(pos, term.to_string()))
@@ -120,13 +126,6 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
         self.finish_directive()?;
         Ok(filename)
-    }
-
-    fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
-        self.advance_line();
-        self.reporter()
-            .error(range, "invalid preprocessing directive")
-            .emit()
     }
 
     fn finish_directive(&mut self) -> DResult<()> {
@@ -187,6 +186,10 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     fn reader(&mut self) -> &mut Reader<'a> {
         &mut self.tokenizer.reader
+    }
+
+    fn pos(&self) -> SourcePos {
+        self.base_pos.offset(self.off())
     }
 }
 
