@@ -287,6 +287,8 @@ impl<'h> Manager<'h> {
             _ => {}
         }
 
+        self.handler.handle(diag);
+
         if let Some(limit) = self.error_limit {
             if self.error_count >= limit {
                 return self
@@ -295,7 +297,6 @@ impl<'h> Manager<'h> {
             }
         }
 
-        self.handler.handle(diag);
         Ok(())
     }
 }
