@@ -11,22 +11,15 @@ pub struct Suggestion<R> {
     pub insert_text: String,
 }
 
-impl<R> Suggestion<R>
-where
-    SourcePos: Into<R>,
-{
-    pub fn new(replacement_range: R, insert_text: impl Into<String>) -> Self {
+impl<R> Suggestion<R> {
+    pub fn new(replacement_range: impl Into<R>, insert_text: impl Into<String>) -> Self {
         Suggestion {
-            replacement_range,
+            replacement_range: replacement_range.into(),
             insert_text: insert_text.into(),
         }
     }
 
-    pub fn new_insertion(pos: SourcePos, text: impl Into<String>) -> Self {
-        Self::new(pos.into(), text)
-    }
-
-    pub fn new_deletion(range: R) -> Self {
+    pub fn new_deletion(range: impl Into<R>) -> Self {
         Self::new(range, "")
     }
 }

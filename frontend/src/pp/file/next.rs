@@ -114,7 +114,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
             let pos = self.base_pos.offset(after_name);
             self.reporter()
                 .error(pos, format!("expected a '{}'", term))
-                .add_suggestion(RawSuggestion::new_insertion(pos, term.to_string()))
+                .add_suggestion(RawSuggestion::new(pos, term.to_string()))
                 .emit()?;
         }
 
@@ -140,7 +140,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
             self.advance_line();
             self.reporter()
                 .warn(tok.range, "extra tokens after preprocessing directive")
-                .add_suggestion(RawSuggestion::new_insertion(tok.range.start(), "// "))
+                .add_suggestion(RawSuggestion::new(tok.range.start(), "// "))
                 .emit()?;
         }
 
