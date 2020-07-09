@@ -321,3 +321,40 @@ impl<'h> Manager<'h> {
         Ok(())
     }
 }
+
+pub struct Reporter<'a, 'h> {
+    manager: &'a mut Manager<'h>,
+    smap: &'a SourceMap,
+}
+
+impl<'a, 'h> Reporter<'a, 'h> {
+    pub fn new(manager: &'a mut Manager<'h>, smap: &'a SourceMap) -> Self {
+        Self { manager, smap }
+    }
+
+    pub fn report(
+        &mut self,
+        level: Level,
+        primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
+    ) -> DiagnosticBuilder<'_, 'h> {
+        self.manager
+            .report(self.smap, level, primary_range, msg.into())
+    }
+
+    pub fn warn(
+        &mut self,
+        primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
+    ) -> DiagnosticBuilder<'_, 'h> {
+        self.report(Level::Warning, primary_range, msg)
+    }
+
+    pub fn error(
+        &mut self,
+        primary_range: FragmentedSourceRange,
+        msg: impl Into<String>,
+    ) -> DiagnosticBuilder<'_, 'h> {
+        self.report(Level::Error, primary_range, msg)
+    }
+}
