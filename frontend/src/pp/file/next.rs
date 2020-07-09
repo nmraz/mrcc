@@ -114,7 +114,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         let filename = reader.cur_content().cleaned_str().into_owned().into();
 
         let after_name = reader.pos() as u32;
-        if reader.bump() != Some(term) {
+        if !reader.eat(term) {
             let pos = self.base_pos.offset(after_name);
             self.ctx
                 .error(pos.into(), format!("expected a '{}'", term))
@@ -122,6 +122,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
                 .emit()?;
         }
 
+        self.finish_directive()?;
         Ok(filename)
     }
 
@@ -130,6 +131,27 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         self.ctx
             .error(range.into(), "invalid preprocessing directive")
             .emit()
+    }
+
+    fn finish_directive(&mut self) -> DResult<()> {
+        let next = self.next_file_token()?;
+
+        if is_eod(&next) {
+            return Ok(());
+        }
+
+        if let FileToken::Tok { tok, .. } = next {
+            self.advance_line();
+            self.ctx
+                .warning(
+                    tok.range.into(),
+                    "extra tokens after preprocessing directive",
+                )
+                .add_suggestion(RawSuggestion::new_insertion(tok.range.start(), "// "))
+                .emit()?;
+        }
+
+        Ok(())
     }
 
     fn advance_line(&mut self) {
@@ -175,5 +197,12 @@ fn is_trivia(kind: RawTokenKind) -> bool {
     match kind {
         RawTokenKind::Ws | RawTokenKind::Comment(..) => true,
         _ => false,
+    }
+}
+
+fn is_eod(file_tok: &FileToken) -> bool {
+    match file_tok {
+        FileToken::Newline => true,
+        FileToken::Tok { tok, .. } => tok.kind == TokenKind::Eof,
     }
 }
