@@ -1,5 +1,5 @@
 use crate::SourceMap;
-use crate::{FragmentedSourceRange, SourcePos, SourceRange};
+use crate::{FragmentedSourceRange, SourceRange};
 
 pub use render::render;
 

@@ -1,10 +1,10 @@
 use std::fmt;
 
-use crate::diag::{DiagnosticBuilder, Reporter};
+use crate::diag::Reporter;
 use crate::intern;
 use crate::SourceMap;
 use crate::{DResult, DiagManager};
-use crate::{FragmentedSourceRange, SourcePos, SourceRange};
+use crate::{SourcePos, SourceRange};
 
 use raw::{RawToken, RawTokenKind};
 pub use token_kind::{CommentKind, PunctKind, TokenKind};
