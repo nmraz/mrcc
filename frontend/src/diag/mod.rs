@@ -262,35 +262,13 @@ impl<'h> Manager<'h> {
         smap: &'a SourceMap,
         level: Level,
         primary_range: FragmentedSourceRange,
-        msg: impl Into<String>,
+        msg: String,
     ) -> DiagnosticBuilder<'a, 'h> {
-        DiagnosticBuilder::new(self, level, msg.into(), Some((primary_range, smap)))
+        DiagnosticBuilder::new(self, level, msg, Some((primary_range, smap)))
     }
 
-    pub fn report_anon(
-        &mut self,
-        level: Level,
-        msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'_, 'h> {
-        DiagnosticBuilder::new(self, level, msg.into(), None)
-    }
-
-    pub fn warning<'a>(
-        &'a mut self,
-        smap: &'a SourceMap,
-        primary_range: FragmentedSourceRange,
-        msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'a, 'h> {
-        self.report(smap, Level::Warning, primary_range, msg)
-    }
-
-    pub fn error<'a>(
-        &'a mut self,
-        smap: &'a SourceMap,
-        primary_range: FragmentedSourceRange,
-        msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'a, 'h> {
-        self.report(smap, Level::Error, primary_range, msg)
+    pub fn report_anon(&mut self, level: Level, msg: String) -> DiagnosticBuilder<'_, 'h> {
+        DiagnosticBuilder::new(self, level, msg, None)
     }
 
     pub fn warning_count(&self) -> u32 {
@@ -312,7 +290,7 @@ impl<'h> Manager<'h> {
         if let Some(limit) = self.error_limit {
             if self.error_count >= limit {
                 return self
-                    .report_anon(Level::Fatal, "too many errors emitted")
+                    .report_anon(Level::Fatal, "too many errors emitted".to_owned())
                     .emit();
             }
         }
@@ -335,16 +313,16 @@ impl<'a, 'h> Reporter<'a, 'h> {
     pub fn report(
         &mut self,
         level: Level,
-        primary_range: FragmentedSourceRange,
+        primary_range: impl Into<FragmentedSourceRange>,
         msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_, 'h> {
         self.manager
-            .report(self.smap, level, primary_range, msg.into())
+            .report(self.smap, level, primary_range.into(), msg.into())
     }
 
     pub fn warn(
         &mut self,
-        primary_range: FragmentedSourceRange,
+        primary_range: impl Into<FragmentedSourceRange>,
         msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_, 'h> {
         self.report(Level::Warning, primary_range, msg)
@@ -352,7 +330,7 @@ impl<'a, 'h> Reporter<'a, 'h> {
 
     pub fn error(
         &mut self,
-        primary_range: FragmentedSourceRange,
+        primary_range: impl Into<FragmentedSourceRange>,
         msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_, 'h> {
         self.report(Level::Error, primary_range, msg)

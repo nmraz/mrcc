@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::diag::RawSuggestion;
+use crate::diag::{RawSuggestion, Reporter};
 use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::DResult;
@@ -93,12 +93,8 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         } else if reader.eat('"') {
             (self.consume_include_name('"')?, IncludeKind::Str)
         } else {
-            self.ctx
-                .error(
-                    self.base_pos.offset(self.off()).into(),
-                    "expected a file name",
-                )
-                .emit()?;
+            let pos = self.base_pos.offset(self.off());
+            self.reporter().error(pos, "expected a file name").emit()?;
             self.advance_line();
             return Ok(None);
         };
@@ -116,8 +112,8 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         let after_name = reader.pos() as u32;
         if !reader.eat(term) {
             let pos = self.base_pos.offset(after_name);
-            self.ctx
-                .error(pos.into(), format!("expected a '{}'", term))
+            self.reporter()
+                .error(pos, format!("expected a '{}'", term))
                 .add_suggestion(RawSuggestion::new_insertion(pos, term.to_string()))
                 .emit()?;
         }
@@ -128,8 +124,8 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
         self.advance_line();
-        self.ctx
-            .error(range.into(), "invalid preprocessing directive")
+        self.reporter()
+            .error(range, "invalid preprocessing directive")
             .emit()
     }
 
@@ -142,11 +138,8 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
         if let FileToken::Tok { tok, .. } = next {
             self.advance_line();
-            self.ctx
-                .warning(
-                    tok.range.into(),
-                    "extra tokens after preprocessing directive",
-                )
+            self.reporter()
+                .warn(tok.range, "extra tokens after preprocessing directive")
                 .add_suggestion(RawSuggestion::new_insertion(tok.range.start(), "// "))
                 .emit()?;
         }
@@ -186,6 +179,10 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         }
 
         tok
+    }
+
+    fn reporter(&mut self) -> Reporter<'_, 'h> {
+        self.ctx.reporter()
     }
 
     fn reader(&mut self) -> &mut Reader<'a> {

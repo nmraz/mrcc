@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::diag::DiagnosticBuilder;
+use crate::diag::{DiagnosticBuilder, Reporter};
 use crate::intern;
 use crate::SourceMap;
 use crate::{DResult, DiagManager};
@@ -27,20 +27,8 @@ pub struct LexCtx<'a, 'h> {
 }
 
 impl<'a, 'h> LexCtx<'a, 'h> {
-    pub fn warning(
-        &mut self,
-        primary_range: FragmentedSourceRange,
-        msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'_, 'h> {
-        self.diags.warning(self.smap, primary_range, msg)
-    }
-
-    pub fn error(
-        &mut self,
-        primary_range: FragmentedSourceRange,
-        msg: impl Into<String>,
-    ) -> DiagnosticBuilder<'_, 'h> {
-        self.diags.error(self.smap, primary_range, msg)
+    pub fn reporter(&mut self) -> Reporter<'_, 'h> {
+        Reporter::new(self.diags, self.smap)
     }
 }
 
@@ -60,7 +48,8 @@ impl Token {
 
         let check_terminated = |ctx: &mut LexCtx<'_, '_>, kind: &str| {
             if !raw.terminated {
-                ctx.error(pos.into(), format!("unterminated {}", kind))
+                ctx.reporter()
+                    .error(pos, format!("unterminated {}", kind))
                     .emit()?;
             }
             Ok(())
