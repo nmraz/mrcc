@@ -65,7 +65,7 @@ fn is_ident_continue(c: char) -> bool {
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     input: &'a str,
-    pos: usize,
+    off: u32,
     tainted: bool,
 }
 
@@ -73,7 +73,7 @@ impl<'a> SkipEscapedNewlines<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
-            pos: 0,
+            off: 0,
             tainted: false,
         }
     }
@@ -83,11 +83,11 @@ impl<'a> SkipEscapedNewlines<'a> {
     }
 
     pub fn remaining(&self) -> &'a str {
-        &self.input[self.pos..]
+        &self.input[self.off as usize..]
     }
 
-    pub fn pos(&self) -> usize {
-        self.pos
+    pub fn off(&self) -> u32 {
+        self.off
     }
 
     pub fn tainted(&self) -> bool {
@@ -106,12 +106,12 @@ impl Iterator for SkipEscapedNewlines<'_> {
     fn next(&mut self) -> Option<char> {
         while self.remaining().starts_with("\\\n") {
             self.tainted = true;
-            self.pos += 2;
+            self.off += 2;
         }
 
         let next = self.remaining().chars().next();
         if let Some(c) = next {
-            self.pos += c.len_utf8();
+            self.off += c.len_utf8() as u32;
         }
         next
     }
@@ -120,7 +120,7 @@ impl Iterator for SkipEscapedNewlines<'_> {
 #[derive(Clone)]
 pub struct Reader<'a> {
     iter: SkipEscapedNewlines<'a>,
-    start: usize,
+    start: u32,
 }
 
 impl<'a> Reader<'a> {
@@ -133,15 +133,15 @@ impl<'a> Reader<'a> {
     }
 
     #[inline]
-    pub fn pos(&self) -> usize {
-        self.iter.pos()
+    pub fn off(&self) -> u32 {
+        self.iter.off()
     }
 
     #[inline]
     pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
             off: self.start as u32,
-            str: &self.iter.input()[self.start..self.pos()],
+            str: &self.iter.input()[self.start as usize..self.off() as usize],
             tainted: self.iter.tainted(),
         }
     }
@@ -151,7 +151,7 @@ impl<'a> Reader<'a> {
     }
 
     pub fn begin_tok(&mut self) {
-        self.start = self.pos();
+        self.start = self.off();
         self.iter.untaint();
     }
 

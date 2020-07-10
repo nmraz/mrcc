@@ -39,7 +39,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     pub fn off(&self) -> u32 {
-        self.tokenizer.reader.pos() as u32
+        self.tokenizer.reader.off()
     }
 
     pub fn next_action(&mut self) -> DResult<Action> {
