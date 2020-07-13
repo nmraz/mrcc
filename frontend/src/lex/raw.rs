@@ -7,7 +7,6 @@ pub enum RawTokenKind {
     Unknown,
     Eof,
 
-    Ws,
     Newline,
     Comment(CommentKind),
 
@@ -30,6 +29,7 @@ pub struct RawContent<'a> {
 pub struct RawToken<'a> {
     pub kind: RawTokenKind,
     pub content: RawContent<'a>,
+    pub leading_ws: bool,
     pub terminated: bool,
 }
 
@@ -204,6 +204,7 @@ impl<'a> Reader<'a> {
 
 pub struct Tokenizer<'a> {
     pub reader: Reader<'a>,
+    leading_ws: bool,
 }
 
 impl<'a> Tokenizer<'a> {
@@ -211,26 +212,12 @@ impl<'a> Tokenizer<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             reader: Reader::new(input),
+            leading_ws: false,
         }
-    }
-
-    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
-        RawToken {
-            kind,
-            content: self.reader.cur_content(),
-            terminated,
-        }
-    }
-
-    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'a> {
-        self.tok(kind, true)
-    }
-
-    fn punct(&self, kind: PunctKind) -> RawToken<'a> {
-        self.tok_term(RawTokenKind::Punct(kind))
     }
 
     pub fn next_token(&mut self) -> RawToken<'a> {
+        self.leading_ws = self.reader.eat_line_ws();
         self.reader.begin_tok();
 
         let c = match self.reader.bump() {
@@ -239,10 +226,6 @@ impl<'a> Tokenizer<'a> {
         };
 
         match c {
-            ws if is_line_ws(ws) => {
-                self.reader.eat_line_ws();
-                self.tok_term(RawTokenKind::Ws)
-            }
             '\n' => self.tok_term(RawTokenKind::Newline),
 
             'U' | 'L' => self.handle_encoding_prefix(true),
@@ -484,5 +467,22 @@ impl<'a> Tokenizer<'a> {
         };
 
         self.tok(RawTokenKind::Comment(CommentKind::Block), terminated)
+    }
+
+    fn punct(&self, kind: PunctKind) -> RawToken<'a> {
+        self.tok_term(RawTokenKind::Punct(kind))
+    }
+
+    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'a> {
+        self.tok(kind, true)
+    }
+
+    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
+        RawToken {
+            kind,
+            content: self.reader.cur_content(),
+            leading_ws: self.leading_ws,
+            terminated,
+        }
     }
 }

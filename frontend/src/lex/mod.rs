@@ -60,7 +60,6 @@ impl Token {
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
             RawTokenKind::Eof => TokenKind::Eof,
-            RawTokenKind::Ws => return Ok(None),
             RawTokenKind::Newline => return Ok(None),
 
             RawTokenKind::Comment(comment) => {

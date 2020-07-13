@@ -149,20 +149,11 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     fn next_file_token(&mut self) -> DResult<FileToken> {
         let is_line_start = self.file_state.is_line_start;
-        let raw = self.next_token_skip_ws();
+        let raw = self.next_token();
         Token::from_raw(&raw, self.base_pos, self.ctx).map(|res| {
             res.map(|tok| FileToken::Tok { tok, is_line_start })
                 .unwrap_or(FileToken::Newline)
         })
-    }
-
-    fn next_token_skip_ws(&mut self) -> RawToken<'a> {
-        loop {
-            let tok = self.next_token();
-            if tok.kind != RawTokenKind::Ws {
-                break tok;
-            }
-        }
     }
 
     fn next_token(&mut self) -> RawToken<'a> {
@@ -192,7 +183,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
 fn is_trivia(kind: RawTokenKind) -> bool {
     match kind {
-        RawTokenKind::Ws | RawTokenKind::Comment(..) => true,
+        RawTokenKind::Comment(..) => true,
         _ => false,
     }
 }
