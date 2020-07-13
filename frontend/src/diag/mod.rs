@@ -1,5 +1,5 @@
 use crate::SourceMap;
-use crate::{FragmentedSourceRange, SourceRange};
+use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
 pub use render::render;
 
@@ -328,5 +328,14 @@ impl<'a, 'h> Reporter<'a, 'h> {
         msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_, 'h> {
         self.report(Level::Error, primary_range, msg)
+    }
+
+    pub fn error_expected_delim(
+        &mut self,
+        pos: SourcePos,
+        delim: char,
+    ) -> DiagnosticBuilder<'_, 'h> {
+        self.error(pos, format!("expected a '{}'", delim))
+            .add_suggestion(RawSuggestion::new(pos, delim.to_string()))
     }
 }

@@ -118,10 +118,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
         if !reader.eat(term) {
             let pos = self.pos();
-            self.reporter()
-                .error(pos, format!("expected a '{}'", term))
-                .add_suggestion(RawSuggestion::new(pos, term.to_string()))
-                .emit()?;
+            self.reporter().error_expected_delim(pos, term).emit()?;
         }
 
         self.finish_directive()?;
