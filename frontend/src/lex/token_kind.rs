@@ -141,3 +141,12 @@ pub enum TokenKind {
     Str(Symbol),
     Char(Symbol),
 }
+
+impl TokenKind {
+    pub fn is_trivia(self) -> bool {
+        match self {
+            TokenKind::Comment(..) => true,
+            _ => false,
+        }
+    }
+}
