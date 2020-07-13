@@ -9,7 +9,7 @@ use crate::{SourcePos, SourceRange};
 use super::{Action, FileState, IncludeKind, State};
 
 enum FileToken {
-    Tok { tok: Token, is_line_start: bool },
+    Tok { tok: Token, line_start: bool },
     Newline,
 }
 
@@ -44,13 +44,13 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
-            let (tok, is_line_start) = loop {
-                if let FileToken::Tok { tok, is_line_start } = self.next_file_token()? {
-                    break (tok, is_line_start);
+            let (tok, line_start) = loop {
+                if let FileToken::Tok { tok, line_start } = self.next_file_token()? {
+                    break (tok, line_start);
                 }
             };
 
-            if is_line_start && tok.kind == TokenKind::Punct(PunctKind::Hash) {
+            if line_start && tok.kind == TokenKind::Punct(PunctKind::Hash) {
                 if let Some(action) = self.handle_directive()? {
                     break Ok(action);
                 }
@@ -148,10 +148,10 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn next_file_token(&mut self) -> DResult<FileToken> {
-        let is_line_start = self.file_state.is_line_start;
+        let line_start = self.file_state.line_start;
         let raw = self.next_token();
         Token::from_raw(&raw, self.base_pos, self.ctx).map(|res| {
-            res.map(|tok| FileToken::Tok { tok, is_line_start })
+            res.map(|tok| FileToken::Tok { tok, line_start })
                 .unwrap_or(FileToken::Newline)
         })
     }
@@ -160,9 +160,9 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         let tok = self.tokenizer.next_token();
 
         if tok.kind == RawTokenKind::Newline {
-            self.file_state.is_line_start = true;
+            self.file_state.line_start = true;
         } else if !is_trivia(tok.kind) {
-            self.file_state.is_line_start = false;
+            self.file_state.line_start = false;
         }
 
         tok
