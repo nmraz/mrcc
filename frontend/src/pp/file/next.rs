@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::diag::{RawSuggestion, Reporter};
-use crate::lex::raw::{RawToken, RawTokenKind, Reader, Tokenizer};
+use crate::lex::raw::{Reader, Tokenizer};
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::DResult;
 use crate::{SourcePos, SourceRange};
