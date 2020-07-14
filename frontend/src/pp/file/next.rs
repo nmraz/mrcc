@@ -93,10 +93,10 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
-        self.advance_line();
         self.reporter()
             .error(range, "invalid preprocessing directive")
-            .emit()
+            .emit()?;
+        self.advance_to_eod()
     }
 
     fn handle_include(&mut self) -> DResult<Option<Action>> {
@@ -110,7 +110,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         } else {
             let pos = self.pos();
             self.reporter().error(pos, "expected a file name").emit()?;
-            self.advance_line();
+            self.advance_to_eod()?;
             return Ok(None);
         };
 
@@ -141,18 +141,19 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         }
 
         if let FileToken::Tok { tok, .. } = next {
-            self.advance_line();
             self.reporter()
                 .warn(tok.range, "extra tokens after preprocessing directive")
                 .add_suggestion(RawSuggestion::new(tok.range.start(), "// "))
                 .emit()?;
+            self.advance_to_eod()?;
         }
 
         Ok(())
     }
 
-    fn advance_line(&mut self) {
-        self.reader().eat_to_after('\n');
+    fn advance_to_eod(&mut self) -> DResult<()> {
+        while !is_eod(&self.next_token()?) {}
+        Ok(())
     }
 
     fn next_token(&mut self) -> DResult<FileToken> {
