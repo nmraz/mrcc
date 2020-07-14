@@ -18,6 +18,15 @@ enum FileToken {
     Newline,
 }
 
+impl FileToken {
+    pub fn is_eod(&self) -> bool {
+        match self {
+            FileToken::Newline => true,
+            FileToken::Tok { tok, .. } => tok.kind == TokenKind::Eof,
+        }
+    }
+}
+
 pub struct NextActionCtx<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     state: &'a mut State,
@@ -136,7 +145,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     fn finish_directive(&mut self) -> DResult<()> {
         let next = self.next_token()?;
 
-        if is_eod(&next) {
+        if next.is_eod() {
             return Ok(());
         }
 
@@ -152,7 +161,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
-        while !is_eod(&self.next_token()?) {}
+        while !self.next_token()?.is_eod() {}
         Ok(())
     }
 
@@ -193,12 +202,5 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     fn pos(&self) -> SourcePos {
         self.base_pos.offset(self.off())
-    }
-}
-
-fn is_eod(file_tok: &FileToken) -> bool {
-    match file_tok {
-        FileToken::Newline => true,
-        FileToken::Tok { tok, .. } => tok.kind == TokenKind::Eof,
     }
 }
