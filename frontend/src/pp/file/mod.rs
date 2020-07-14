@@ -10,9 +10,11 @@ use super::state::State;
 use super::IncludeKind;
 
 use next::NextActionCtx;
+use processor::Processor;
 use state::FileState;
 
 mod next;
+mod processor;
 mod state;
 
 pub enum Action {
@@ -38,15 +40,18 @@ impl File {
     }
 
     pub fn next_action(&mut self, ctx: &mut LexCtx<'_, '_>, state: &mut State) -> DResult<Action> {
-        let mut next_ctx = NextActionCtx::new(
-            ctx,
-            state,
+        self.with_processor(|processor| NextActionCtx::new(ctx, state, processor).next_action())
+    }
+
+    fn with_processor<R, F: FnOnce(&mut Processor<'_>) -> R>(&mut self, f: F) -> R {
+        let off = self.off;
+        let mut processor = Processor::new(
             &mut self.state,
-            self.start_pos.offset(self.off),
-            &self.contents.src[self.off as usize..],
+            &self.contents.src[off as usize..],
+            self.start_pos.offset(off),
         );
-        let ret = next_ctx.next_action();
-        self.off += next_ctx.off();
+        let ret = f(&mut processor);
+        self.off += processor.off();
         ret
     }
 }

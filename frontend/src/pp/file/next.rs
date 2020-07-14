@@ -1,59 +1,31 @@
-use std::mem;
 use std::path::PathBuf;
 
 use crate::diag::{RawSuggestion, Reporter};
-use crate::lex::raw::{Reader, Tokenizer};
-use crate::lex::{FromRawResult, LexCtx, PunctKind, Token, TokenKind};
+use crate::lex::{LexCtx, PunctKind, TokenKind};
 use crate::DResult;
-use crate::{SourcePos, SourceRange};
+use crate::SourceRange;
 
-use super::{Action, FileState, IncludeKind, State};
+use super::processor::{FileToken, Processor};
+use super::{Action, IncludeKind};
+use crate::pp::State;
 
-enum FileToken {
-    Tok {
-        tok: Token,
-        line_start: bool,
-        leading_trivia: bool,
-    },
-    Newline,
-}
-
-impl FileToken {
-    pub fn is_eod(&self) -> bool {
-        match self {
-            FileToken::Newline => true,
-            FileToken::Tok { tok, .. } => tok.kind == TokenKind::Eof,
-        }
-    }
-}
-
-pub struct NextActionCtx<'a, 'b, 'h> {
+pub struct NextActionCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     state: &'a mut State,
-    file_state: &'a mut FileState,
-    base_pos: SourcePos,
-    tokenizer: Tokenizer<'a>,
+    processor: &'a mut Processor<'s>,
 }
 
-impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
+impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     pub fn new(
         ctx: &'a mut LexCtx<'b, 'h>,
         state: &'a mut State,
-        file_state: &'a mut FileState,
-        base_pos: SourcePos,
-        remaining_source: &'a str,
+        processor: &'a mut Processor<'s>,
     ) -> Self {
         Self {
             ctx,
             state,
-            file_state,
-            base_pos,
-            tokenizer: Tokenizer::new(remaining_source),
+            processor,
         }
-    }
-
-    pub fn off(&self) -> u32 {
-        self.tokenizer.reader.off()
     }
 
     pub fn next_action(&mut self) -> DResult<Action> {
@@ -109,7 +81,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn handle_include(&mut self) -> DResult<Option<Action>> {
-        let reader = self.reader();
+        let reader = self.processor.reader();
         reader.eat_line_ws();
 
         let (name, kind) = if reader.eat('<') {
@@ -117,7 +89,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         } else if reader.eat('"') {
             (self.consume_include_name('"')?, IncludeKind::Str)
         } else {
-            let pos = self.pos();
+            let pos = self.processor.pos();
             self.reporter().error(pos, "expected a file name").emit()?;
             self.advance_to_eod()?;
             return Ok(None);
@@ -127,14 +99,14 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn consume_include_name(&mut self, term: char) -> DResult<PathBuf> {
-        let reader = self.reader();
+        let reader = self.processor.reader();
 
         reader.begin_tok();
         reader.eat_while(|c| c != '\n' && c != term);
         let filename = reader.cur_content().cleaned_str().into_owned().into();
 
         if !reader.eat(term) {
-            let pos = self.pos();
+            let pos = self.processor.pos();
             self.reporter().error_expected_delim(pos, term).emit()?;
         }
 
@@ -161,46 +133,14 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
-        while !self.next_token()?.is_eod() {}
-        Ok(())
+        self.processor.advance_to_eod(self.ctx)
     }
 
     fn next_token(&mut self) -> DResult<FileToken> {
-        let mut leading_trivia = false;
-
-        let ret = loop {
-            match Token::from_raw(&self.tokenizer.next_token(), self.base_pos, self.ctx)? {
-                FromRawResult::Tok(tok) => {
-                    break FileToken::Tok {
-                        tok,
-                        line_start: mem::replace(&mut self.file_state.line_start, false),
-                        leading_trivia,
-                    };
-                }
-
-                FromRawResult::Newline => {
-                    self.file_state.line_start = true;
-                    break FileToken::Newline;
-                }
-
-                FromRawResult::Trivia => {
-                    leading_trivia = true;
-                }
-            };
-        };
-
-        Ok(ret)
+        self.processor.next_token(self.ctx)
     }
 
     fn reporter(&mut self) -> Reporter<'_, 'h> {
         self.ctx.reporter()
-    }
-
-    fn reader(&mut self) -> &mut Reader<'a> {
-        &mut self.tokenizer.reader
-    }
-
-    fn pos(&self) -> SourcePos {
-        self.base_pos.offset(self.off())
     }
 }
