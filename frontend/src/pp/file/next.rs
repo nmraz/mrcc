@@ -9,7 +9,11 @@ use crate::{SourcePos, SourceRange};
 use super::{Action, FileState, IncludeKind, State};
 
 enum FileToken {
-    Tok { tok: Token, line_start: bool },
+    Tok {
+        tok: Token,
+        line_start: bool,
+        leading_ws: bool,
+    },
     Newline,
 }
 
@@ -45,7 +49,10 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
             let (tok, line_start) = loop {
-                if let FileToken::Tok { tok, line_start } = self.next_file_token()? {
+                if let FileToken::Tok {
+                    tok, line_start, ..
+                } = self.next_token()?
+                {
                     break (tok, line_start);
                 }
             };
@@ -61,7 +68,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
-        let tok = match self.next_file_token()? {
+        let tok = match self.next_nontriv_token()? {
             FileToken::Tok { tok, .. } => tok,
             FileToken::Newline => return Ok(None),
         };
@@ -126,7 +133,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn finish_directive(&mut self) -> DResult<()> {
-        let next = self.next_file_token()?;
+        let next = self.next_nontriv_token()?;
 
         if is_eod(&next) {
             return Ok(());
@@ -147,25 +154,56 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         self.reader().eat_to_after('\n');
     }
 
-    fn next_file_token(&mut self) -> DResult<FileToken> {
-        let line_start = self.file_state.line_start;
-        let raw = self.next_token();
-        Token::from_raw(&raw, self.base_pos, self.ctx).map(|res| {
-            res.map(|tok| FileToken::Tok { tok, line_start })
-                .unwrap_or(FileToken::Newline)
-        })
+    fn next_nontriv_token(&mut self) -> DResult<FileToken> {
+        let mut leading_trivia = false;
+
+        let ret = loop {
+            let next = self.next_token()?;
+            match next {
+                FileToken::Newline => break FileToken::Newline,
+                FileToken::Tok {
+                    tok,
+                    line_start,
+                    leading_ws,
+                } => {
+                    if tok.kind.is_trivia() {
+                        leading_trivia = true;
+                    } else {
+                        break FileToken::Tok {
+                            tok,
+                            line_start,
+                            leading_ws: leading_ws || leading_trivia,
+                        };
+                    }
+                }
+            };
+        };
+
+        Ok(ret)
     }
 
-    fn next_token(&mut self) -> RawToken<'a> {
-        let tok = self.tokenizer.next_token();
+    fn next_token(&mut self) -> DResult<FileToken> {
+        let line_start = self.file_state.line_start;
 
-        if tok.kind == RawTokenKind::Newline {
-            self.file_state.line_start = true;
-        } else if !is_trivia(tok.kind) {
-            self.file_state.line_start = false;
-        }
+        let raw = self.tokenizer.next_token();
+        let ret = match Token::from_raw(&raw, self.base_pos, self.ctx)? {
+            Some(tok) => {
+                if !tok.kind.is_trivia() {
+                    self.file_state.line_start = false;
+                }
+                FileToken::Tok {
+                    tok,
+                    line_start,
+                    leading_ws: raw.leading_ws,
+                }
+            }
+            None => {
+                self.file_state.line_start = true;
+                FileToken::Newline
+            }
+        };
 
-        tok
+        Ok(ret)
     }
 
     fn reporter(&mut self) -> Reporter<'_, 'h> {
@@ -178,13 +216,6 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
 
     fn pos(&self) -> SourcePos {
         self.base_pos.offset(self.off())
-    }
-}
-
-fn is_trivia(kind: RawTokenKind) -> bool {
-    match kind {
-        RawTokenKind::Comment(..) => true,
-        _ => false,
     }
 }
 
