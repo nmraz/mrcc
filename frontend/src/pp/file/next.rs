@@ -1,8 +1,9 @@
+use std::mem;
 use std::path::PathBuf;
 
 use crate::diag::{RawSuggestion, Reporter};
 use crate::lex::raw::{Reader, Tokenizer};
-use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
+use crate::lex::{FromRawResult, LexCtx, PunctKind, Token, TokenKind};
 use crate::DResult;
 use crate::{SourcePos, SourceRange};
 
@@ -12,7 +13,7 @@ enum FileToken {
     Tok {
         tok: Token,
         line_start: bool,
-        leading_ws: bool,
+        leading_trivia: bool,
     },
     Newline,
 }
@@ -68,7 +69,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
-        let tok = match self.next_nontriv_token()? {
+        let tok = match self.next_token()? {
             FileToken::Tok { tok, .. } => tok,
             FileToken::Newline => return Ok(None),
         };
@@ -133,7 +134,7 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
     }
 
     fn finish_directive(&mut self) -> DResult<()> {
-        let next = self.next_nontriv_token()?;
+        let next = self.next_token()?;
 
         if is_eod(&next) {
             return Ok(());
@@ -154,53 +155,28 @@ impl<'a, 'b, 'h> NextActionCtx<'a, 'b, 'h> {
         self.reader().eat_to_after('\n');
     }
 
-    fn next_nontriv_token(&mut self) -> DResult<FileToken> {
+    fn next_token(&mut self) -> DResult<FileToken> {
         let mut leading_trivia = false;
 
         let ret = loop {
-            let next = self.next_token()?;
-            match next {
-                FileToken::Newline => break FileToken::Newline,
-                FileToken::Tok {
-                    tok,
-                    line_start,
-                    leading_ws,
-                } => {
-                    if tok.kind.is_trivia() {
-                        leading_trivia = true;
-                    } else {
-                        break FileToken::Tok {
-                            tok,
-                            line_start,
-                            leading_ws: leading_ws || leading_trivia,
-                        };
-                    }
+            match Token::from_raw(&self.tokenizer.next_token(), self.base_pos, self.ctx)? {
+                FromRawResult::Tok(tok) => {
+                    break FileToken::Tok {
+                        tok,
+                        line_start: mem::replace(&mut self.file_state.line_start, false),
+                        leading_trivia,
+                    };
+                }
+
+                FromRawResult::Newline => {
+                    self.file_state.line_start = true;
+                    break FileToken::Newline;
+                }
+
+                FromRawResult::Trivia => {
+                    leading_trivia = true;
                 }
             };
-        };
-
-        Ok(ret)
-    }
-
-    fn next_token(&mut self) -> DResult<FileToken> {
-        let line_start = self.file_state.line_start;
-
-        let raw = self.tokenizer.next_token();
-        let ret = match Token::from_raw(&raw, self.base_pos, self.ctx)? {
-            Some(tok) => {
-                if !tok.kind.is_trivia() {
-                    self.file_state.line_start = false;
-                }
-                FileToken::Tok {
-                    tok,
-                    line_start,
-                    leading_ws: raw.leading_ws,
-                }
-            }
-            None => {
-                self.file_state.line_start = true;
-                FileToken::Newline
-            }
         };
 
         Ok(ret)

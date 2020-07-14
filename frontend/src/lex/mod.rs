@@ -7,7 +7,7 @@ use crate::{DResult, DiagManager};
 use crate::{SourcePos, SourceRange};
 
 use raw::{RawToken, RawTokenKind};
-pub use token_kind::{CommentKind, PunctKind, TokenKind};
+pub use token_kind::{PunctKind, TokenKind};
 
 pub mod raw;
 mod token_kind;
@@ -38,12 +38,19 @@ pub struct Token {
     pub range: SourceRange,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum FromRawResult {
+    Tok(Token),
+    Newline,
+    Trivia,
+}
+
 impl Token {
     pub fn from_raw(
         raw: &RawToken<'_>,
         base_pos: SourcePos,
         ctx: &mut LexCtx<'_, '_>,
-    ) -> DResult<Option<Self>> {
+    ) -> DResult<FromRawResult> {
         let pos = base_pos.offset(raw.content.off);
 
         let check_terminated = |ctx: &mut LexCtx<'_, '_>, kind: &str| {
@@ -59,12 +66,14 @@ impl Token {
 
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
-            RawTokenKind::Eof => TokenKind::Eof,
-            RawTokenKind::Newline => return Ok(None),
 
-            RawTokenKind::Comment(comment) => {
+            RawTokenKind::Eof => TokenKind::Eof,
+            RawTokenKind::Newline => return Ok(FromRawResult::Newline),
+
+            RawTokenKind::Ws | RawTokenKind::LineComment => return Ok(FromRawResult::Trivia),
+            RawTokenKind::BlockComment => {
                 check_terminated(ctx, "block comment")?;
-                TokenKind::Comment(comment)
+                return Ok(FromRawResult::Trivia);
             }
 
             RawTokenKind::Punct(punct) => TokenKind::Punct(punct),
@@ -83,7 +92,7 @@ impl Token {
         };
 
         let range = SourceRange::new(pos, raw.content.str.len() as u32);
-        Ok(Some(Token { kind, range }))
+        Ok(FromRawResult::Tok(Token { kind, range }))
     }
 }
 
@@ -96,7 +105,7 @@ impl fmt::Display for DisplayToken<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.tok.kind {
             TokenKind::Eof => Ok(()),
-            TokenKind::Unknown | TokenKind::Comment(_) => write!(
+            TokenKind::Unknown => write!(
                 f,
                 "{}",
                 raw::clean(self.ctx.smap.get_spelling(self.tok.range))

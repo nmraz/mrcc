@@ -3,12 +3,6 @@ use std::fmt;
 use super::Symbol;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CommentKind {
-    Line,
-    Block,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PunctKind {
     Hash,
     HashHash,
@@ -132,7 +126,6 @@ impl fmt::Display for PunctKind {
 pub enum TokenKind {
     Unknown,
     Eof,
-    Comment(CommentKind),
 
     Punct(PunctKind),
 
@@ -140,13 +133,4 @@ pub enum TokenKind {
     Number(Symbol),
     Str(Symbol),
     Char(Symbol),
-}
-
-impl TokenKind {
-    pub fn is_trivia(self) -> bool {
-        match self {
-            TokenKind::Comment(..) => true,
-            _ => false,
-        }
-    }
 }
