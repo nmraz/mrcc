@@ -1,4 +1,4 @@
-use crate::lex::{LexCtx, Lexer, PunctKind, Token, TokenKind};
+use crate::lex::{LexCtx, Lexer, Token};
 use crate::DResult;
 
 use super::processor::{FileToken, Processor};
@@ -16,14 +16,11 @@ impl<'a, 's> MacroArgLexer<'a, 's> {
 impl Lexer for MacroArgLexer<'_, '_> {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token> {
         loop {
-            if let FileToken::Tok {
-                tok, line_start, ..
-            } = self.processor.next_token(ctx)?
-            {
-                if line_start && tok.kind == TokenKind::Punct(PunctKind::Hash) {
+            if let FileToken::Tok(ppt) = self.processor.next_token(ctx)? {
+                if ppt.is_directive_start() {
                     ctx.reporter()
                         .error(
-                            tok.range,
+                            ppt.range(),
                             "preprocessing directives in macro arguments are undefined behavior",
                         )
                         .emit()?;
@@ -31,7 +28,7 @@ impl Lexer for MacroArgLexer<'_, '_> {
                     continue;
                 }
 
-                break Ok(tok);
+                break Ok(ppt.tok);
             }
         }
     }

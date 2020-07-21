@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use crate::diag::{RawSuggestion, Reporter};
-use crate::lex::{LexCtx, PunctKind, TokenKind};
+use crate::lex::{LexCtx, TokenKind};
 use crate::DResult;
 use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
-use super::{Action, IncludeKind};
+use super::{Action, IncludeKind, PPToken};
 use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
@@ -30,28 +30,25 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
-            let (tok, line_start) = loop {
-                if let FileToken::Tok {
-                    tok, line_start, ..
-                } = self.next_token()?
-                {
-                    break (tok, line_start);
+            let ppt = loop {
+                if let FileToken::Tok(ppt) = self.next_token()? {
+                    break ppt;
                 }
             };
 
-            if line_start && tok.kind == TokenKind::Punct(PunctKind::Hash) {
+            if ppt.is_directive_start() {
                 if let Some(action) = self.handle_directive()? {
                     break Ok(action);
                 }
             } else {
-                break Ok(Action::Tok(tok));
+                break Ok(Action::Tok(ppt));
             }
         }
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
         let tok = match self.next_token()? {
-            FileToken::Tok { tok, .. } => tok,
+            FileToken::Tok(PPToken { tok, .. }) => tok,
             FileToken::Newline => return Ok(None),
         };
 
@@ -121,10 +118,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             return Ok(());
         }
 
-        if let FileToken::Tok { tok, .. } = next {
+        if let FileToken::Tok(ppt) = next {
             self.reporter()
-                .warn(tok.range, "extra tokens after preprocessing directive")
-                .add_suggestion(RawSuggestion::new(tok.range.start(), "// "))
+                .warn(ppt.range(), "extra tokens after preprocessing directive")
+                .add_suggestion(RawSuggestion::new(ppt.range().start(), "// "))
                 .emit()?;
             self.advance_to_eod()?;
         }
