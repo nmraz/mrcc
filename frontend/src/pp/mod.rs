@@ -49,17 +49,20 @@ impl Preprocessor {
     }
 
     pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PPToken> {
-        let tok = loop {
+        let ppt = loop {
             match self.top_file_action(ctx)? {
-                Action::Tok(tok) if tok.kind() == TokenKind::Eof && self.files.have_includes() => {
-                    self.files.pop_include();
+                Action::Tok(ppt) => {
+                    if ppt.kind() == TokenKind::Eof && self.files.have_includes() {
+                        self.files.pop_include();
+                    } else {
+                        break ppt;
+                    }
                 }
-                Action::Tok(tok) => break tok,
                 Action::Include(_, _) => todo!(),
             }
         };
 
-        Ok(tok)
+        Ok(ppt)
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
