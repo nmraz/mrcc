@@ -23,14 +23,14 @@ fn filename_to_string() {
 #[test]
 fn file_contents_normalized() {
     let src = "line\r\nline\nline";
-    let contents = FileContents::new(FileName::new_synth("paste"), src);
+    let contents = FileContents::new(None, src);
     assert_eq!(contents.src, "line\nline\nline");
 }
 
 #[test]
 fn file_contents_linecol() {
     let src = "line 1\nline 2\nline 3";
-    let contents = FileContents::new(FileName::new_real("file"), src);
+    let contents = FileContents::new(None, src);
     assert_eq!(contents.get_linecol(6), LineCol { line: 0, col: 6 });
     assert_eq!(contents.get_linecol(17), LineCol { line: 2, col: 3 });
 }
@@ -38,7 +38,7 @@ fn file_contents_linecol() {
 #[test]
 fn file_contents_linecol_at_end() {
     let src = "line 1\nline 2\nline 3";
-    let contents = FileContents::new(FileName::new_real("file"), src);
+    let contents = FileContents::new(None, src);
     assert_eq!(contents.get_linecol(20), LineCol { line: 2, col: 6 });
 }
 
@@ -46,14 +46,14 @@ fn file_contents_linecol_at_end() {
 #[should_panic]
 fn file_contents_linecol_past_end() {
     let src = "line\nline\n";
-    let contents = FileContents::new(FileName::new_real("file"), src);
+    let contents = FileContents::new(None, src);
     contents.get_linecol(12);
 }
 
 #[test]
 fn file_contents_line_ranges() {
     let src = "line\r\nline 2\n\nline";
-    let contents = FileContents::new(FileName::new_real("file"), src);
+    let contents = FileContents::new(None, src);
     assert_eq!(contents.get_line_start(0), 0);
     assert_eq!(contents.get_line_end(0), 4);
     assert_eq!(contents.get_line_start(2), 12);
@@ -63,9 +63,10 @@ fn file_contents_line_ranges() {
 
 #[test]
 fn source_file() {
-    let filename = FileName::new_synth("paste");
-    let contents = FileContents::new(filename.clone(), "source");
-    let file = FileSourceInfo::new(contents, None);
+    let filename = FileName::new_real("source.c");
+    let path: PathBuf = "/src/source.c".into();
+    let contents = FileContents::new(Some(path.clone()), "source");
+    let file = FileSourceInfo::new(filename.clone(), contents, None);
     let source = Source {
         info: SourceInfo::File(file),
         range: SourceRange::new(SourcePos::from_raw(0), 5),
@@ -75,7 +76,8 @@ fn source_file() {
     assert!(!source.is_expansion());
 
     let unwrapped = source.as_file().unwrap();
-    assert_eq!(unwrapped.contents.filename, filename);
+    assert_eq!(unwrapped.filename, filename);
+    assert_eq!(unwrapped.contents.path, Some(path));
     assert_eq!(unwrapped.contents.src, "source");
 }
 

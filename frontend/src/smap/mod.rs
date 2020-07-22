@@ -32,7 +32,7 @@ impl InterpretedFileRange<'_> {
     }
 
     pub fn filename(&self) -> &FileName {
-        &self.file.contents.filename
+        &self.file.filename
     }
 
     pub fn include_pos(&self) -> Option<SourcePos> {
@@ -103,6 +103,7 @@ impl SourceMap {
 
     pub fn create_file(
         &mut self,
+        filename: FileName,
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<SourceId, SourcesTooLargeError> {
@@ -113,7 +114,7 @@ impl SourceMap {
             .map_err(|_| SourcesTooLargeError)?;
 
         self.add_source(
-            || SourceInfo::File(FileSourceInfo::new(contents, include_pos)),
+            || SourceInfo::File(FileSourceInfo::new(filename, contents, include_pos)),
             len,
         )
     }

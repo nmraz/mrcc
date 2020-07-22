@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::smap::{FileContents, SourceId, SourcesTooLargeError};
+use crate::smap::{FileContents, FileName, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
 use super::file::File;
@@ -34,10 +34,11 @@ impl Files {
     pub fn push_include(
         &mut self,
         smap: &mut SourceMap,
+        filename: FileName,
         contents: Rc<FileContents>,
         include_pos: SourcePos,
     ) -> Result<(), SourcesTooLargeError> {
-        let id = smap.create_file(Rc::clone(&contents), Some(include_pos))?;
+        let id = smap.create_file(filename, Rc::clone(&contents), Some(include_pos))?;
         self.includes
             .push(File::new(contents, smap.get_source(id).range.start()));
         Ok(())

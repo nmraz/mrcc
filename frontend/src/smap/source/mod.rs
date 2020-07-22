@@ -44,25 +44,21 @@ impl fmt::Display for FileName {
 }
 
 pub struct FileContents {
-    pub filename: FileName,
+    pub path: Option<PathBuf>,
     pub src: String,
     line_table: LineTable,
 }
 
 impl FileContents {
-    pub fn new(filename: FileName, src: &str) -> Rc<Self> {
+    pub fn new(path: Option<PathBuf>, src: &str) -> Rc<Self> {
         let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
         let line_table = LineTable::new_for_src(&normalized_src);
 
         Rc::new(FileContents {
-            filename,
+            path,
             src: normalized_src,
             line_table,
         })
-    }
-
-    pub fn is_real(&self) -> bool {
-        self.filename.is_real()
     }
 
     pub fn get_snippet(&self, range: Range<u32>) -> &str {
@@ -95,13 +91,19 @@ impl FileContents {
 
 #[derive(Clone)]
 pub struct FileSourceInfo {
+    pub filename: FileName,
     pub contents: Rc<FileContents>,
     pub include_pos: Option<SourcePos>,
 }
 
 impl FileSourceInfo {
-    pub fn new(contents: Rc<FileContents>, include_pos: Option<SourcePos>) -> Self {
-        FileSourceInfo {
+    pub fn new(
+        filename: FileName,
+        contents: Rc<FileContents>,
+        include_pos: Option<SourcePos>,
+    ) -> Self {
+        Self {
+            filename,
             contents,
             include_pos,
         }
