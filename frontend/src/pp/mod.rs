@@ -1,38 +1,21 @@
-use crate::lex::{LexCtx, Lexer, PunctKind, Token, TokenKind};
+use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
-use crate::{DResult, SourceRange};
+use crate::DResult;
 
 use file::Action;
 use files::Files;
 use state::State;
 
+pub use lexer::PPToken;
+
 mod file;
 mod files;
+mod lexer;
 mod state;
 
 pub enum IncludeKind {
     Str,
     Angle,
-}
-
-pub struct PPToken {
-    tok: Token,
-    line_start: bool,
-    leading_trivia: bool,
-}
-
-impl PPToken {
-    pub fn kind(&self) -> TokenKind {
-        self.tok.kind
-    }
-
-    pub fn range(&self) -> SourceRange {
-        self.tok.range
-    }
-
-    fn is_directive_start(&self) -> bool {
-        self.line_start && self.kind() == TokenKind::Punct(PunctKind::Hash)
-    }
 }
 
 pub struct Preprocessor {

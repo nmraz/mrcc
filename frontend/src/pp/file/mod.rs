@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::lex::{LexCtx, Token};
+use crate::lex::LexCtx;
 use crate::smap::FileContents;
 use crate::DResult;
 use crate::SourcePos;
