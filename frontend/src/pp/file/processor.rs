@@ -72,10 +72,6 @@ impl<'a> Processor<'a> {
         &mut self.tokenizer.reader
     }
 
-    pub fn base_pos(&self) -> SourcePos {
-        self.base_pos
-    }
-
     pub fn off(&self) -> u32 {
         self.tokenizer.reader.off()
     }
