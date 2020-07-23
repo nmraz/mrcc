@@ -2,8 +2,8 @@ use crate::lex::LexCtx;
 use crate::DResult;
 
 use super::processor::{FileToken, Processor};
-use super::PPToken;
-use crate::pp::lexer::PPLexer;
+use super::PpToken;
+use crate::pp::lexer::PpLexer;
 
 pub struct MacroArgLexer<'a, 's> {
     processor: &'a mut Processor<'s>,
@@ -15,8 +15,8 @@ impl<'a, 's> MacroArgLexer<'a, 's> {
     }
 }
 
-impl PPLexer for MacroArgLexer<'_, '_> {
-    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PPToken> {
+impl PpLexer for MacroArgLexer<'_, '_> {
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         loop {
             if let FileToken::Tok(ppt) = self.processor.next_token(ctx)? {
                 if ppt.is_directive_start() {

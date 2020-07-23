@@ -6,7 +6,7 @@ use file::Action;
 use files::Files;
 use state::State;
 
-pub use lexer::PPToken;
+pub use lexer::PpToken;
 
 mod file;
 mod files;
@@ -31,7 +31,7 @@ impl Preprocessor {
         }
     }
 
-    pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PPToken> {
+    pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         let ppt = loop {
             match self.top_file_action(ctx)? {
                 Action::Tok(ppt) => {

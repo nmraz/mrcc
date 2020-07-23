@@ -5,10 +5,10 @@ use crate::lex::{FromRawResult, LexCtx, Token, TokenKind};
 use crate::{DResult, SourcePos};
 
 use super::FileState;
-use super::PPToken;
+use super::PpToken;
 
 pub enum FileToken {
-    Tok(PPToken),
+    Tok(PpToken),
     Newline,
 }
 
@@ -16,7 +16,7 @@ impl FileToken {
     pub fn is_eod(&self) -> bool {
         match self {
             FileToken::Newline => true,
-            FileToken::Tok(PPToken { tok, .. }) => tok.kind == TokenKind::Eof,
+            FileToken::Tok(PpToken { tok, .. }) => tok.kind == TokenKind::Eof,
         }
     }
 }
@@ -42,7 +42,7 @@ impl<'a> Processor<'a> {
         let ret = loop {
             match Token::from_raw(&self.tokenizer.next_token(), self.base_pos, ctx)? {
                 FromRawResult::Tok(tok) => {
-                    break FileToken::Tok(PPToken {
+                    break FileToken::Tok(PpToken {
                         tok,
                         line_start: mem::replace(&mut self.state.line_start, false),
                         leading_trivia,

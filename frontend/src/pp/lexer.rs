@@ -1,13 +1,13 @@
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::{DResult, SourceRange};
 
-pub struct PPToken {
+pub struct PpToken {
     pub tok: Token,
     pub line_start: bool,
     pub leading_trivia: bool,
 }
 
-impl PPToken {
+impl PpToken {
     pub fn kind(&self) -> TokenKind {
         self.tok.kind
     }
@@ -21,6 +21,6 @@ impl PPToken {
     }
 }
 
-pub trait PPLexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PPToken>;
+pub trait PpLexer {
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
 }

@@ -6,7 +6,7 @@ use crate::DResult;
 use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
-use super::{Action, IncludeKind, PPToken};
+use super::{Action, IncludeKind, PpToken};
 use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
@@ -48,7 +48,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
         let tok = match self.next_token()? {
-            FileToken::Tok(PPToken { tok, .. }) => tok,
+            FileToken::Tok(PpToken { tok, .. }) => tok,
             FileToken::Newline => return Ok(None),
         };
 

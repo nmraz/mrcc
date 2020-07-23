@@ -8,7 +8,7 @@ use crate::SourcePos;
 
 use super::state::State;
 use super::IncludeKind;
-use super::PPToken;
+use super::PpToken;
 
 pub use macro_arg_lexer::MacroArgLexer;
 use next::NextActionCtx;
@@ -21,7 +21,7 @@ mod processor;
 mod state;
 
 pub enum Action {
-    Tok(PPToken),
+    Tok(PpToken),
     Include(PathBuf, IncludeKind),
 }
 
