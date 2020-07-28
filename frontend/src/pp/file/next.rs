@@ -63,7 +63,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         let known_idents = &self.state.known_idents;
 
         if ident == known_idents.dir_include {
-            self.handle_include()
+            self.handle_include_directive()
         } else {
             self.invalid_directive(tok.range)?;
             Ok(None)
@@ -77,7 +77,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         self.advance_to_eod()
     }
 
-    fn handle_include(&mut self) -> DResult<Option<Action>> {
+    fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
         let reader = self.processor.reader();
         reader.eat_line_ws();
 
