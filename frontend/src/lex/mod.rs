@@ -97,8 +97,8 @@ impl Token {
 }
 
 pub struct DisplayToken<'t, 'a, 'h> {
-    ctx: &'t LexCtx<'a, 'h>,
     tok: &'t Token,
+    ctx: &'t LexCtx<'a, 'h>,
 }
 
 impl fmt::Display for DisplayToken<'_, '_, '_> {
@@ -121,6 +121,6 @@ impl fmt::Display for DisplayToken<'_, '_, '_> {
 
 impl Token {
     pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> DisplayToken<'t, 'a, 'h> {
-        DisplayToken { ctx, tok: self }
+        DisplayToken { tok: self, ctx }
     }
 }
