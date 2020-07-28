@@ -18,11 +18,11 @@ pub enum FileName {
 }
 
 impl FileName {
-    pub fn new_real(path: impl Into<PathBuf>) -> Self {
+    pub fn real(path: impl Into<PathBuf>) -> Self {
         FileName::Real(path.into())
     }
 
-    pub fn new_synth(name: impl Into<String>) -> Self {
+    pub fn synth(name: impl Into<String>) -> Self {
         FileName::Synth(name.into())
     }
 

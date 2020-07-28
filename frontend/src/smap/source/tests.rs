@@ -4,19 +4,19 @@ use super::*;
 
 #[test]
 fn filename_is_real() {
-    let f1 = FileName::new_real("file.c");
+    let f1 = FileName::real("file.c");
     assert!(f1.is_real());
 
-    let f2 = FileName::new_synth("paste");
+    let f2 = FileName::synth("paste");
     assert!(!f2.is_real());
 }
 
 #[test]
 fn filename_to_string() {
-    let f1 = FileName::new_real("file.c");
+    let f1 = FileName::real("file.c");
     assert_eq!(f1.to_string(), "file.c".to_owned());
 
-    let f2 = FileName::new_synth("paste");
+    let f2 = FileName::synth("paste");
     assert_eq!(f2.to_string(), "<paste>".to_owned());
 }
 
@@ -63,7 +63,7 @@ fn file_contents_line_ranges() {
 
 #[test]
 fn source_file() {
-    let filename = FileName::new_real("source.c");
+    let filename = FileName::real("source.c");
     let path: PathBuf = "/src/source.c".into();
     let contents = FileContents::new(Some(path.clone()), "source");
     let file = FileSourceInfo::new(filename.clone(), contents, None);
