@@ -119,8 +119,8 @@ impl fmt::Display for DisplayToken<'_, '_, '_> {
     }
 }
 
-impl<'a, 'h> LexCtx<'a, 'h> {
-    pub fn display_token<'t>(&'t self, tok: &'t Token) -> DisplayToken<'t, 'a, 'h> {
-        DisplayToken { ctx: self, tok }
+impl Token {
+    pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> DisplayToken<'t, 'a, 'h> {
+        DisplayToken { ctx, tok: self }
     }
 }
