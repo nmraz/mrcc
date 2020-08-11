@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::path::PathBuf;
 
 use crate::diag::{RawSuggestion, Reporter};
@@ -59,11 +60,15 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
                 return Ok(None);
             }
         };
+        self.processor.reader().eat_line_ws();
 
         let known_idents = &self.state.known_idents;
 
         if ident == known_idents.dir_include {
             self.handle_include_directive()
+        } else if ident == known_idents.dir_error {
+            self.handle_error_directive(tok.range)?;
+            Ok(None)
         } else {
             self.invalid_directive(tok.range)?;
             Ok(None)
@@ -79,7 +84,6 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
         let reader = self.processor.reader();
-        reader.eat_line_ws();
 
         let (name, kind) = if reader.eat('<') {
             (self.consume_include_name('>')?, IncludeKind::Angle)
@@ -109,6 +113,22 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         self.finish_directive()?;
         Ok(filename)
+    }
+
+    fn handle_error_directive(&mut self, id_range: SourceRange) -> DResult<()> {
+        let mut msg = String::new();
+        loop {
+            let tok = self.next_token()?;
+            if tok.is_eod() {
+                break;
+            }
+
+            if let FileToken::Tok(ppt) = tok {
+                write!(msg, "{}", ppt.display(self.ctx)).unwrap();
+            }
+        }
+
+        self.ctx.reporter().error(id_range, msg).emit()
     }
 
     fn finish_directive(&mut self) -> DResult<()> {
