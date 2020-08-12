@@ -13,11 +13,6 @@ mod files;
 mod lexer;
 mod state;
 
-pub enum IncludeKind {
-    Str,
-    Angle,
-}
-
 pub struct Preprocessor {
     active_files: ActiveFiles,
     state: State,

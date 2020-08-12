@@ -6,8 +6,8 @@ use crate::smap::FileContents;
 use crate::DResult;
 use crate::SourcePos;
 
+use super::files::IncludeKind;
 use super::state::State;
-use super::IncludeKind;
 use super::PpToken;
 
 pub use macro_arg_lexer::MacroArgLexer;

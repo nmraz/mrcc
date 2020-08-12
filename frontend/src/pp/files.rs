@@ -5,6 +5,11 @@ use crate::{SourceMap, SourcePos};
 
 use super::file::File;
 
+pub enum IncludeKind {
+    Str,
+    Angle,
+}
+
 pub struct ActiveFiles {
     main: File,
     includes: Vec<File>,
