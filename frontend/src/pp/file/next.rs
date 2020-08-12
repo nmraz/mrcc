@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use crate::diag::{RawSuggestion, Reporter};
 use crate::lex::{LexCtx, TokenKind};
 use crate::DResult;
-use crate::SourceRange;
+use crate::{SourcePos, SourceRange};
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
@@ -38,7 +38,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             };
 
             if ppt.is_directive_start() {
-                if let Some(action) = self.handle_directive()? {
+                if let Some(action) = self.handle_directive(ppt.range().start())? {
                     break Ok(action);
                 }
             } else {
@@ -47,7 +47,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
     }
 
-    fn handle_directive(&mut self) -> DResult<Option<Action>> {
+    fn handle_directive(&mut self, start_pos: SourcePos) -> DResult<Option<Action>> {
         let tok = match self.next_token()? {
             FileToken::Tok(PpToken { tok, .. }) => tok,
             FileToken::Newline => return Ok(None),
@@ -65,7 +65,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         let known_idents = &self.state.known_idents;
 
         if ident == known_idents.dir_include {
-            self.handle_include_directive()
+            self.handle_include_directive(start_pos)
         } else if ident == known_idents.dir_error {
             self.handle_error_directive(tok.range)?;
             Ok(None)
@@ -82,10 +82,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         self.advance_to_eod()
     }
 
-    fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
+    fn handle_include_directive(&mut self, start_pos: SourcePos) -> DResult<Option<Action>> {
         let reader = self.processor.reader();
 
-        let (name, kind) = if reader.eat('<') {
+        let (filename, kind) = if reader.eat('<') {
             (self.consume_include_name('>')?, IncludeKind::Angle)
         } else if reader.eat('"') {
             (self.consume_include_name('"')?, IncludeKind::Str)
@@ -96,7 +96,11 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             return Ok(None);
         };
 
-        Ok(Some(Action::Include(name, kind)))
+        Ok(Some(Action::Include {
+            filename,
+            kind,
+            pos: start_pos,
+        }))
     }
 
     fn consume_include_name(&mut self, term: char) -> DResult<PathBuf> {

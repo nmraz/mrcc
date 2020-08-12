@@ -36,7 +36,11 @@ impl Preprocessor {
                         break ppt;
                     }
                 }
-                Action::Include(_, _) => todo!(),
+                Action::Include {
+                    filename,
+                    kind,
+                    pos,
+                } => {}
             }
         };
 

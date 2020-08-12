@@ -22,7 +22,11 @@ mod state;
 
 pub enum Action {
     Tok(PpToken),
-    Include(PathBuf, IncludeKind),
+    Include {
+        filename: PathBuf,
+        kind: IncludeKind,
+        pos: SourcePos,
+    },
 }
 
 pub struct File {
