@@ -5,19 +5,19 @@ use crate::{SourceMap, SourcePos};
 
 use super::file::File;
 
-pub struct Files {
+pub struct ActiveFiles {
     main: File,
     includes: Vec<File>,
 }
 
-impl Files {
+impl ActiveFiles {
     pub fn new(smap: &SourceMap, main_id: SourceId) -> Self {
         let source = smap.get_source(main_id);
         let file = source
             .as_file()
             .expect("preprocessor requires a file source");
 
-        Files {
+        ActiveFiles {
             main: File::new(Rc::clone(&file.contents), source.range.start()),
             includes: vec![],
         }

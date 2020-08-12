@@ -3,7 +3,7 @@ use crate::smap::SourceId;
 use crate::DResult;
 
 use file::Action;
-use files::Files;
+use files::ActiveFiles;
 use state::State;
 
 pub use lexer::PpToken;
@@ -19,14 +19,14 @@ pub enum IncludeKind {
 }
 
 pub struct Preprocessor {
-    files: Files,
+    active_files: ActiveFiles,
     state: State,
 }
 
 impl Preprocessor {
     pub fn new(ctx: &mut LexCtx<'_, '_>, main_id: SourceId) -> Self {
         Self {
-            files: Files::new(&ctx.smap, main_id),
+            active_files: ActiveFiles::new(&ctx.smap, main_id),
             state: State::new(ctx),
         }
     }
@@ -35,8 +35,8 @@ impl Preprocessor {
         let ppt = loop {
             match self.top_file_action(ctx)? {
                 Action::Tok(ppt) => {
-                    if ppt.kind() == TokenKind::Eof && self.files.have_includes() {
-                        self.files.pop_include();
+                    if ppt.kind() == TokenKind::Eof && self.active_files.have_includes() {
+                        self.active_files.pop_include();
                     } else {
                         break ppt;
                     }
@@ -49,7 +49,7 @@ impl Preprocessor {
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
-        self.files.top().next_action(ctx, &mut self.state)
+        self.active_files.top().next_action(ctx, &mut self.state)
     }
 }
 
