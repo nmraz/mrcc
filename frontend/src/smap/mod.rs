@@ -57,15 +57,15 @@ pub struct SourceMap {
     next_offset: u32,
 }
 
-fn get_location_chain<'a, T, F, G>(
+fn get_location_chain<T, L, N>(
     init: T,
-    lookup_id: F,
-    next: G,
-) -> impl Iterator<Item = (SourceId, T)> + 'a
+    lookup_id: L,
+    next: N,
+) -> impl Iterator<Item = (SourceId, T)>
 where
-    T: Copy + 'a,
-    F: Fn(T) -> SourceId + 'a,
-    G: Fn(SourceId, T) -> Option<T> + 'a,
+    T: Copy,
+    L: Fn(T) -> SourceId,
+    N: Fn(SourceId, T) -> Option<T>,
 {
     itertools::iterate(Some((lookup_id(init), init)), move |cur| {
         cur.and_then(|(id, val)| next(id, val).map(|next_val| (lookup_id(next_val), next_val)))
