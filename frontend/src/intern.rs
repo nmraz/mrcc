@@ -10,7 +10,7 @@ use rustc_hash::FxHasher;
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Symbol<T: ToOwned + ?Sized> {
     idx: usize,
-    marker: PhantomData<fn(&T::Owned) -> &T>,
+    marker: PhantomData<fn(&Interner<T>) -> &T>,
 }
 
 impl<T: ToOwned + ?Sized> Symbol<T> {
