@@ -8,12 +8,12 @@ use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Symbol<T: ?Sized> {
+pub struct Symbol<T: ToOwned + ?Sized> {
     idx: usize,
-    marker: PhantomData<fn() -> T>,
+    marker: PhantomData<fn(&T::Owned) -> &T>,
 }
 
-impl<T: ?Sized> Symbol<T> {
+impl<T: ToOwned + ?Sized> Symbol<T> {
     fn new(idx: usize) -> Self {
         Self {
             idx,
@@ -23,9 +23,9 @@ impl<T: ?Sized> Symbol<T> {
 }
 
 // Implement manually because deriving requires all generic paramaters to be `Copy` as well.
-impl<T: ?Sized> Copy for Symbol<T> {}
+impl<T: ToOwned + ?Sized> Copy for Symbol<T> {}
 
-impl<T: ?Sized> Clone for Symbol<T> {
+impl<T: ToOwned + ?Sized> Clone for Symbol<T> {
     fn clone(&self) -> Self {
         *self
     }
