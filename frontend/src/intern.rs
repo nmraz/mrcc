@@ -49,13 +49,10 @@ where
         }
     }
 
-    pub fn intern<U>(&mut self, val: U) -> Symbol<T>
-    where
-        U: Borrow<T> + Into<T::Owned>,
-    {
-        let idx = match self.pool.get_full(val.borrow()) {
+    pub fn intern(&mut self, val: &T) -> Symbol<T> {
+        let idx = match self.pool.get_full(val) {
             Some((idx, _)) => idx,
-            None => self.pool.insert_full(val.into()).0,
+            None => self.pool.insert_full(val.to_owned()).0,
         };
 
         Symbol::new(idx)
@@ -84,7 +81,7 @@ mod tests {
 
     #[test]
     fn basic_str() {
-        let mut interner = Interner::<str>::new();
+        let mut interner = Interner::new();
 
         let hi = interner.intern("hi");
         let bye = interner.intern("bye");

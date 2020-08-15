@@ -62,7 +62,7 @@ impl Token {
             Ok(())
         };
 
-        let intern_content = |interner: &mut Interner| interner.intern(raw.content.cleaned_str());
+        let intern_content = |interner: &mut Interner| interner.intern(&raw.content.cleaned_str());
 
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
