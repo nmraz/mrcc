@@ -2,16 +2,20 @@ use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
 
-use active_file::Action;
-use files::ActiveFiles;
+use active_file::{Action, ActiveFiles};
 use state::State;
 
 pub use lexer::PpToken;
 
 mod active_file;
-mod files;
 mod lexer;
 mod state;
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum IncludeKind {
+    Str,
+    Angle,
+}
 
 pub struct Preprocessor {
     active_files: ActiveFiles,
