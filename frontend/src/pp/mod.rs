@@ -2,13 +2,13 @@ use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
 
-use file::Action;
+use active_file::Action;
 use files::ActiveFiles;
 use state::State;
 
 pub use lexer::PpToken;
 
-mod file;
+mod active_file;
 mod files;
 mod lexer;
 mod state;

@@ -3,7 +3,7 @@ use std::rc::Rc;
 use crate::smap::{FileContents, FileName, SourceId, SourcesTooLargeError};
 use crate::{SourceMap, SourcePos};
 
-use super::file::File;
+use super::active_file::ActiveFile;
 
 pub enum IncludeKind {
     Str,
@@ -11,8 +11,8 @@ pub enum IncludeKind {
 }
 
 pub struct ActiveFiles {
-    main: File,
-    includes: Vec<File>,
+    main: ActiveFile,
+    includes: Vec<ActiveFile>,
 }
 
 impl ActiveFiles {
@@ -23,12 +23,12 @@ impl ActiveFiles {
             .expect("preprocessor requires a file source");
 
         ActiveFiles {
-            main: File::new(Rc::clone(&file.contents), source.range.start()),
+            main: ActiveFile::new(Rc::clone(&file.contents), source.range.start()),
             includes: vec![],
         }
     }
 
-    pub fn top(&mut self) -> &mut File {
+    pub fn top(&mut self) -> &mut ActiveFile {
         self.includes.last_mut().unwrap_or(&mut self.main)
     }
 
@@ -45,7 +45,7 @@ impl ActiveFiles {
     ) -> Result<(), SourcesTooLargeError> {
         let id = smap.create_file(filename, Rc::clone(&contents), Some(include_pos))?;
         self.includes
-            .push(File::new(contents, smap.get_source(id).range.start()));
+            .push(ActiveFile::new(contents, smap.get_source(id).range.start()));
         Ok(())
     }
 

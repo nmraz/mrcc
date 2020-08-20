@@ -29,16 +29,16 @@ pub enum Action {
     },
 }
 
-pub struct File {
+pub struct ActiveFile {
     contents: Rc<FileContents>,
     state: FileState,
     start_pos: SourcePos,
     off: u32,
 }
 
-impl File {
-    pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> File {
-        File {
+impl ActiveFile {
+    pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> ActiveFile {
+        ActiveFile {
             contents,
             state: FileState::default(),
             start_pos,
