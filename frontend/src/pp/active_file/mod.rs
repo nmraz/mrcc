@@ -46,6 +46,10 @@ impl ActiveFile {
         }
     }
 
+    pub fn file(&self) -> &Rc<File> {
+        &self.file
+    }
+
     pub fn next_action(&mut self, ctx: &mut LexCtx<'_, '_>, state: &mut State) -> DResult<Action> {
         self.with_processor(|processor| NextActionCtx::new(ctx, state, processor).next_action())
     }
