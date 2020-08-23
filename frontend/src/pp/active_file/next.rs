@@ -65,7 +65,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         let known_idents = &self.state.known_idents;
 
         if ident == known_idents.dir_include {
-            self.handle_include_directive(start_pos)
+            self.handle_include_directive()
         } else if ident == known_idents.dir_error {
             self.handle_error_directive(tok.range)?;
             Ok(None)
@@ -82,7 +82,8 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         self.advance_to_eod()
     }
 
-    fn handle_include_directive(&mut self, start_pos: SourcePos) -> DResult<Option<Action>> {
+    fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
+        let start = self.processor.pos();
         let reader = self.processor.reader();
 
         let (filename, kind) = if reader.eat('<') {
@@ -96,10 +97,12 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             return Ok(None);
         };
 
+        let len = self.processor.pos().offset_from(start);
+
         Ok(Some(Action::Include {
             filename,
             kind,
-            pos: start_pos,
+            range: SourceRange::new(start, len),
         }))
     }
 

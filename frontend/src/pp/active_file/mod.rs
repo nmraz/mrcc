@@ -4,7 +4,7 @@ use std::rc::Rc;
 use crate::lex::LexCtx;
 use crate::smap::{FileName, SourceId, SourcesTooLargeError};
 use crate::DResult;
-use crate::{SourceMap, SourcePos};
+use crate::{SourceMap, SourcePos, SourceRange};
 
 use super::file::{File, IncludeKind};
 use super::state::State;
@@ -25,7 +25,7 @@ pub enum Action {
     Include {
         filename: PathBuf,
         kind: IncludeKind,
-        pos: SourcePos,
+        range: SourceRange,
     },
 }
 

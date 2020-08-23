@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use crate::diag::Level;
 use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
-use crate::{DResult, SourcePos};
+use crate::{DResult, SourceRange};
 
 use active_file::{Action, ActiveFiles};
 use file::{IncludeError, IncludeKind, IncludeLoader};
@@ -45,8 +45,8 @@ impl Preprocessor {
                 Action::Include {
                     filename,
                     kind,
-                    pos,
-                } => self.handle_include(ctx, filename, kind, pos)?,
+                    range,
+                } => self.handle_include(ctx, filename, kind, range)?,
             }
         };
 
@@ -62,7 +62,7 @@ impl Preprocessor {
         ctx: &mut LexCtx<'_, '_>,
         filename: PathBuf,
         kind: IncludeKind,
-        pos: SourcePos,
+        range: SourceRange,
     ) -> DResult<()> {
         let file = match self
             .include_loader
@@ -79,18 +79,18 @@ impl Preprocessor {
                         error
                     ),
                 };
-                ctx.reporter().report(Level::Fatal, pos, msg).emit()?;
+                ctx.reporter().report(Level::Fatal, range, msg).emit()?;
                 unreachable!();
             }
         };
 
         if self
             .active_files
-            .push_include(&mut ctx.smap, filename, file, pos)
+            .push_include(&mut ctx.smap, filename, file, range.start())
             .is_err()
         {
             ctx.reporter()
-                .report(Level::Fatal, pos, "translation unit too large")
+                .report(Level::Fatal, range, "translation unit too large")
                 .emit()?;
         }
 
