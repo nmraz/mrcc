@@ -40,8 +40,10 @@ impl FileCache {
     }
 
     pub fn load(&mut self, path: impl AsRef<Path>) -> io::Result<Rc<File>> {
-        let path = weakly_normalize(path.as_ref());
+        self.do_load(weakly_normalize(path.as_ref()))
+    }
 
+    fn do_load(&mut self, path: PathBuf) -> io::Result<Rc<File>> {
         match self.files.entry(path) {
             Entry::Occupied(ent) => Ok(ent.get().clone()),
             Entry::Vacant(ent) => {
