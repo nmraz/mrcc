@@ -8,14 +8,9 @@ use state::State;
 pub use lexer::PpToken;
 
 mod active_file;
+mod file;
 mod lexer;
 mod state;
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub enum IncludeKind {
-    Str,
-    Angle,
-}
 
 pub struct Preprocessor {
     active_files: ActiveFiles,

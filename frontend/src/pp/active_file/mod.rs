@@ -6,8 +6,8 @@ use crate::smap::{FileContents, FileName, SourceId, SourcesTooLargeError};
 use crate::DResult;
 use crate::{SourceMap, SourcePos};
 
+use super::file::IncludeKind;
 use super::state::State;
-use super::IncludeKind;
 use super::PpToken;
 
 pub use macro_arg_lexer::MacroArgLexer;
