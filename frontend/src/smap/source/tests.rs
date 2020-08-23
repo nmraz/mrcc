@@ -64,7 +64,6 @@ fn file_contents_line_ranges() {
 #[test]
 fn source_file() {
     let filename = FileName::real("source.c");
-    let path: PathBuf = "/src/source.c".into();
     let contents = FileContents::new("source");
     let file = FileSourceInfo::new(filename.clone(), contents, None);
     let source = Source {
