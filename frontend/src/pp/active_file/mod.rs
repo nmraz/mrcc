@@ -106,11 +106,15 @@ impl ActiveFiles {
     pub fn push_include(
         &mut self,
         smap: &mut SourceMap,
-        filename: FileName,
+        filename: PathBuf,
         file: Rc<File>,
         include_pos: SourcePos,
     ) -> Result<(), SourcesTooLargeError> {
-        let id = smap.create_file(filename, Rc::clone(&file.contents), Some(include_pos))?;
+        let id = smap.create_file(
+            FileName::real(filename),
+            Rc::clone(&file.contents),
+            Some(include_pos),
+        )?;
         self.includes
             .push(ActiveFile::new(file, smap.get_source(id).range.start()));
         Ok(())

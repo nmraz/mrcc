@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
-use crate::diag::{FatalErrorEmitted, Level};
+use crate::diag::Level;
 use crate::lex::{LexCtx, Lexer, Token, TokenKind};
-use crate::smap::{FileName, SourceId};
-use crate::DResult;
+use crate::smap::SourceId;
+use crate::{DResult, SourcePos};
 
 use active_file::{Action, ActiveFiles};
-use file::{IncludeError, IncludeLoader};
+use file::{IncludeError, IncludeKind, IncludeLoader};
 use state::State;
 
 pub use lexer::PpToken;
@@ -46,40 +46,7 @@ impl Preprocessor {
                     filename,
                     kind,
                     pos,
-                } => {
-                    let file = match self.include_loader.load(
-                        &filename,
-                        kind,
-                        self.active_files.top().file(),
-                    ) {
-                        Ok(file) => file,
-                        Err(err) => {
-                            let msg = match err {
-                                IncludeError::NotFound => {
-                                    format!("include '{}' not found", filename.display())
-                                }
-                                IncludeError::Io { full_path, error } => format!(
-                                    "failed to include '{}' ({}): {}",
-                                    filename.display(),
-                                    full_path.display(),
-                                    error
-                                ),
-                            };
-                            ctx.reporter().report(Level::Fatal, pos, msg).emit()?;
-                            unreachable!();
-                        }
-                    };
-
-                    if self
-                        .active_files
-                        .push_include(&mut ctx.smap, FileName::real(filename), file, pos)
-                        .is_err()
-                    {
-                        ctx.reporter()
-                            .report(Level::Fatal, pos, "translation unit too large")
-                            .emit()?;
-                    }
-                }
+                } => self.handle_include(ctx, filename, kind, pos)?,
             }
         };
 
@@ -88,6 +55,46 @@ impl Preprocessor {
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
         self.active_files.top().next_action(ctx, &mut self.state)
+    }
+
+    fn handle_include(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        filename: PathBuf,
+        kind: IncludeKind,
+        pos: SourcePos,
+    ) -> DResult<()> {
+        let file = match self
+            .include_loader
+            .load(&filename, kind, self.active_files.top().file())
+        {
+            Ok(file) => file,
+            Err(err) => {
+                let msg = match err {
+                    IncludeError::NotFound => format!("include '{}' not found", filename.display()),
+                    IncludeError::Io { full_path, error } => format!(
+                        "failed to include '{}' ({}): {}",
+                        filename.display(),
+                        full_path.display(),
+                        error
+                    ),
+                };
+                ctx.reporter().report(Level::Fatal, pos, msg).emit()?;
+                unreachable!();
+            }
+        };
+
+        if self
+            .active_files
+            .push_include(&mut ctx.smap, filename, file, pos)
+            .is_err()
+        {
+            ctx.reporter()
+                .report(Level::Fatal, pos, "translation unit too large")
+                .emit()?;
+        }
+
+        Ok(())
     }
 }
 

@@ -86,7 +86,7 @@ impl IncludeLoader {
 
     pub fn load(
         &mut self,
-        path: &Path,
+        filename: &Path,
         kind: IncludeKind,
         includer: &File,
     ) -> Result<Rc<File>, IncludeError> {
@@ -106,8 +106,8 @@ impl IncludeLoader {
             })
         };
 
-        if path.is_absolute() {
-            return do_load(&mut self.cache, path);
+        if filename.is_absolute() {
+            return do_load(&mut self.cache, filename);
         }
 
         let initial_dir = if kind == IncludeKind::Str {
@@ -119,7 +119,7 @@ impl IncludeLoader {
         let dirs = initial_dir.into_iter().chain(self.include_paths.iter());
 
         for dir in dirs {
-            match do_load(&mut self.cache, dir.join(path)) {
+            match do_load(&mut self.cache, dir.join(filename)) {
                 Err(IncludeError::NotFound) => continue,
                 ret => return ret,
             }
