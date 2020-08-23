@@ -73,14 +73,14 @@ pub enum IncludeError {
 
 pub struct IncludeLoader {
     cache: FileCache,
-    include_paths: Vec<PathBuf>,
+    include_dirs: Vec<PathBuf>,
 }
 
 impl IncludeLoader {
-    pub fn new(include_paths: Vec<PathBuf>) -> Self {
+    pub fn new(include_dirs: Vec<PathBuf>) -> Self {
         Self {
             cache: FileCache::new(),
-            include_paths,
+            include_dirs,
         }
     }
 
@@ -116,7 +116,7 @@ impl IncludeLoader {
             None
         };
 
-        let dirs = initial_dir.into_iter().chain(self.include_paths.iter());
+        let dirs = initial_dir.into_iter().chain(self.include_dirs.iter());
 
         for dir in dirs {
             match do_load(&mut self.cache, dir.join(filename)) {

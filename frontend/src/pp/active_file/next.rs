@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use crate::diag::{RawSuggestion, Reporter};
 use crate::lex::{LexCtx, TokenKind};
 use crate::DResult;
-use crate::{SourcePos, SourceRange};
+use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
@@ -38,7 +38,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             };
 
             if ppt.is_directive_start() {
-                if let Some(action) = self.handle_directive(ppt.range().start())? {
+                if let Some(action) = self.handle_directive()? {
                     break Ok(action);
                 }
             } else {
@@ -47,7 +47,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
     }
 
-    fn handle_directive(&mut self, start_pos: SourcePos) -> DResult<Option<Action>> {
+    fn handle_directive(&mut self) -> DResult<Option<Action>> {
         let tok = match self.next_token()? {
             FileToken::Tok(PpToken { tok, .. }) => tok,
             FileToken::Newline => return Ok(None),

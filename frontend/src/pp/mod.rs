@@ -1,3 +1,4 @@
+use std::mem;
 use std::path::PathBuf;
 
 use crate::diag::Level;
@@ -16,6 +17,42 @@ mod file;
 mod lexer;
 mod state;
 
+pub struct PreprocessorBuilder<'a, 'b, 'h> {
+    ctx: &'a mut LexCtx<'b, 'h>,
+    main_id: SourceId,
+    parent_dir: Option<PathBuf>,
+    include_dirs: Vec<PathBuf>,
+}
+
+impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
+    pub fn new(ctx: &'a mut LexCtx<'b, 'h>, main_id: SourceId) -> Self {
+        Self {
+            ctx,
+            main_id,
+            parent_dir: None,
+            include_dirs: Vec::new(),
+        }
+    }
+
+    pub fn parent_dir(&mut self, dir: PathBuf) -> &mut Self {
+        self.parent_dir = Some(dir);
+        self
+    }
+
+    pub fn include_dirs(&mut self, dirs: Vec<PathBuf>) -> &mut Self {
+        self.include_dirs = dirs;
+        self
+    }
+
+    pub fn build(&mut self) -> Preprocessor {
+        Preprocessor {
+            active_files: ActiveFiles::new(&self.ctx.smap, self.main_id, self.parent_dir.take()),
+            include_loader: IncludeLoader::new(mem::take(&mut self.include_dirs)),
+            state: State::new(self.ctx),
+        }
+    }
+}
+
 pub struct Preprocessor {
     active_files: ActiveFiles,
     include_loader: IncludeLoader,
@@ -23,14 +60,6 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn new(ctx: &mut LexCtx<'_, '_>, main_id: SourceId, parent_dir: Option<PathBuf>) -> Self {
-        Self {
-            active_files: ActiveFiles::new(&ctx.smap, main_id, parent_dir),
-            include_loader: IncludeLoader::new(Vec::new()),
-            state: State::new(ctx),
-        }
-    }
-
     pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         let ppt = loop {
             match self.top_file_action(ctx)? {
