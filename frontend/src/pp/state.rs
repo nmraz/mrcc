@@ -7,7 +7,7 @@ pub struct State {
 impl State {
     pub fn new(ctx: &mut LexCtx<'_, '_>) -> Self {
         Self {
-            known_idents: KnownIdents::new(&mut ctx.ident_interner),
+            known_idents: KnownIdents::new(&mut ctx.interner),
         }
     }
 }

@@ -20,8 +20,7 @@ pub trait Lexer {
 }
 
 pub struct LexCtx<'a, 'h> {
-    pub ident_interner: &'a mut Interner,
-    pub lit_interner: &'a mut Interner,
+    pub interner: &'a mut Interner,
     pub diags: &'a mut DiagManager<'h>,
     pub smap: &'a mut SourceMap,
 }
@@ -62,7 +61,8 @@ impl Token {
             Ok(())
         };
 
-        let intern_content = |interner: &mut Interner| interner.intern(&raw.content.cleaned_str());
+        let intern_content =
+            |ctx: &mut LexCtx<'_, '_>| ctx.interner.intern(&raw.content.cleaned_str());
 
         let kind = match raw.kind {
             RawTokenKind::Unknown => TokenKind::Unknown,
@@ -77,17 +77,17 @@ impl Token {
             }
 
             RawTokenKind::Punct(punct) => TokenKind::Punct(punct),
-            RawTokenKind::Ident => TokenKind::Ident(intern_content(&mut ctx.ident_interner)),
-            RawTokenKind::Number => TokenKind::Number(intern_content(&mut ctx.lit_interner)),
+            RawTokenKind::Ident => TokenKind::Ident(intern_content(ctx)),
+            RawTokenKind::Number => TokenKind::Number(intern_content(ctx)),
 
             RawTokenKind::Str => {
                 check_terminated(ctx, "string literal")?;
-                TokenKind::Str(intern_content(&mut ctx.lit_interner))
+                TokenKind::Str(intern_content(ctx))
             }
 
             RawTokenKind::Char => {
                 check_terminated(ctx, "character literal")?;
-                TokenKind::Char(intern_content(&mut ctx.lit_interner))
+                TokenKind::Char(intern_content(ctx))
             }
         };
 
@@ -111,10 +111,10 @@ impl fmt::Display for DisplayToken<'_, '_, '_> {
                 raw::clean(self.ctx.smap.get_spelling(self.tok.range))
             ),
             TokenKind::Punct(kind) => write!(f, "{}", kind),
-            TokenKind::Ident(sym) => write!(f, "{}", &self.ctx.ident_interner[sym]),
-            TokenKind::Number(sym) | TokenKind::Str(sym) | TokenKind::Char(sym) => {
-                write!(f, "{}", &self.ctx.lit_interner[sym])
-            }
+            TokenKind::Ident(sym)
+            | TokenKind::Number(sym)
+            | TokenKind::Str(sym)
+            | TokenKind::Char(sym) => write!(f, "{}", &self.ctx.interner[sym]),
         }
     }
 }
