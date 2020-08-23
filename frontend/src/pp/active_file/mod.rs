@@ -2,11 +2,11 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use crate::lex::LexCtx;
-use crate::smap::{FileContents, FileName, SourceId, SourcesTooLargeError};
+use crate::smap::{FileName, SourceId, SourcesTooLargeError};
 use crate::DResult;
 use crate::{SourceMap, SourcePos};
 
-use super::file::IncludeKind;
+use super::file::{File, IncludeKind};
 use super::state::State;
 use super::PpToken;
 
@@ -30,16 +30,16 @@ pub enum Action {
 }
 
 pub struct ActiveFile {
-    contents: Rc<FileContents>,
+    file: Rc<File>,
     state: FileState,
     start_pos: SourcePos,
     off: u32,
 }
 
 impl ActiveFile {
-    pub fn new(contents: Rc<FileContents>, start_pos: SourcePos) -> ActiveFile {
+    pub fn new(file: Rc<File>, start_pos: SourcePos) -> ActiveFile {
         ActiveFile {
-            contents,
+            file,
             state: FileState::default(),
             start_pos,
             off: 0,
@@ -61,7 +61,7 @@ impl ActiveFile {
         let off = self.off;
         let mut processor = Processor::new(
             &mut self.state,
-            &self.contents.src[off as usize..],
+            &self.file.contents.src[off as usize..],
             self.start_pos.offset(off),
         );
         let ret = f(&mut processor);
@@ -76,14 +76,17 @@ pub struct ActiveFiles {
 }
 
 impl ActiveFiles {
-    pub fn new(smap: &SourceMap, main_id: SourceId) -> Self {
+    pub fn new(smap: &SourceMap, main_id: SourceId, parent_dir: Option<PathBuf>) -> Self {
         let source = smap.get_source(main_id);
         let file = source
             .as_file()
             .expect("preprocessor requires a file source");
 
         ActiveFiles {
-            main: ActiveFile::new(Rc::clone(&file.contents), source.range.start()),
+            main: ActiveFile::new(
+                File::new(Rc::clone(&file.contents), parent_dir),
+                source.range.start(),
+            ),
             includes: vec![],
         }
     }
@@ -100,12 +103,12 @@ impl ActiveFiles {
         &mut self,
         smap: &mut SourceMap,
         filename: FileName,
-        contents: Rc<FileContents>,
+        file: Rc<File>,
         include_pos: SourcePos,
     ) -> Result<(), SourcesTooLargeError> {
-        let id = smap.create_file(filename, Rc::clone(&contents), Some(include_pos))?;
+        let id = smap.create_file(filename, Rc::clone(&file.contents), Some(include_pos))?;
         self.includes
-            .push(ActiveFile::new(contents, smap.get_source(id).range.start()));
+            .push(ActiveFile::new(file, smap.get_source(id).range.start()));
         Ok(())
     }
 

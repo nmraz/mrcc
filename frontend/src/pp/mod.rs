@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::lex::{LexCtx, Lexer, Token, TokenKind};
 use crate::smap::SourceId;
 use crate::DResult;
@@ -18,9 +20,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
-    pub fn new(ctx: &mut LexCtx<'_, '_>, main_id: SourceId) -> Self {
+    pub fn new(ctx: &mut LexCtx<'_, '_>, main_id: SourceId, parent_dir: Option<PathBuf>) -> Self {
         Self {
-            active_files: ActiveFiles::new(&ctx.smap, main_id),
+            active_files: ActiveFiles::new(&ctx.smap, main_id, parent_dir),
             state: State::new(ctx),
         }
     }
