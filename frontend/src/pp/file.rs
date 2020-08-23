@@ -46,7 +46,7 @@ impl FileCache {
             Entry::Occupied(ent) => Ok(ent.get().clone()),
             Entry::Vacant(ent) => {
                 let path = ent.key();
-                let contents = FileContents::new(None, &fs::read_to_string(&path)?);
+                let contents = FileContents::new(&fs::read_to_string(&path)?);
                 let file = File::new(contents, path.parent().map(|p| p.into()));
                 ent.insert(file.clone());
                 Ok(file)

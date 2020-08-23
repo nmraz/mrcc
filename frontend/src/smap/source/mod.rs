@@ -44,18 +44,16 @@ impl fmt::Display for FileName {
 }
 
 pub struct FileContents {
-    pub path: Option<PathBuf>,
     pub src: String,
     line_table: LineTable,
 }
 
 impl FileContents {
-    pub fn new(path: Option<PathBuf>, src: &str) -> Rc<Self> {
+    pub fn new(src: &str) -> Rc<Self> {
         let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
         let line_table = LineTable::new_for_src(&normalized_src);
 
         Rc::new(FileContents {
-            path,
             src: normalized_src,
             line_table,
         })

@@ -8,7 +8,7 @@ fn create_file() {
     let id = sm
         .create_file(
             filename.clone(),
-            FileContents::new(Some("file".into()), "line\nline\nline"),
+            FileContents::new("line\nline\nline"),
             None,
         )
         .unwrap();
@@ -25,7 +25,7 @@ fn create_expansion() {
     let file_id = sm
         .create_file(
             FileName::real("file.c"),
-            FileContents::new(Some("file.c".into()), "#define A 5\nA;"),
+            FileContents::new("#define A 5\nA;"),
             None,
         )
         .unwrap();
@@ -54,20 +54,20 @@ fn lookup_pos() {
     let source_c_id = sm
         .create_file(
             FileName::real("file.c"),
-            FileContents::new(None, "#include <file.h>"),
+            FileContents::new("#include <file.h>"),
             None,
         )
         .unwrap();
 
     let source_empty_id = sm
-        .create_file(FileName::real("empty.c"), FileContents::new(None, ""), None)
+        .create_file(FileName::real("empty.c"), FileContents::new(""), None)
         .unwrap();
 
     let include_pos = sm.get_source(source_c_id).range.start();
     let source_h_id = sm
         .create_file(
             FileName::real("file.h"),
-            FileContents::new(None, "void f();"),
+            FileContents::new("void f();"),
             Some(include_pos),
         )
         .unwrap();
@@ -92,7 +92,7 @@ fn lookup_pos() {
 fn lookup_pos_last() {
     let mut sm = SourceMap::new();
     let id = sm
-        .create_file(FileName::real("file"), FileContents::new(None, ""), None)
+        .create_file(FileName::real("file"), FileContents::new(""), None)
         .unwrap();
     sm.lookup_source_id(sm.get_source(id).range.start()); // Shouldn't panic
 }
@@ -102,7 +102,7 @@ fn lookup_pos_last() {
 fn lookup_pos_past_last() {
     let mut sm = SourceMap::new();
     let id = sm
-        .create_file(FileName::real("file"), FileContents::new(None, ""), None)
+        .create_file(FileName::real("file"), FileContents::new(""), None)
         .unwrap();
     sm.lookup_source_id(sm.get_source(id).range.start().offset(2));
 }
@@ -111,7 +111,7 @@ fn populate_sm(sm: &mut SourceMap) -> (SourceRange, SourceRange, SourceRange, So
     let file_id = sm
         .create_file(
             FileName::real("file.c"),
-            FileContents::new(None, "#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;"),
+            FileContents::new("#define B(x) (x + 3)\n#define A B(5 * 2)\nint x = A;"),
             None,
         )
         .unwrap();
