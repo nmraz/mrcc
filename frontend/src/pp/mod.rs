@@ -101,12 +101,9 @@ impl Preprocessor {
             Err(err) => {
                 let msg = match err {
                     IncludeError::NotFound => format!("include '{}' not found", filename.display()),
-                    IncludeError::Io { full_path, error } => format!(
-                        "failed to include '{}' ({}): {}",
-                        filename.display(),
-                        full_path.display(),
-                        error
-                    ),
+                    IncludeError::Io { full_path, error } => {
+                        format!("failed to read '{}': {}", full_path.display(), error)
+                    }
                 };
                 ctx.reporter().report(Level::Fatal, range, msg).emit()?;
                 unreachable!();
