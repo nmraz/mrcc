@@ -26,6 +26,18 @@ pub struct LexCtx<'a, 'h> {
 }
 
 impl<'a, 'h> LexCtx<'a, 'h> {
+    pub fn new(
+        interner: &'a mut Interner,
+        diags: &'a mut DiagManager<'h>,
+        smap: &'a mut SourceMap,
+    ) -> Self {
+        Self {
+            interner,
+            diags,
+            smap,
+        }
+    }
+
     pub fn reporter(&mut self) -> Reporter<'_, 'h> {
         Reporter::new(self.diags, self.smap)
     }
