@@ -292,14 +292,14 @@ impl<'h> Manager<'h> {
     }
 
     fn emit(&mut self, diag: &RawDiagnostic<'_>) -> Result<()> {
+        self.handler.handle(diag);
+
         match diag.level {
             Level::Warning => self.warning_count += 1,
             Level::Error => self.error_count += 1,
             Level::Fatal => return Err(FatalErrorEmitted),
             _ => {}
         }
-
-        self.handler.handle(diag);
 
         if let Some(limit) = self.error_limit {
             if self.error_count >= limit {
