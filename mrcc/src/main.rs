@@ -1,4 +1,5 @@
 use std::fs;
+use std::iter;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
@@ -7,7 +8,7 @@ use frontend::lex::{Interner, LexCtx, TokenKind};
 use frontend::pp::PreprocessorBuilder;
 use frontend::smap::{FileContents, FileName, SourceMap};
 use frontend::{
-    diag::{Level, RenderedDiagnostic, RenderedHandler},
+    diag::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic},
     DResult, DiagManager,
 };
 
@@ -20,8 +21,36 @@ struct Handler;
 
 impl RenderedHandler for Handler {
     fn handle(&mut self, diag: &RenderedDiagnostic<'_>) {
-        eprintln!("{}: {}", diag.level, diag.main.msg())
+        let subdiags =
+            iter::once((diag.level, &diag.main)).chain(iter::repeat(Level::Note).zip(&diag.notes));
+
+        match diag.smap {
+            Some(smap) => subdiags.for_each(|(level, subdiag)| print_subdiag(level, subdiag, smap)),
+            None => subdiags.for_each(|(level, subdiag)| print_anon_subdiag(level, subdiag)),
+        }
     }
+}
+
+fn print_subdiag(level: Level, subdiag: &RenderedSubDiagnostic, smap: &SourceMap) {
+    match subdiag.ranges() {
+        Some(&Ranges { primary_range, .. }) => {
+            let interpreted = smap.get_interpreted_range(primary_range);
+            let linecol = interpreted.start_linecol();
+            eprintln!(
+                "{}:{}:{}: {}: {}",
+                interpreted.filename(),
+                linecol.line + 1,
+                linecol.col + 1,
+                level,
+                subdiag.msg()
+            )
+        }
+        None => print_anon_subdiag(level, subdiag),
+    }
+}
+
+fn print_anon_subdiag(level: Level, subdiag: &RenderedSubDiagnostic) {
+    eprintln!("{}: {}", level, subdiag.msg())
 }
 
 fn run(diags: &mut DiagManager) -> DResult<()> {
