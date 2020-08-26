@@ -93,22 +93,21 @@ impl Preprocessor {
         kind: IncludeKind,
         range: SourceRange,
     ) -> DResult<()> {
-        let file = match self
+        let file = self
             .include_loader
             .load(&filename, kind, self.active_files.top().file())
-        {
-            Ok(file) => file,
-            Err(err) => {
+            .map_err(|err| {
                 let msg = match err {
                     IncludeError::NotFound => format!("include '{}' not found", filename.display()),
                     IncludeError::Io { full_path, error } => {
                         format!("failed to read '{}': {}", full_path.display(), error)
                     }
                 };
-                ctx.reporter().report(Level::Fatal, range, msg).emit()?;
-                unreachable!();
-            }
-        };
+                ctx.reporter()
+                    .report(Level::Fatal, range, msg)
+                    .emit()
+                    .unwrap_err()
+            })?;
 
         if self
             .active_files
