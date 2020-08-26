@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::SourceMap;
 use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
@@ -107,6 +109,23 @@ pub enum Level {
     Warning,
     Error,
     Fatal,
+}
+
+impl Level {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Level::Note => "note",
+            Level::Warning => "warning",
+            Level::Error => "error",
+            Level::Fatal => "fatal",
+        }
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }
 
 pub struct FatalErrorEmitted;
