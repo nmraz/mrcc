@@ -98,14 +98,13 @@ fn run(diags: &mut DiagManager) -> DResult<()> {
             println!();
 
             // Preserve indentation by spitting out the existing whitespace.
-            let interp = ctx
+            let col = ctx
                 .smap
-                .get_interpreted_range(ctx.smap.get_expansion_range(ppt.range()));
-            let contents = interp.contents();
-            let start_linecol = interp.start_linecol();
+                .get_interpreted_range(ctx.smap.get_expansion_range(ppt.range()))
+                .start_linecol()
+                .col;
 
-            let line = contents.get_line(start_linecol.line);
-            print!("{}", &line[..start_linecol.col as usize]);
+            print!("{}", " ".repeat(col as usize));
 
             // We've already handled the leading whitespace ourselves, output the token directly.
             print!("{}", ppt.tok.display(&ctx))
