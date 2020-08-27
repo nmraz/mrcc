@@ -5,7 +5,6 @@ use std::rc::Rc;
 use std::vec::Vec;
 
 use itertools::Itertools;
-use rustc_hash::FxHashMap;
 
 use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
@@ -323,16 +322,25 @@ impl SourceMap {
     }
 
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
-        let start_sources: FxHashMap<_, _> = self
+        let start_sources: Vec<_> = self
             .get_expansion_pos_chain(range.start, SourceRange::start)
             .collect();
 
-        let (start_pos, end_pos) = self
+        let end_sources: Vec<_> = self
             .get_expansion_pos_chain(range.end, SourceRange::end)
-            .find_map(|(id, end_pos)| {
-                start_sources
-                    .get(&id)
-                    .map(|&start_pos| (start_pos, end_pos))
+            .collect();
+
+        // Compute the LCA by walking down from the root to the farthest common file.
+        let (start_pos, end_pos) = start_sources
+            .iter()
+            .rev()
+            .zip(end_sources.iter().rev())
+            .fold(None, |prev, ((start_id, start_pos), (end_id, end_pos))| {
+                if start_id == end_id {
+                    Some((*start_pos, *end_pos))
+                } else {
+                    prev
+                }
             })
             .expect("fragmented source range spans multiple files");
 
