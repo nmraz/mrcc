@@ -51,7 +51,7 @@ pub type RenderedRanges = Ranges<SourceRange>;
 pub struct SubDiagnostic<R> {
     pub msg: String,
     pub ranges: Option<Ranges<R>>,
-    pub suggestions: Vec<Suggestion<R>>,
+    pub suggestion: Option<Suggestion<R>>,
 }
 
 impl<R> SubDiagnostic<R> {
@@ -59,7 +59,7 @@ impl<R> SubDiagnostic<R> {
         Self {
             msg: msg.into(),
             ranges: Some(Ranges::new(primary_range)),
-            suggestions: Vec::new(),
+            suggestion: None,
         }
     }
 
@@ -67,7 +67,7 @@ impl<R> SubDiagnostic<R> {
         Self {
             msg: msg.into(),
             ranges: None,
-            suggestions: Vec::new(),
+            suggestion: None,
         }
     }
 
@@ -83,8 +83,8 @@ impl<R> SubDiagnostic<R> {
         self.add_labeled_range(range, "");
     }
 
-    pub fn add_suggestion(&mut self, suggestion: Suggestion<R>) {
-        self.suggestions.push(suggestion)
+    pub fn set_suggestion(&mut self, suggestion: Suggestion<R>) {
+        self.suggestion = Some(suggestion);
     }
 
     pub fn with_labeled_range(mut self, range: R, label: impl Into<String>) -> Self {
@@ -98,7 +98,7 @@ impl<R> SubDiagnostic<R> {
     }
 
     pub fn with_suggestion(mut self, suggestion: Suggestion<R>) -> Self {
-        self.add_suggestion(suggestion);
+        self.set_suggestion(suggestion);
         self
     }
 }
@@ -158,8 +158,8 @@ impl RenderedSubDiagnostic {
         self.inner.ranges.as_ref()
     }
 
-    pub fn suggestions(&self) -> &[RenderedSuggestion] {
-        &self.inner.suggestions
+    pub fn suggestion(&self) -> Option<&RenderedSuggestion> {
+        self.inner.suggestion.as_ref()
     }
 }
 
@@ -181,7 +181,7 @@ impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
         let main_diag = RawSubDiagnostic {
             msg,
             ranges: primary_range.map(|(range, _)| Ranges::new(range)),
-            suggestions: Vec::new(),
+            suggestion: None,
         };
 
         let diag = Box::new(RawDiagnostic {
@@ -207,8 +207,8 @@ impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
         self.add_labeled_range(range, "")
     }
 
-    pub fn add_suggestion(mut self, suggestion: RawSuggestion) -> Self {
-        self.diag.main.add_suggestion(suggestion);
+    pub fn set_suggestion(mut self, suggestion: RawSuggestion) -> Self {
+        self.diag.main.set_suggestion(suggestion);
         self
     }
 
@@ -355,6 +355,6 @@ impl<'a, 'h> Reporter<'a, 'h> {
         delim: char,
     ) -> DiagnosticBuilder<'_, 'h> {
         self.error(pos, format!("expected a '{}'", delim))
-            .add_suggestion(RawSuggestion::new(pos, delim.to_string()))
+            .set_suggestion(RawSuggestion::new(pos, delim.to_string()))
     }
 }

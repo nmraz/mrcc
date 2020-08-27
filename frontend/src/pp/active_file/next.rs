@@ -148,7 +148,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         if let FileToken::Tok(ppt) = next {
             self.reporter()
                 .warn(ppt.range(), "extra tokens after preprocessing directive")
-                .add_suggestion(RawSuggestion::new(ppt.range().start(), "// "))
+                .set_suggestion(RawSuggestion::new(ppt.range().start(), "// "))
                 .emit()?;
             self.advance_to_eod()?;
         }
