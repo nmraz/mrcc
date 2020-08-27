@@ -53,20 +53,23 @@ impl<'f> InterpretedFileRange<'f> {
         self.file.include_pos
     }
 
+    pub fn contents(&self) -> &'f FileContents {
+        &self.file.contents
+    }
+
     pub fn start_linecol(&self) -> LineCol {
-        self.file.contents.get_linecol(self.off)
+        self.contents().get_linecol(self.off)
     }
 
     pub fn end_linecol(&self) -> LineCol {
-        self.file.contents.get_linecol(self.local_range().end)
+        self.contents().get_linecol(self.local_range().end)
     }
 
     pub fn line_snippets(&self) -> impl Iterator<Item = LineSnippet<'f>> {
         let start_linecol = self.start_linecol();
         let end_linecol = self.end_linecol();
 
-        self.file
-            .contents
+        self.contents()
             .get_lines(start_linecol.line..end_linecol.line)
             .lines()
             .zip(0..)
