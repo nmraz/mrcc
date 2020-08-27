@@ -3,8 +3,10 @@ use std::fmt;
 use crate::SourceMap;
 use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
+pub use annotating_handler::AnnotatingHandler;
 pub use render::render;
 
+mod annotating_handler;
 mod render;
 
 #[derive(Debug, Clone)]
@@ -267,6 +269,10 @@ impl<'h> Manager<'h> {
             }),
             error_limit,
         )
+    }
+
+    pub fn new_annotating(error_limit: Option<u32>) -> Manager<'static> {
+        Manager::with_rendered_handler(AnnotatingHandler, error_limit)
     }
 
     pub fn report<'a>(
