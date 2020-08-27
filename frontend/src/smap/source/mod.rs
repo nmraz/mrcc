@@ -91,6 +91,10 @@ impl FileContents {
         let end = self.get_line_end(last);
         self.get_snippet(start..end)
     }
+
+    pub fn get_line(&self, line: u32) -> &str {
+        self.get_lines(line, line)
+    }
 }
 
 #[derive(Clone)]

@@ -60,6 +60,15 @@ fn file_contents_lines() {
 }
 
 #[test]
+fn file_contents_line() {
+    let src = "line 1\nline 2\nline 3";
+    let contents = FileContents::new(src);
+    assert_eq!(contents.get_line(0), "line 1");
+    assert_eq!(contents.get_line(1), "line 2");
+    assert_eq!(contents.get_line(2), "line 3");
+}
+
+#[test]
 fn file_contents_line_ranges() {
     let src = "line\r\nline 2\n\nline";
     let contents = FileContents::new(src);
