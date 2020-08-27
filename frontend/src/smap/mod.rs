@@ -20,6 +20,7 @@ mod tests;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceId(usize);
 
+#[derive(Clone, Copy)]
 pub struct InterpretedFileRange<'f> {
     pub file: &'f FileSourceInfo,
     pub off: u32,
