@@ -97,7 +97,7 @@ fn run(diags: &mut DiagManager) -> DResult<()> {
         if ppt.line_start {
             println!();
 
-            // Preserve indentation by spitting out the existing whitespace.
+            // Preserve indentation by advancing to the start column first.
             let col = ctx
                 .smap
                 .get_interpreted_range(ctx.smap.get_expansion_range(ppt.range()))
