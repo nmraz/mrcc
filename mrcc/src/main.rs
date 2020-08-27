@@ -1,5 +1,4 @@
 use std::fs;
-use std::iter;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
@@ -7,10 +6,7 @@ use structopt::StructOpt;
 use frontend::lex::{Interner, LexCtx, TokenKind};
 use frontend::pp::PreprocessorBuilder;
 use frontend::smap::{FileContents, FileName, SourceMap};
-use frontend::{
-    diag::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic},
-    DResult, DiagManager,
-};
+use frontend::{diag::Level, DResult, DiagManager};
 
 #[derive(StructOpt)]
 struct Opts {
