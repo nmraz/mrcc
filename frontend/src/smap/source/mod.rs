@@ -86,9 +86,9 @@ impl FileContents {
         }
     }
 
-    pub fn get_lines(&self, range: Range<u32>) -> &str {
-        let start = self.get_line_start(range.start);
-        let end = self.get_line_end(range.end);
+    pub fn get_lines(&self, first: u32, last: u32) -> &str {
+        let start = self.get_line_start(first);
+        let end = self.get_line_end(last);
         self.get_snippet(start..end)
     }
 }

@@ -54,9 +54,9 @@ fn file_contents_linecol_past_end() {
 fn file_contents_lines() {
     let src = "line 1\nline 2\nline 3";
     let contents = FileContents::new(src);
-    assert_eq!(contents.get_lines(0..1), "line 1\nline 2");
-    assert_eq!(contents.get_lines(1..2), "line 2\nline 3");
-    assert_eq!(contents.get_lines(0..2), "line 1\nline 2\nline 3");
+    assert_eq!(contents.get_lines(0, 1), "line 1\nline 2");
+    assert_eq!(contents.get_lines(1, 2), "line 2\nline 3");
+    assert_eq!(contents.get_lines(0, 2), "line 1\nline 2\nline 3");
 }
 
 #[test]

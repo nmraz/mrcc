@@ -70,7 +70,7 @@ impl<'f> InterpretedFileRange<'f> {
         let end_linecol = self.end_linecol();
 
         self.contents()
-            .get_lines(start_linecol.line..end_linecol.line)
+            .get_lines(start_linecol.line, end_linecol.line)
             .lines()
             .zip(0..)
             .map(move |(line, idx)| {
