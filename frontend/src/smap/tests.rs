@@ -308,6 +308,70 @@ fn interpreted_range() {
 }
 
 #[test]
+fn interpreted_range_line_snippets() {
+    let mut sm = SourceMap::new();
+    let (file_range, ..) = populate_sm(&mut sm);
+
+    let gather_snippets = |off, len| {
+        sm.get_interpreted_range(file_range.subrange(off, len))
+            .line_snippets()
+            .collect::<Vec<_>>()
+    };
+
+    assert_eq!(
+        gather_snippets(2, 15),
+        vec![LineSnippet {
+            line: "#define B(x) (x + 3)",
+            line_num: 0,
+            off: 2,
+            len: 15
+        },]
+    );
+
+    assert_eq!(
+        gather_snippets(24, 21),
+        vec![
+            LineSnippet {
+                line: "#define A B(5 * 2)",
+                line_num: 1,
+                off: 3,
+                len: 15
+            },
+            LineSnippet {
+                line: "int x = A;",
+                line_num: 2,
+                off: 0,
+                len: 5
+            },
+        ]
+    );
+
+    assert_eq!(
+        gather_snippets(5, 37),
+        vec![
+            LineSnippet {
+                line: "#define B(x) (x + 3)",
+                line_num: 0,
+                off: 5,
+                len: 15
+            },
+            LineSnippet {
+                line: "#define A B(5 * 2)",
+                line_num: 1,
+                off: 0,
+                len: 18
+            },
+            LineSnippet {
+                line: "int x = A;",
+                line_num: 2,
+                off: 0,
+                len: 2
+            },
+        ]
+    );
+}
+
+#[test]
 fn unfragmented_range() {
     let mut sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&mut sm);

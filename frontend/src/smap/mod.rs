@@ -20,6 +20,20 @@ mod tests;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceId(usize);
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub struct LineSnippet<'f> {
+    pub line: &'f str,
+    pub line_num: u32,
+    pub off: u32,
+    pub len: u32,
+}
+
+impl LineSnippet<'_> {
+    pub fn local_range(&self) -> Range<u32> {
+        self.off..self.off + self.len
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct InterpretedFileRange<'f> {
     pub file: &'f FileSourceInfo,
@@ -27,7 +41,7 @@ pub struct InterpretedFileRange<'f> {
     pub len: u32,
 }
 
-impl InterpretedFileRange<'_> {
+impl<'f> InterpretedFileRange<'f> {
     pub fn local_range(&self) -> Range<u32> {
         self.off..self.off + self.len
     }
@@ -46,6 +60,34 @@ impl InterpretedFileRange<'_> {
 
     pub fn end_linecol(&self) -> LineCol {
         self.file.contents.get_linecol(self.local_range().end)
+    }
+
+    pub fn line_snippets(&self) -> impl Iterator<Item = LineSnippet<'f>> {
+        let start_linecol = self.start_linecol();
+        let end_linecol = self.end_linecol();
+
+        self.file
+            .contents
+            .get_lines(start_linecol.line..end_linecol.line)
+            .lines()
+            .zip(0..)
+            .map(move |(line, idx)| {
+                let last_line = end_linecol.line - start_linecol.line;
+
+                let start = if idx == 0 { start_linecol.col } else { 0 };
+                let end = if idx == last_line {
+                    end_linecol.col
+                } else {
+                    line.len() as u32
+                };
+
+                LineSnippet {
+                    line,
+                    line_num: start_linecol.line + idx,
+                    off: start,
+                    len: end - start,
+                }
+            })
     }
 }
 
