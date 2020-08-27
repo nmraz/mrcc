@@ -85,6 +85,12 @@ impl FileContents {
             self.line_table.get_line_start(line + 1) - 1
         }
     }
+
+    pub fn get_lines(&self, range: Range<u32>) -> &str {
+        let start = self.get_line_start(range.start);
+        let end = self.get_line_end(range.end);
+        self.get_snippet(start..end)
+    }
 }
 
 #[derive(Clone)]
