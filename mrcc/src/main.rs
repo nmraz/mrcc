@@ -96,9 +96,22 @@ fn run(diags: &mut DiagManager) -> DResult<()> {
 
         if ppt.line_start {
             println!();
-        }
 
-        print!("{}", ppt.display(&ctx));
+            // Preserve indentation by spitting out the existing whitespace.
+            let interp = ctx
+                .smap
+                .get_interpreted_range(ctx.smap.get_expansion_range(ppt.range()));
+            let contents = interp.contents();
+            let start_linecol = interp.start_linecol();
+
+            let line = contents.get_line(start_linecol.line);
+            print!("{}", &line[..start_linecol.col as usize]);
+
+            // We've already handled the leading whitespace ourselves, output the token directly.
+            print!("{}", ppt.tok.display(&ctx))
+        } else {
+            print!("{}", ppt.display(&ctx));
+        }
     }
 
     Ok(())
