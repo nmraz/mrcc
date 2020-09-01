@@ -18,6 +18,8 @@ impl RenderedHandler for AnnotatingHandler {
             Some(smap) => subdiags.for_each(|(level, subdiag)| print_subdiag(level, subdiag, smap)),
             None => subdiags.for_each(|(level, subdiag)| print_anon_subdiag(level, subdiag)),
         }
+
+        println!();
     }
 }
 
