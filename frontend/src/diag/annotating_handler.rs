@@ -3,7 +3,7 @@ use std::fmt;
 use std::iter;
 
 use crate::smap::InterpretedFileRange;
-use crate::SourceMap;
+use crate::{LineCol, SourceMap};
 
 use super::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic};
 
@@ -34,13 +34,21 @@ fn print_subdiag(level: Level, subdiag: &RenderedSubDiagnostic, smap: &SourceMap
                 level,
                 subdiag.msg()
             );
-            print_annotation(&interp);
+
+            let suggestion = subdiag.suggestion().map(|sugg| {
+                (
+                    sugg.insert_text.as_str(),
+                    smap.get_interpreted_range(sugg.replacement_range)
+                        .start_linecol(),
+                )
+            });
+            print_annotation(&interp, suggestion);
         }
         None => print_anon_subdiag(level, subdiag),
     }
 }
 
-fn print_annotation(interp: &InterpretedFileRange<'_>) {
+fn print_annotation(interp: &InterpretedFileRange<'_>, suggestion: Option<(&str, LineCol)>) {
     let line_snippets: Vec<_> = interp.line_snippets().collect();
     let line_num_width = match line_snippets.last() {
         Some(last) => count_digits(last.line_num + 1),
@@ -57,6 +65,13 @@ fn print_annotation(interp: &InterpretedFileRange<'_>) {
             " ".repeat(snippet.off as usize),
             "^".repeat(cmp::max(snippet.len, 1) as usize)
         );
+
+        if let Some((text, linecol)) = suggestion {
+            if linecol.line == snippet.line_num {
+                print_gutter("", line_num_width);
+                println!("{}{}", " ".repeat(linecol.col as usize), text);
+            }
+        }
     }
 }
 
