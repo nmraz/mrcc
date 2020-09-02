@@ -23,30 +23,23 @@ impl RenderedHandler for AnnotatingHandler {
     }
 }
 
-fn print_subdiag(level: Level, subdiag: &RenderedSubDiagnostic, smap: &SourceMap) {
-    match subdiag.ranges() {
-        Some(&Ranges { primary_range, .. }) => {
-            let interp = smap.get_interpreted_range(primary_range);
-            let linecol = interp.start_linecol();
-            eprintln!(
-                "{}:{}:{}: {}: {}",
-                interp.filename(),
-                linecol.line + 1,
-                linecol.col + 1,
-                level,
-                subdiag.msg()
-            );
+fn print_anon_subdiag(level: Level, subdiag: &RenderedSubDiagnostic) {
+    eprintln!("{}: {}", level, subdiag.msg());
+}
 
-            let suggestion = subdiag.suggestion().map(|sugg| {
-                (
-                    sugg.insert_text.as_str(),
-                    smap.get_interpreted_range(sugg.replacement_range)
-                        .start_linecol(),
-                )
-            });
-            print_annotation(&interp, suggestion);
-        }
-        None => print_anon_subdiag(level, subdiag),
+fn print_subdiag(level: Level, subdiag: &RenderedSubDiagnostic, smap: &SourceMap) {
+    print_anon_subdiag(level, subdiag);
+
+    if let Some(&Ranges { primary_range, .. }) = subdiag.ranges() {
+        let interp = smap.get_interpreted_range(primary_range);
+        let suggestion = subdiag.suggestion().map(|sugg| {
+            (
+                sugg.insert_text.as_str(),
+                smap.get_interpreted_range(sugg.replacement_range)
+                    .start_linecol(),
+            )
+        });
+        print_annotation(&interp, suggestion);
     }
 }
 
@@ -57,15 +50,26 @@ fn print_annotation(interp: &InterpretedFileRange<'_>, suggestion: Option<(&str,
         None => return,
     };
 
+    let linecol = interp.start_linecol();
+    eprintln!(
+        "{pad:width$}--> {}:{}:{}",
+        interp.filename(),
+        linecol.line + 1,
+        linecol.col + 1,
+        pad = "",
+        width = line_num_width
+    );
+
     for snippet in &line_snippets {
         print_gutter(snippet.line_num + 1, line_num_width);
         eprintln!("{}", snippet.line);
 
         print_gutter("", line_num_width);
         println!(
-            "{}{}",
-            " ".repeat(snippet.off as usize),
-            "^".repeat(cmp::max(snippet.len, 1) as usize)
+            "{pad:off$}{}",
+            "^".repeat(cmp::max(snippet.len, 1) as usize),
+            pad = "",
+            off = snippet.off as usize,
         );
 
         if let Some((text, linecol)) = suggestion {
@@ -89,10 +93,6 @@ fn count_digits(mut val: u32) -> usize {
         val /= 10;
     }
     digits
-}
-
-fn print_anon_subdiag(level: Level, subdiag: &RenderedSubDiagnostic) {
-    eprintln!("{}: {}", level, subdiag.msg())
 }
 
 #[cfg(test)]
