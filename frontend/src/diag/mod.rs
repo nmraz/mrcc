@@ -167,7 +167,7 @@ impl RenderedSubDiagnostic {
 
 pub struct RenderedDiagnostic<'s> {
     pub inner: Diagnostic<'s, RenderedSubDiagnostic>,
-    pub include_trace: Vec<SourcePos>,
+    pub includes: Vec<SourcePos>,
 }
 
 impl<'s> RenderedDiagnostic<'s> {
