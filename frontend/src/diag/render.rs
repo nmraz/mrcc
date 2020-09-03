@@ -7,10 +7,10 @@ use rustc_hash::FxHasher;
 
 use crate::smap::{ExpansionType, SourceId};
 use crate::SourceMap;
-use crate::{FragmentedSourceRange, SourceRange};
+use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
+use super::{Diagnostic, RawDiagnostic, RenderedDiagnostic};
 use super::{Ranges, RawRanges, RenderedRanges};
-use super::{RawDiagnostic, RenderedDiagnostic};
 use super::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
 use super::{RawSuggestion, RenderedSuggestion};
 
@@ -158,18 +158,22 @@ fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagno
 fn render_with<'s>(
     raw: &RawDiagnostic<'s>,
     mut f: impl FnMut(&RawSubDiagnostic) -> RenderedSubDiagnostic,
+    include_trace: Vec<SourcePos>,
 ) -> RenderedDiagnostic<'s> {
     RenderedDiagnostic {
-        level: raw.level,
-        main: f(&raw.main),
-        notes: raw.notes.iter().map(f).collect(),
-        smap: raw.smap,
+        inner: Diagnostic {
+            level: raw.level,
+            main: f(&raw.main),
+            notes: raw.notes.iter().map(f).collect(),
+            smap: raw.smap,
+        },
+        include_trace,
     }
 }
 
 pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
     raw.smap.map_or_else(
-        || render_with(raw, render_stripped_subdiag),
-        |smap| render_with(raw, |subdiag| render_subdiag(subdiag, smap)),
+        || render_with(raw, render_stripped_subdiag, Vec::new()),
+        |smap| render_with(raw, |subdiag| render_subdiag(subdiag, smap), Vec::new()),
     )
 }

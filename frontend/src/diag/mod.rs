@@ -9,6 +9,35 @@ pub use render::render;
 mod annotating_handler;
 mod render;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Level {
+    Note,
+    Warning,
+    Error,
+    Fatal,
+}
+
+impl Level {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Level::Note => "note",
+            Level::Warning => "warning",
+            Level::Error => "error",
+            Level::Fatal => "fatal",
+        }
+    }
+}
+
+impl fmt::Display for Level {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+pub struct FatalErrorEmitted;
+
+pub type Result<T> = std::result::Result<T, FatalErrorEmitted>;
+
 #[derive(Debug, Clone)]
 pub struct Suggestion<R> {
     pub replacement_range: R,
@@ -105,35 +134,6 @@ impl<R> SubDiagnostic<R> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Level {
-    Note,
-    Warning,
-    Error,
-    Fatal,
-}
-
-impl Level {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Level::Note => "note",
-            Level::Warning => "warning",
-            Level::Error => "error",
-            Level::Fatal => "fatal",
-        }
-    }
-}
-
-impl fmt::Display for Level {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-pub struct FatalErrorEmitted;
-
-pub type Result<T> = std::result::Result<T, FatalErrorEmitted>;
-
 #[derive(Clone)]
 pub struct Diagnostic<'s, D> {
     pub level: Level,
@@ -165,7 +165,28 @@ impl RenderedSubDiagnostic {
     }
 }
 
-pub type RenderedDiagnostic<'s> = Diagnostic<'s, RenderedSubDiagnostic>;
+pub struct RenderedDiagnostic<'s> {
+    pub inner: Diagnostic<'s, RenderedSubDiagnostic>,
+    pub include_trace: Vec<SourcePos>,
+}
+
+impl<'s> RenderedDiagnostic<'s> {
+    pub fn level(&self) -> Level {
+        self.inner.level
+    }
+
+    pub fn main(&self) -> &RenderedSubDiagnostic {
+        &self.inner.main
+    }
+
+    pub fn notes(&self) -> &[RenderedSubDiagnostic] {
+        &self.inner.notes
+    }
+
+    pub fn smap(&self) -> Option<&'s SourceMap> {
+        self.inner.smap
+    }
+}
 
 #[must_use = "diagnostics should be emitted with `.emit()`"]
 pub struct DiagnosticBuilder<'a, 'h> {

@@ -11,10 +11,10 @@ pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
     fn handle(&mut self, diag: &RenderedDiagnostic<'_>) {
-        let subdiags =
-            iter::once((diag.level, &diag.main)).chain(iter::repeat(Level::Note).zip(&diag.notes));
+        let subdiags = iter::once((diag.level(), diag.main()))
+            .chain(iter::repeat(Level::Note).zip(diag.notes()));
 
-        match diag.smap {
+        match diag.smap() {
             Some(smap) => subdiags.for_each(|(level, subdiag)| print_subdiag(level, subdiag, smap)),
             None => subdiags.for_each(|(level, subdiag)| print_anon_subdiag(level, subdiag)),
         }
