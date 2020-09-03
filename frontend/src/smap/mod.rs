@@ -217,6 +217,21 @@ impl SourceMap {
         (source, local_range)
     }
 
+    pub fn get_includer_chain(
+        &self,
+        pos: SourcePos,
+    ) -> impl Iterator<Item = (SourceId, SourcePos)> + '_ {
+        get_location_chain(
+            pos,
+            move |pos| self.lookup_source_id(pos),
+            move |id, _| {
+                self.get_source(id)
+                    .as_file()
+                    .and_then(|file| file.include_pos)
+            },
+        )
+    }
+
     pub fn get_immediate_spelling_pos(&self, pos: SourcePos) -> Option<SourcePos> {
         let (source, off) = self.lookup_source_off(pos);
         source.as_expansion().map(|exp| exp.spelling_pos(off))
