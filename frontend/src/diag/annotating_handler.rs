@@ -2,7 +2,7 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 
-use crate::smap::{FileName, InterpretedFileRange};
+use crate::smap::InterpretedFileRange;
 use crate::{LineCol, SourceMap, SourcePos};
 
 use super::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic};
@@ -22,7 +22,7 @@ impl RenderedHandler for AnnotatingHandler {
             None => subdiags.for_each(|subdiag| print_anon_subdiag(subdiag.level, subdiag.diag)),
         }
 
-        println!();
+        eprintln!();
     }
 }
 
@@ -90,24 +90,17 @@ fn print_annotation<'a>(
     };
 
     for include in includes {
-        let linecol = include.start_linecol();
-        print_file_loc(
-            include.filename(),
-            Some("includer"),
-            linecol,
-            line_num_width,
-        );
+        print_file_loc(&include, Some("includer"), line_num_width);
     }
 
-    let linecol = interp.start_linecol();
-    print_file_loc(interp.filename(), None, linecol, line_num_width);
+    print_file_loc(interp, None, line_num_width);
 
     for snippet in &line_snippets {
         print_gutter(snippet.line_num + 1, line_num_width);
         eprintln!("{}", snippet.line);
 
         print_gutter("", line_num_width);
-        println!(
+        eprintln!(
             "{pad:off$}{}",
             "^".repeat(cmp::max(snippet.len, 1) as usize),
             pad = "",
@@ -117,23 +110,24 @@ fn print_annotation<'a>(
         if let Some((text, linecol)) = suggestion {
             if linecol.line == snippet.line_num {
                 print_gutter("", line_num_width);
-                println!("{}{}", " ".repeat(linecol.col as usize), text);
+                eprintln!("{pad:off$}{}", text, pad = "", off = linecol.col as usize);
             }
         }
     }
 }
 
-fn print_file_loc(filename: &FileName, note: Option<&str>, linecol: LineCol, width: usize) {
+fn print_file_loc(interp: &InterpretedFileRange<'_>, note: Option<&str>, gutter_width: usize) {
     let note = note.map(|note| format!(" ({})", note)).unwrap_or_default();
+    let linecol = interp.start_linecol();
 
     eprintln!(
         "{pad:width$}--> {}:{}:{}{}",
-        filename,
+        interp.filename(),
         linecol.line + 1,
         linecol.col + 1,
         note,
         pad = "",
-        width = width
+        width = gutter_width
     );
 }
 
