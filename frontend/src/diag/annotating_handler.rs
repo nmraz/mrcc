@@ -2,8 +2,8 @@ use std::cmp;
 use std::fmt;
 use std::iter;
 
-use crate::smap::InterpretedFileRange;
-use crate::{LineCol, SourceMap};
+use crate::smap::{FileName, InterpretedFileRange};
+use crate::{LineCol, SourceMap, SourcePos};
 
 use super::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic};
 
@@ -11,15 +11,42 @@ pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
     fn handle(&mut self, diag: &RenderedDiagnostic<'_>) {
-        let subdiags = iter::once((diag.level(), diag.main()))
-            .chain(iter::repeat(Level::Note).zip(diag.notes()));
+        let subdiags = iter::once(DisplayableSubDiagnostic::from_main(diag)).chain(
+            diag.notes()
+                .iter()
+                .map(|note| DisplayableSubDiagnostic::from_note(note)),
+        );
 
         match diag.smap() {
-            Some(smap) => subdiags.for_each(|(level, subdiag)| print_subdiag(level, subdiag, smap)),
-            None => subdiags.for_each(|(level, subdiag)| print_anon_subdiag(level, subdiag)),
+            Some(smap) => subdiags.for_each(|subdiag| print_subdiag(&subdiag, smap)),
+            None => subdiags.for_each(|subdiag| print_anon_subdiag(subdiag.level, subdiag.diag)),
         }
 
         println!();
+    }
+}
+
+struct DisplayableSubDiagnostic<'a> {
+    level: Level,
+    diag: &'a RenderedSubDiagnostic,
+    includes: &'a [SourcePos],
+}
+
+impl<'a> DisplayableSubDiagnostic<'a> {
+    fn from_main(diag: &'a RenderedDiagnostic<'_>) -> Self {
+        Self {
+            level: diag.level(),
+            diag: diag.main(),
+            includes: &diag.includes,
+        }
+    }
+
+    fn from_note(note: &'a RenderedSubDiagnostic) -> Self {
+        Self {
+            level: Level::Note,
+            diag: note,
+            includes: &[],
+        }
     }
 }
 
@@ -27,38 +54,53 @@ fn print_anon_subdiag(level: Level, subdiag: &RenderedSubDiagnostic) {
     eprintln!("{}: {}", level, subdiag.msg());
 }
 
-fn print_subdiag(level: Level, subdiag: &RenderedSubDiagnostic, smap: &SourceMap) {
-    print_anon_subdiag(level, subdiag);
+fn print_subdiag(subdiag: &DisplayableSubDiagnostic<'_>, smap: &SourceMap) {
+    print_anon_subdiag(subdiag.level, subdiag.diag);
 
-    if let Some(&Ranges { primary_range, .. }) = subdiag.ranges() {
+    if let Some(&Ranges { primary_range, .. }) = subdiag.diag.ranges() {
         let interp = smap.get_interpreted_range(primary_range);
-        let suggestion = subdiag.suggestion().map(|sugg| {
+        let suggestion = subdiag.diag.suggestion().map(|sugg| {
             (
                 sugg.insert_text.as_str(),
                 smap.get_interpreted_range(sugg.replacement_range)
                     .start_linecol(),
             )
         });
-        print_annotation(&interp, suggestion);
+
+        print_annotation(
+            &interp,
+            suggestion,
+            subdiag
+                .includes
+                .iter()
+                .map(|&pos| smap.get_interpreted_range(pos.into())),
+        );
     }
 }
 
-fn print_annotation(interp: &InterpretedFileRange<'_>, suggestion: Option<(&str, LineCol)>) {
+fn print_annotation<'a>(
+    interp: &InterpretedFileRange<'_>,
+    suggestion: Option<(&str, LineCol)>,
+    includes: impl Iterator<Item = InterpretedFileRange<'a>>,
+) {
     let line_snippets: Vec<_> = interp.line_snippets().collect();
     let line_num_width = match line_snippets.last() {
         Some(last) => count_digits(last.line_num + 1),
         None => return,
     };
 
+    for include in includes {
+        let linecol = include.start_linecol();
+        print_file_loc(
+            include.filename(),
+            Some("includer"),
+            linecol,
+            line_num_width,
+        );
+    }
+
     let linecol = interp.start_linecol();
-    eprintln!(
-        "{pad:width$}--> {}:{}:{}",
-        interp.filename(),
-        linecol.line + 1,
-        linecol.col + 1,
-        pad = "",
-        width = line_num_width
-    );
+    print_file_loc(interp.filename(), None, linecol, line_num_width);
 
     for snippet in &line_snippets {
         print_gutter(snippet.line_num + 1, line_num_width);
@@ -79,6 +121,20 @@ fn print_annotation(interp: &InterpretedFileRange<'_>, suggestion: Option<(&str,
             }
         }
     }
+}
+
+fn print_file_loc(filename: &FileName, note: Option<&str>, linecol: LineCol, width: usize) {
+    let note = note.map(|note| format!(" ({})", note)).unwrap_or_default();
+
+    eprintln!(
+        "{pad:width$}--> {}:{}:{}{}",
+        filename,
+        linecol.line + 1,
+        linecol.col + 1,
+        note,
+        pad = "",
+        width = width
+    );
 }
 
 fn print_gutter(obj: impl fmt::Display, width: usize) {
