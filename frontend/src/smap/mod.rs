@@ -339,7 +339,7 @@ impl SourceMap {
             .map(move |(id, range)| (id, extract_pos(range)))
     }
 
-    pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> SourceRange {
+    pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> Option<SourceRange> {
         let start_sources: Vec<_> = self
             .get_expansion_pos_chain(range.start, SourceRange::start)
             .collect();
@@ -359,10 +359,9 @@ impl SourceMap {
                 } else {
                     prev
                 }
-            })
-            .expect("fragmented source range spans multiple files");
+            })?;
 
         assert!(start_pos <= end_pos, "invalid source range");
-        SourceRange::new(start_pos, end_pos.offset_from(start_pos))
+        Some(SourceRange::new(start_pos, end_pos.offset_from(start_pos)))
     }
 }

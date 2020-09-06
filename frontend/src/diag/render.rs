@@ -18,19 +18,22 @@ fn trace_expansions(
     range: FragmentedSourceRange,
     smap: &SourceMap,
 ) -> impl Iterator<Item = (SourceId, SourceRange)> + '_ {
-    smap.get_caller_chain(smap.get_unfragmented_range(range))
-        .map(move |(id, range)| {
-            let source = smap.get_source(id);
+    smap.get_unfragmented_range(range)
+        .into_iter()
+        .flat_map(move |range| {
+            smap.get_caller_chain(range).map(move |(id, range)| {
+                let source = smap.get_source(id);
 
-            // Shift macro arguments to their use in the macro
-            if let Some(exp) = source.as_expansion() {
-                if exp.expansion_type == ExpansionType::MacroArg {
-                    let use_range = exp.expansion_range;
-                    return (smap.lookup_source_id(use_range.start()), use_range);
+                // Shift macro arguments to their use in the macro
+                if let Some(exp) = source.as_expansion() {
+                    if exp.expansion_type == ExpansionType::MacroArg {
+                        let use_range = exp.expansion_range;
+                        return (smap.lookup_source_id(use_range.start()), use_range);
+                    }
                 }
-            }
 
-            (id, range)
+                (id, range)
+            })
         })
 }
 
