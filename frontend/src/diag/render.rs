@@ -179,7 +179,7 @@ pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
                 .ranges()
                 .map(|ranges| {
                     smap.get_includer_chain(ranges.primary_range.start())
-                        .skip(1) // First listing is the file itself
+                        .dropping(1) // First listing is the file itself
                         .map(|(_, pos)| pos)
                         .collect()
                 })
