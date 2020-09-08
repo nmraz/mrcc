@@ -48,15 +48,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
-        let tok = match self.next_token()? {
-            FileToken::Tok(PpToken { tok, .. }) => tok,
-            FileToken::Newline => return Ok(None),
-        };
+        let ppt = self.next_directive_token()?;
 
-        let ident = match tok.kind {
+        let ident = match ppt.kind() {
             TokenKind::Ident(ident) => ident,
+            TokenKind::Eof => return Ok(None), // Null directive
             _ => {
-                self.invalid_directive(tok.range)?;
+                self.invalid_directive(ppt.range())?;
                 return Ok(None);
             }
         };
@@ -67,10 +65,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         if ident == known_idents.dir_include {
             self.handle_include_directive()
         } else if ident == known_idents.dir_error {
-            self.handle_error_directive(tok.range)?;
+            self.handle_error_directive(ppt.range())?;
             Ok(None)
         } else {
-            self.invalid_directive(tok.range)?;
+            self.invalid_directive(ppt.range())?;
             Ok(None)
         }
     }
@@ -149,6 +147,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn next_token(&mut self) -> DResult<FileToken> {
         self.processor.next_token(self.ctx)
+    }
+
+    fn next_directive_token(&mut self) -> DResult<PpToken> {
+        self.processor.next_directive_token(self.ctx)
     }
 
     fn reporter(&mut self) -> Reporter<'_, 'h> {
