@@ -13,11 +13,15 @@ pub enum FileToken {
 }
 
 impl FileToken {
-    pub fn is_eod(&self) -> bool {
+    pub fn non_eod(&self) -> Option<&PpToken> {
         match self {
-            FileToken::Newline => true,
-            FileToken::Tok(PpToken { tok, .. }) => tok.kind == TokenKind::Eof,
+            FileToken::Tok(ppt) if ppt.kind() != TokenKind::Eof => Some(ppt),
+            _ => None,
         }
+    }
+
+    pub fn is_eod(&self) -> bool {
+        self.non_eod().is_none()
     }
 }
 

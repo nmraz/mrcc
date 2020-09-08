@@ -124,28 +124,15 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn handle_error_directive(&mut self, id_range: SourceRange) -> DResult<()> {
         let mut msg = String::new();
-        loop {
-            let tok = self.next_token()?;
-            if tok.is_eod() {
-                break;
-            }
-
-            if let FileToken::Tok(ppt) = tok {
-                write!(msg, "{}", ppt.display(self.ctx)).unwrap();
-            }
+        while let Some(ppt) = self.next_token()?.non_eod() {
+            write!(msg, "{}", ppt.display(self.ctx)).unwrap();
         }
 
         self.ctx.reporter().error(id_range, msg).emit()
     }
 
     fn finish_directive(&mut self) -> DResult<()> {
-        let next = self.next_token()?;
-
-        if next.is_eod() {
-            return Ok(());
-        }
-
-        if let FileToken::Tok(ppt) = next {
+        if let Some(ppt) = self.next_token()?.non_eod() {
             self.reporter()
                 .warn(ppt.range(), "extra tokens after preprocessing directive")
                 .set_suggestion(RawSuggestion::new(ppt.range().start(), "// "))
