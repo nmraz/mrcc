@@ -3,6 +3,7 @@ use std::fmt;
 use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
 use crate::{DResult, SourceRange};
 
+#[derive(Debug, Copy, Clone)]
 pub struct PpToken {
     pub tok: Token,
     pub line_start: bool,
