@@ -67,6 +67,23 @@ impl<'a> Processor<'a> {
         Ok(ret)
     }
 
+    pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
+        self.next_token(ctx).map(|tok| {
+            tok.non_eod().copied().unwrap_or_else(|| {
+                let tok = Token {
+                    kind: TokenKind::Eof,
+                    range: self.pos().into(),
+                };
+
+                PpToken {
+                    tok,
+                    line_start: false,
+                    leading_trivia: false,
+                }
+            })
+        })
+    }
+
     pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {
         while !self.next_token(ctx)?.is_eod() {}
         Ok(())
