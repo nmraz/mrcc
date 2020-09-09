@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use rustc_hash::FxHashMap;
 
 use crate::lex::{Interner, LexCtx, Symbol};
@@ -7,14 +9,14 @@ use super::PpToken;
 
 pub struct State {
     pub known_idents: KnownIdents,
-    pub macro_table: FxHashMap<Symbol, MacroDef>,
+    pub macro_table: MacroTable,
 }
 
 impl State {
     pub fn new(ctx: &mut LexCtx<'_, '_>) -> Self {
         Self {
             known_idents: KnownIdents::new(&mut ctx.interner),
-            macro_table: FxHashMap::default(),
+            macro_table: MacroTable::new(),
         }
     }
 }
@@ -84,8 +86,64 @@ pub enum MacroInfo {
     },
 }
 
+impl MacroInfo {
+    pub fn is_identical_to(&self, rhs: &MacroInfo) -> bool {
+        match (self, rhs) {
+            (MacroInfo::Object(lhs), MacroInfo::Object(rhs)) => lhs.is_identical_to(rhs),
+            (
+                MacroInfo::Function {
+                    args: lhs_args,
+                    replacement: lhs_replacement,
+                },
+                MacroInfo::Function {
+                    args: rhs_args,
+                    replacement: rhs_replacement,
+                },
+            ) => lhs_args == rhs_args && lhs_replacement.is_identical_to(rhs_replacement),
+            _ => false,
+        }
+    }
+}
+
 pub struct MacroDef {
     pub name: Symbol,
     pub name_range: SourceRange,
     pub info: MacroInfo,
+}
+
+pub struct MacroTable {
+    map: FxHashMap<Symbol, MacroDef>,
+}
+
+impl MacroTable {
+    pub fn new() -> Self {
+        Self {
+            map: Default::default(),
+        }
+    }
+
+    pub fn lookup(&self, name: Symbol) -> Option<&MacroDef> {
+        self.map.get(&name)
+    }
+
+    pub fn define(&mut self, def: MacroDef) -> Option<&MacroDef> {
+        match self.map.entry(def.name) {
+            Entry::Occupied(ent) => {
+                let prev = ent.into_mut();
+
+                // The standard allows redefinition iff the replacement lists are identical.
+                if prev.info.is_identical_to(&def.info) {
+                    *prev = def;
+                    None
+                } else {
+                    Some(prev)
+                }
+            }
+
+            Entry::Vacant(ent) => {
+                ent.insert(def);
+                None
+            }
+        }
+    }
 }
