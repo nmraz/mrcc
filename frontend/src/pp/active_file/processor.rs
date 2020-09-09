@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::lex::raw::{Reader, Tokenizer};
-use crate::lex::{FromRawResult, LexCtx, Token, TokenKind};
+use crate::lex::{ConvertedTokenKind, LexCtx, Token, TokenKind};
 use crate::{DResult, SourcePos};
 
 use super::FileState;
@@ -44,24 +44,23 @@ impl<'a> Processor<'a> {
         let mut leading_trivia = false;
 
         let ret = loop {
-            match Token::from_raw(&self.tokenizer.next_token(), self.base_pos, ctx)? {
-                FromRawResult::Tok(tok) => {
+            let converted = ctx.convert_raw(&self.tokenizer.next_token(), self.base_pos)?;
+            match converted.kind {
+                ConvertedTokenKind::Real(kind) => {
                     break FileToken::Tok(PpToken {
-                        tok,
+                        tok: converted.map(|_| kind),
                         line_start: mem::replace(&mut self.state.line_start, false),
                         leading_trivia,
-                    });
+                    })
                 }
-
-                FromRawResult::Newline => {
+                ConvertedTokenKind::Newline => {
                     self.state.line_start = true;
                     break FileToken::Newline;
                 }
-
-                FromRawResult::Trivia => {
+                ConvertedTokenKind::Trivia => {
                     leading_trivia = true;
                 }
-            };
+            }
         };
 
         Ok(ret)
