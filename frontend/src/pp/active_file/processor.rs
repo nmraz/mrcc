@@ -68,11 +68,16 @@ impl<'a> Processor<'a> {
     }
 
     pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
+        // Record the position at which the token is *supposed* to start.
+        // TODO: incorporate position into `FileToken::Newline`
+        self.reader().eat_line_ws();
+        let pos = self.pos();
+
         self.next_token(ctx).map(|tok| {
             tok.non_eod().copied().unwrap_or_else(|| {
                 let tok = Token {
                     kind: TokenKind::Eof,
-                    range: self.pos().into(),
+                    range: pos.into(),
                 };
 
                 PpToken {
