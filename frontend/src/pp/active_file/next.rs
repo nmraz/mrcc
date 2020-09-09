@@ -1,8 +1,5 @@
 use std::fmt::Write;
-use std::iter;
 use std::path::PathBuf;
-
-use itertools::Itertools;
 
 use crate::diag::{RawSubDiagnostic, RawSuggestion, Reporter};
 use crate::lex::{LexCtx, PunctKind, Symbol, TokenKind};
@@ -150,10 +147,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             }
         }
 
-        itertools::process_results(
-            iter::repeat_with(|| self.next_token().map(|tok| tok.non_eod())),
-            |iter| tokens.extend(iter.while_some()),
-        )?;
+        while let Some(ppt) = self.next_token()?.non_eod() {
+            tokens.push(ppt);
+        }
 
         let replacement = ReplacementList::new(tokens);
 
