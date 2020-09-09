@@ -31,11 +31,20 @@ pub struct Token<K = TokenKind> {
 }
 
 impl<K> Token<K> {
+    pub fn new(kind: K, range: SourceRange) -> Self {
+        Self { kind, range }
+    }
+
     pub fn map<L>(self, f: impl FnOnce(K) -> L) -> Token<L> {
         Token {
             kind: f(self.kind),
             range: self.range,
         }
+    }
+
+    pub fn maybe_map<L>(self, f: impl FnOnce(K) -> Option<L>) -> Option<Token<L>> {
+        let Token { kind, range } = self;
+        f(kind).map(|kind| Token { kind, range })
     }
 }
 

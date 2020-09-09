@@ -22,6 +22,18 @@ impl<K: Copy> PpToken<K> {
     pub fn range(&self) -> SourceRange {
         self.tok.range
     }
+
+    pub fn map<L>(self, f: impl FnOnce(K) -> L) -> PpToken<L> {
+        PpToken {
+            tok: self.tok.map(f),
+            line_start: self.line_start,
+            leading_trivia: self.leading_trivia,
+        }
+    }
+
+    pub fn maybe_map<L>(self, f: impl FnOnce(K) -> Option<L>) -> Option<PpToken<L>> {
+        f(self.tok.kind).map(|kind| self.map(|_| kind))
+    }
 }
 
 impl PpToken {

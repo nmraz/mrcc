@@ -32,7 +32,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
             let ppt = loop {
-                if let FileToken::Tok(ppt) = self.next_token()? {
+                if let Some(ppt) = self.next_token()?.real() {
                     break ppt;
                 }
             };

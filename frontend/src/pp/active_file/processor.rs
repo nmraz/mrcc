@@ -1,27 +1,48 @@
 use std::mem;
 
 use crate::lex::raw::{Reader, Tokenizer};
-use crate::lex::{ConvertedTokenKind, LexCtx, Token, TokenKind};
+use crate::lex::{ConvertedTokenKind, LexCtx, TokenKind};
 use crate::{DResult, SourcePos};
 
 use super::FileState;
 use super::PpToken;
 
-pub enum FileToken {
-    Tok(PpToken),
+#[derive(Debug, Copy, Clone)]
+pub enum FileTokenKind {
+    Real(TokenKind),
     Newline,
 }
 
-impl FileToken {
-    pub fn non_eod(&self) -> Option<&PpToken> {
+impl FileTokenKind {
+    pub fn real(self) -> Option<TokenKind> {
         match self {
-            FileToken::Tok(ppt) if ppt.kind() != TokenKind::Eof => Some(ppt),
-            _ => None,
+            FileTokenKind::Real(kind) => Some(kind),
+            FileTokenKind::Newline => None,
         }
+    }
+
+    pub fn non_eod(self) -> Option<TokenKind> {
+        self.real().filter(|&kind| kind != TokenKind::Eof)
     }
 
     pub fn is_eod(&self) -> bool {
         self.non_eod().is_none()
+    }
+}
+
+pub type FileToken = PpToken<FileTokenKind>;
+
+impl FileToken {
+    pub fn real(&self) -> Option<PpToken> {
+        self.maybe_map(|kind| kind.real())
+    }
+
+    pub fn non_eod(&self) -> Option<PpToken> {
+        self.maybe_map(|kind| kind.non_eod())
+    }
+
+    pub fn is_eod(&self) -> bool {
+        self.kind().is_eod()
     }
 }
 
@@ -43,49 +64,33 @@ impl<'a> Processor<'a> {
     pub fn next_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
         let mut leading_trivia = false;
 
-        let ret = loop {
+        let (tok, new_line_start) = loop {
             let converted = ctx.convert_raw(&self.tokenizer.next_token(), self.base_pos)?;
             match converted.kind {
                 ConvertedTokenKind::Real(kind) => {
-                    break FileToken::Tok(PpToken {
-                        tok: converted.map(|_| kind),
-                        line_start: mem::replace(&mut self.state.line_start, false),
-                        leading_trivia,
-                    })
+                    break (converted.map(|_| FileTokenKind::Real(kind)), false)
                 }
+
                 ConvertedTokenKind::Newline => {
-                    self.state.line_start = true;
-                    break FileToken::Newline;
+                    break (converted.map(|_| FileTokenKind::Newline), true);
                 }
+
                 ConvertedTokenKind::Trivia => {
                     leading_trivia = true;
                 }
             }
         };
 
-        Ok(ret)
+        Ok(FileToken {
+            tok,
+            line_start: mem::replace(&mut self.state.line_start, new_line_start),
+            leading_trivia,
+        })
     }
 
     pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        // Record the position at which the token is *supposed* to start.
-        // TODO: incorporate position into `FileToken::Newline`
-        self.reader().eat_line_ws();
-        let pos = self.pos();
-
-        self.next_token(ctx).map(|tok| {
-            tok.non_eod().copied().unwrap_or_else(|| {
-                let tok = Token {
-                    kind: TokenKind::Eof,
-                    range: pos.into(),
-                };
-
-                PpToken {
-                    tok,
-                    line_start: false,
-                    leading_trivia: false,
-                }
-            })
-        })
+        self.next_token(ctx)
+            .map(|tok| tok.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof)))
     }
 
     pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {
