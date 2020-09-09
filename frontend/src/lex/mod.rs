@@ -8,11 +8,11 @@ use crate::{SourcePos, SourceRange};
 
 pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};
-pub use token_kind::TokenKind;
+pub use token::{ConvertedToken, ConvertedTokenKind, RangedToken, Token, TokenKind};
 
 mod punct;
 pub mod raw;
-mod token_kind;
+mod token;
 
 pub type Interner = intern::Interner<str>;
 pub type Symbol = intern::Symbol<str>;
@@ -43,14 +43,59 @@ impl<'a, 'h> LexCtx<'a, 'h> {
     pub fn reporter(&mut self) -> Reporter<'_, 'h> {
         Reporter::new(self.diags, self.smap)
     }
-}
 
-#[derive(Debug, Clone, Copy)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub range: SourceRange,
-}
+    pub fn convert_raw(
+        &mut self,
+        raw: &RawToken<'_>,
+        base_pos: SourcePos,
+    ) -> DResult<ConvertedToken> {
+        let pos = base_pos.offset(raw.content.off);
 
+        let check_terminated = |this: &mut LexCtx<'_, '_>, kind: &str| {
+            if !raw.terminated {
+                this.reporter()
+                    .error(pos, format!("unterminated {}", kind))
+                    .emit()?;
+            }
+            Ok(())
+        };
+
+        let intern_content =
+            |this: &mut LexCtx<'_, '_>| this.interner.intern(&raw.content.cleaned_str());
+
+        let kind = match raw.kind {
+            RawTokenKind::Unknown => ConvertedTokenKind::Real(TokenKind::Unknown),
+
+            RawTokenKind::Eof => ConvertedTokenKind::Real(TokenKind::Eof),
+            RawTokenKind::Newline => ConvertedTokenKind::Newline,
+
+            RawTokenKind::Ws | RawTokenKind::LineComment => ConvertedTokenKind::Trivia,
+            RawTokenKind::BlockComment => {
+                check_terminated(self, "block comment")?;
+                ConvertedTokenKind::Trivia
+            }
+
+            RawTokenKind::Punct(punct) => ConvertedTokenKind::Real(TokenKind::Punct(punct)),
+            RawTokenKind::Ident => ConvertedTokenKind::Real(TokenKind::Ident(intern_content(self))),
+            RawTokenKind::Number => {
+                ConvertedTokenKind::Real(TokenKind::Number(intern_content(self)))
+            }
+
+            RawTokenKind::Str => {
+                check_terminated(self, "string literal")?;
+                ConvertedTokenKind::Real(TokenKind::Str(intern_content(self)))
+            }
+
+            RawTokenKind::Char => {
+                check_terminated(self, "character literal")?;
+                ConvertedTokenKind::Real(TokenKind::Char(intern_content(self)))
+            }
+        };
+
+        let range = SourceRange::new(pos, raw.content.str.len() as u32);
+        Ok(ConvertedToken { kind, range })
+    }
+}
 #[derive(Debug, Clone, Copy)]
 pub enum FromRawResult {
     Tok(Token),
@@ -107,34 +152,5 @@ impl Token {
 
         let range = SourceRange::new(pos, raw.content.str.len() as u32);
         Ok(FromRawResult::Tok(Token { kind, range }))
-    }
-}
-
-pub struct DisplayToken<'t, 'a, 'h> {
-    tok: &'t Token,
-    ctx: &'t LexCtx<'a, 'h>,
-}
-
-impl fmt::Display for DisplayToken<'_, '_, '_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.tok.kind {
-            TokenKind::Eof => Ok(()),
-            TokenKind::Unknown => write!(
-                f,
-                "{}",
-                raw::clean(self.ctx.smap.get_spelling(self.tok.range))
-            ),
-            TokenKind::Punct(kind) => write!(f, "{}", kind),
-            TokenKind::Ident(sym)
-            | TokenKind::Number(sym)
-            | TokenKind::Str(sym)
-            | TokenKind::Char(sym) => write!(f, "{}", &self.ctx.interner[sym]),
-        }
-    }
-}
-
-impl Token {
-    pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> DisplayToken<'t, 'a, 'h> {
-        DisplayToken { tok: self, ctx }
     }
 }
