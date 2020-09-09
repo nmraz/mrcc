@@ -1,5 +1,3 @@
-use std::fmt;
-
 use crate::diag::Reporter;
 use crate::intern;
 use crate::SourceMap;
@@ -8,7 +6,7 @@ use crate::{SourcePos, SourceRange};
 
 pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};
-pub use token::{ConvertedToken, ConvertedTokenKind, RangedToken, Token, TokenKind};
+pub use token::{ConvertedToken, ConvertedTokenKind, Token, TokenKind};
 
 mod punct;
 pub mod raw;
