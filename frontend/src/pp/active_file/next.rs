@@ -1,14 +1,17 @@
 use std::fmt::Write;
+use std::iter;
 use std::path::PathBuf;
 
+use itertools::Itertools;
+
 use crate::diag::{RawSuggestion, Reporter};
-use crate::lex::{LexCtx, TokenKind};
+use crate::lex::{LexCtx, PunctKind, Symbol, TokenKind};
 use crate::DResult;
 use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
-use crate::pp::State;
+use crate::pp::state::{MacroDef, MacroInfo, ReplacementList, State};
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
@@ -62,7 +65,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         let known_idents = &self.state.known_idents;
 
-        if ident == known_idents.dir_include {
+        if ident == known_idents.dir_define {
+            self.handle_define_directive()?;
+            Ok(None)
+        } else if ident == known_idents.dir_include {
             self.handle_include_directive()
         } else if ident == known_idents.dir_error {
             self.handle_error_directive(ppt.range())?;
@@ -78,6 +84,71 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             .error(range, "invalid preprocessing directive")
             .emit()?;
         self.advance_to_eod()
+    }
+
+    fn handle_define_directive(&mut self) -> DResult<()> {
+        let ppt = self.next_directive_token()?;
+
+        let name = match ppt.kind() {
+            TokenKind::Ident(name) => name,
+            _ => {
+                self.reporter()
+                    .error(ppt.range(), "expected a macro name")
+                    .emit()?;
+                return Ok(());
+            }
+        };
+
+        let def = match self.consume_macro_def(name, ppt.range())? {
+            Some(def) => def,
+            _ => return Ok(()),
+        };
+
+        todo!()
+    }
+
+    fn consume_macro_def(
+        &mut self,
+        name: Symbol,
+        name_range: SourceRange,
+    ) -> DResult<Option<MacroDef>> {
+        let mut tokens = Vec::new();
+
+        if let Some(ppt) = self.next_token()?.non_eod() {
+            if !ppt.leading_trivia {
+                if ppt.kind() == TokenKind::Punct(PunctKind::LParen) {
+                    self.reporter()
+                        .error(ppt.range(), "function-like macros are not yet implemented")
+                        .emit()?;
+                    self.advance_to_eod()?;
+                    return Ok(None);
+                } else {
+                    self.reporter()
+                        .warn(
+                            ppt.range(),
+                            "object-like macros require whitespace after the macro name",
+                        )
+                        .set_suggestion(RawSuggestion::new(ppt.range().start(), " "))
+                        .emit()?;
+                    tokens.push(ppt);
+                }
+            } else {
+                tokens.push(ppt);
+            }
+        }
+
+        itertools::process_results(
+            iter::repeat_with(|| self.next_token().map(|tok| tok.non_eod())),
+            |iter| tokens.extend(iter.while_some()),
+        )?;
+
+        let replacement = ReplacementList::new(tokens);
+
+        Ok(Some(MacroDef {
+            name,
+            name_range,
+            info: MacroInfo::Object(replacement),
+        }))
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
