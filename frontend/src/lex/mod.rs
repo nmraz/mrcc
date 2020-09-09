@@ -6,9 +6,11 @@ use crate::SourceMap;
 use crate::{DResult, DiagManager};
 use crate::{SourcePos, SourceRange};
 
+pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};
-pub use token_kind::{PunctKind, TokenKind};
+pub use token_kind::TokenKind;
 
+mod punct;
 pub mod raw;
 mod token_kind;
 
