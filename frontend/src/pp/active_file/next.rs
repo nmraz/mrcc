@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use itertools::Itertools;
 
-use crate::diag::{RawSuggestion, Reporter};
+use crate::diag::{RawSubDiagnostic, RawSuggestion, Reporter};
 use crate::lex::{LexCtx, PunctKind, Symbol, TokenKind};
 use crate::DResult;
 use crate::SourceRange;
@@ -104,7 +104,20 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             _ => return Ok(()),
         };
 
-        todo!()
+        if let Some(prev) = self.state.macro_table.define(def) {
+            let prev_range = prev.name_range;
+            let msg = format!("redefinition of macro '{}'", &self.ctx.interner[name]);
+
+            self.reporter()
+                .error(ppt.range(), msg)
+                .add_note(RawSubDiagnostic::new(
+                    "previous definition here",
+                    prev_range.into(),
+                ))
+                .emit()?;
+        }
+
+        Ok(())
     }
 
     fn consume_macro_def(
