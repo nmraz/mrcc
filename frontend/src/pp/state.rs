@@ -147,4 +147,8 @@ impl MacroTable {
             }
         }
     }
+
+    pub fn undef(&mut self, name: Symbol) {
+        self.map.remove(&name);
+    }
 }

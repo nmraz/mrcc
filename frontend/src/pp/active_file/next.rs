@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::path::PathBuf;
 
 use crate::diag::{RawSubDiagnostic, RawSuggestion, Reporter};
-use crate::lex::{LexCtx, PunctKind, Symbol, TokenKind};
+use crate::lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
 use crate::DResult;
 use crate::SourceRange;
 
@@ -64,6 +64,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         if ident == known_idents.dir_define {
             self.handle_define_directive()?;
+            Ok(None)
+        } else if ident == known_idents.dir_undef {
+            self.handle_undef_directive()?;
             Ok(None)
         } else if ident == known_idents.dir_include {
             self.handle_include_directive()
@@ -158,6 +161,34 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             name_range,
             info: MacroInfo::Object(replacement),
         }))
+    }
+
+    fn handle_undef_directive(&mut self) -> DResult<()> {
+        let name = match self.expect_macro_name()? {
+            Some(tok) => tok,
+            None => return Ok(()),
+        }
+        .kind;
+
+        self.state.macro_table.undef(name);
+        Ok(())
+    }
+
+    fn expect_macro_name(&mut self) -> DResult<Option<Token<Symbol>>> {
+        let tok = self.next_directive_token()?.tok;
+
+        match tok.maybe_map(|kind| match kind {
+            TokenKind::Ident(name) => Some(name),
+            _ => None,
+        }) {
+            Some(tok) => Ok(Some(tok)),
+            None => {
+                self.reporter()
+                    .error(tok.range, "expected a macro name")
+                    .emit()?;
+                Ok(None)
+            }
+        }
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
