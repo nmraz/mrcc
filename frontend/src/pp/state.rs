@@ -51,6 +51,7 @@ impl KnownIdents {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ReplacementList {
     tokens: Vec<PpToken>,
 }
