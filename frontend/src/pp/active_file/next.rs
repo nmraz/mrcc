@@ -87,29 +87,25 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_define_directive(&mut self) -> DResult<()> {
-        let ppt = self.next_directive_token()?;
-
-        let name = match ppt.kind() {
-            TokenKind::Ident(name) => name,
-            _ => {
-                self.reporter()
-                    .error(ppt.range(), "expected a macro name")
-                    .emit()?;
-                return Ok(());
-            }
+        let name_tok = match self.expect_macro_name()? {
+            Some(name) => name,
+            None => return Ok(()),
         };
 
-        let def = match self.consume_macro_def(name, ppt.range())? {
+        let def = match self.consume_macro_def(name_tok)? {
             Some(def) => def,
             _ => return Ok(()),
         };
 
         if let Some(prev) = self.state.macro_table.define(def) {
-            let prev_range = prev.name_range;
-            let msg = format!("redefinition of macro '{}'", &self.ctx.interner[name]);
+            let prev_range = prev.name_tok.range;
+            let msg = format!(
+                "redefinition of macro '{}'",
+                &self.ctx.interner[name_tok.kind]
+            );
 
             self.reporter()
-                .error(ppt.range(), msg)
+                .error(name_tok.range, msg)
                 .add_note(RawSubDiagnostic::new(
                     "previous definition here",
                     prev_range.into(),
@@ -120,11 +116,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         Ok(())
     }
 
-    fn consume_macro_def(
-        &mut self,
-        name: Symbol,
-        name_range: SourceRange,
-    ) -> DResult<Option<MacroDef>> {
+    fn consume_macro_def(&mut self, name_tok: Token<Symbol>) -> DResult<Option<MacroDef>> {
         let mut tokens = Vec::new();
 
         if let Some(ppt) = self.next_token()?.non_eod() {
@@ -157,8 +149,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         let replacement = ReplacementList::new(tokens);
 
         Ok(Some(MacroDef {
-            name,
-            name_range,
+            name_tok,
             info: MacroInfo::Object(replacement),
         }))
     }

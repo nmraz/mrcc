@@ -2,7 +2,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_hash::FxHashMap;
 
-use crate::lex::{Interner, LexCtx, Symbol};
+use crate::lex::{Interner, LexCtx, Symbol, Token};
 use crate::SourceRange;
 
 use super::PpToken;
@@ -107,8 +107,7 @@ impl MacroInfo {
 }
 
 pub struct MacroDef {
-    pub name: Symbol,
-    pub name_range: SourceRange,
+    pub name_tok: Token<Symbol>,
     pub info: MacroInfo,
 }
 
@@ -128,7 +127,7 @@ impl MacroTable {
     }
 
     pub fn define(&mut self, def: MacroDef) -> Option<&MacroDef> {
-        match self.map.entry(def.name) {
+        match self.map.entry(def.name_tok.kind) {
             Entry::Occupied(ent) => {
                 let prev = ent.into_mut();
 
