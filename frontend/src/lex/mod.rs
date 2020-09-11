@@ -90,7 +90,14 @@ impl<'a, 'h> LexCtx<'a, 'h> {
             }
         };
 
-        let range = SourceRange::new(pos, raw.content.str.len() as u32);
+        let range = if kind == ConvertedTokenKind::Newline {
+            // Newlines are special: we don't want the range to cover the newline character itself,
+            // as that would make it end on the next line.
+            pos.into()
+        } else {
+            SourceRange::new(pos, raw.content.str.len() as u32)
+        };
+
         Ok(ConvertedToken { kind, range })
     }
 }
