@@ -69,7 +69,7 @@ impl ReplacementList {
     }
 
     pub fn is_identical_to(&self, rhs: &ReplacementList) -> bool {
-        let translate = |ppt: &PpToken| (ppt.kind(), ppt.leading_trivia);
+        let translate = |ppt: &PpToken| (ppt.data(), ppt.leading_trivia);
 
         self.tokens
             .iter()

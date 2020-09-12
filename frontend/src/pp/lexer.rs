@@ -15,7 +15,7 @@ pub struct PpToken<D = TokenKind> {
 }
 
 impl<D: Copy> PpToken<D> {
-    pub fn kind(&self) -> D {
+    pub fn data(&self) -> D {
         self.tok.data
     }
 
@@ -42,7 +42,7 @@ impl PpToken {
     }
 
     pub(super) fn is_directive_start(&self) -> bool {
-        self.line_start && self.kind() == TokenKind::Punct(PunctKind::Hash)
+        self.line_start && self.data() == TokenKind::Punct(PunctKind::Hash)
     }
 }
 

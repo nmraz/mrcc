@@ -64,7 +64,7 @@ impl Preprocessor {
         let ppt = loop {
             match self.top_file_action(ctx)? {
                 Action::Tok(ppt) => {
-                    if ppt.kind() == TokenKind::Eof && self.active_files.have_includes() {
+                    if ppt.data() == TokenKind::Eof && self.active_files.have_includes() {
                         self.active_files.pop_include();
                     } else {
                         break ppt;

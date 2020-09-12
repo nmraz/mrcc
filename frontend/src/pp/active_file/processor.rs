@@ -42,7 +42,7 @@ impl FileToken {
     }
 
     pub fn is_eod(&self) -> bool {
-        self.kind().is_eod()
+        self.data().is_eod()
     }
 }
 

@@ -50,7 +50,7 @@ fn run(diags: &mut DiagManager) -> DResult<()> {
 
     loop {
         let ppt = pp.next_pp(&mut ctx)?;
-        if ppt.kind() == TokenKind::Eof {
+        if ppt.data() == TokenKind::Eof {
             break;
         }
 

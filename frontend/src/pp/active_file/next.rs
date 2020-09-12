@@ -50,7 +50,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
         let ppt = self.next_directive_token()?;
 
-        let ident = match ppt.kind() {
+        let ident = match ppt.data() {
             TokenKind::Ident(ident) => ident,
             TokenKind::Eof => return Ok(None), // Null directive
             _ => {
@@ -121,7 +121,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         if let Some(ppt) = self.next_token()?.non_eod() {
             if !ppt.leading_trivia {
-                if ppt.kind() == TokenKind::Punct(PunctKind::LParen) {
+                if ppt.data() == TokenKind::Punct(PunctKind::LParen) {
                     self.reporter()
                         .error(ppt.range(), "function-like macros are not yet implemented")
                         .emit()?;
