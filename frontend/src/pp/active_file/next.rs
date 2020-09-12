@@ -101,7 +101,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             let prev_range = prev.name_tok.range;
             let msg = format!(
                 "redefinition of macro '{}'",
-                &self.ctx.interner[name_tok.kind]
+                &self.ctx.interner[name_tok.data]
             );
 
             self.reporter()
@@ -159,7 +159,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             Some(tok) => tok,
             None => return Ok(()),
         }
-        .kind;
+        .data;
 
         self.state.macro_table.undef(name);
         Ok(())

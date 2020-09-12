@@ -66,7 +66,7 @@ impl<'a> Processor<'a> {
 
         let (tok, new_line_start) = loop {
             let converted = ctx.convert_raw(&self.tokenizer.next_token(), self.base_pos)?;
-            match converted.kind {
+            match converted.data {
                 ConvertedTokenKind::Real(kind) => {
                     break (converted.map(|_| FileTokenKind::Real(kind)), false)
                 }

@@ -8,22 +8,22 @@ pub trait PpLexer {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct PpToken<K = TokenKind> {
-    pub tok: Token<K>,
+pub struct PpToken<D = TokenKind> {
+    pub tok: Token<D>,
     pub line_start: bool,
     pub leading_trivia: bool,
 }
 
-impl<K: Copy> PpToken<K> {
-    pub fn kind(&self) -> K {
-        self.tok.kind
+impl<D: Copy> PpToken<D> {
+    pub fn kind(&self) -> D {
+        self.tok.data
     }
 
     pub fn range(&self) -> SourceRange {
         self.tok.range
     }
 
-    pub fn map<L>(self, f: impl FnOnce(K) -> L) -> PpToken<L> {
+    pub fn map<E>(self, f: impl FnOnce(D) -> E) -> PpToken<E> {
         PpToken {
             tok: self.tok.map(f),
             line_start: self.line_start,
@@ -31,8 +31,8 @@ impl<K: Copy> PpToken<K> {
         }
     }
 
-    pub fn maybe_map<L>(self, f: impl FnOnce(K) -> Option<L>) -> Option<PpToken<L>> {
-        f(self.tok.kind).map(|kind| self.map(|_| kind))
+    pub fn maybe_map<E>(self, f: impl FnOnce(D) -> Option<E>) -> Option<PpToken<E>> {
+        f(self.tok.data).map(|kind| self.map(|_| kind))
     }
 }
 

@@ -25,26 +25,26 @@ pub enum ConvertedTokenKind {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Token<K = TokenKind> {
-    pub kind: K,
+pub struct Token<D = TokenKind> {
+    pub data: D,
     pub range: SourceRange,
 }
 
-impl<K> Token<K> {
-    pub fn new(kind: K, range: SourceRange) -> Self {
-        Self { kind, range }
+impl<D> Token<D> {
+    pub fn new(kind: D, range: SourceRange) -> Self {
+        Self { data: kind, range }
     }
 
-    pub fn map<L>(self, f: impl FnOnce(K) -> L) -> Token<L> {
+    pub fn map<E>(self, f: impl FnOnce(D) -> E) -> Token<E> {
         Token {
-            kind: f(self.kind),
+            data: f(self.data),
             range: self.range,
         }
     }
 
-    pub fn maybe_map<L>(self, f: impl FnOnce(K) -> Option<L>) -> Option<Token<L>> {
-        let Token { kind, range } = self;
-        f(kind).map(|kind| Token { kind, range })
+    pub fn maybe_map<E>(self, f: impl FnOnce(D) -> Option<E>) -> Option<Token<E>> {
+        let Token { data, range } = self;
+        f(data).map(|data| Token { data, range })
     }
 }
 
@@ -63,7 +63,7 @@ pub struct Display<'t, 'a, 'h> {
 
 impl fmt::Display for Display<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.tok.kind {
+        match self.tok.data {
             TokenKind::Eof => Ok(()),
             TokenKind::Unknown => write!(
                 f,

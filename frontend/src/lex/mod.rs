@@ -98,6 +98,6 @@ impl<'a, 'h> LexCtx<'a, 'h> {
             SourceRange::new(pos, raw.content.str.len() as u32)
         };
 
-        Ok(ConvertedToken { kind, range })
+        Ok(ConvertedToken { data: kind, range })
     }
 }
