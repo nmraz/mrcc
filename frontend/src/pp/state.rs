@@ -1,4 +1,5 @@
 use std::collections::hash_map::Entry;
+use std::mem;
 
 use rustc_hash::FxHashMap;
 
@@ -125,18 +126,16 @@ impl MacroTable {
         self.map.get(&name)
     }
 
-    pub fn define(&mut self, def: MacroDef) -> Option<&MacroDef> {
+    pub fn define(&mut self, def: MacroDef) -> Option<MacroDef> {
         match self.map.entry(def.name_tok.data) {
             Entry::Occupied(ent) => {
                 let prev = ent.into_mut();
+                let identical = prev.info.is_identical_to(&def.info);
 
-                // The standard allows redefinition iff the replacement lists are identical.
-                if prev.info.is_identical_to(&def.info) {
-                    *prev = def;
-                    None
-                } else {
-                    Some(prev)
-                }
+                // The standard allows redefinition iff the replacement lists are identical - always
+                // redefine here to try to make things more accurate later, but report the previous
+                // definition if it is not identical.
+                Some(mem::replace(prev, def)).filter(|_| !identical)
             }
 
             Entry::Vacant(ent) => {
