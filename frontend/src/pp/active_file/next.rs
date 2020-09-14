@@ -8,7 +8,8 @@ use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
-use crate::pp::state::{MacroDef, MacroInfo, ReplacementList, State};
+use crate::pp::macro_info::{MacroDef, MacroInfo, ReplacementList};
+use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
