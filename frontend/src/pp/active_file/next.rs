@@ -178,6 +178,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
                 self.reporter()
                     .error(tok.range, "expected a macro name")
                     .emit()?;
+
+                self.advance_if_non_eof(tok.data)?;
+
                 Ok(None)
             }
         }
@@ -246,6 +249,14 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn advance_to_eod(&mut self) -> DResult<()> {
         self.processor.advance_to_eod(self.ctx)
+    }
+
+    fn advance_if_non_eof(&mut self, kind: TokenKind) -> DResult<()> {
+        if kind != TokenKind::Eof {
+            self.advance_to_eod()?;
+        }
+
+        Ok(())
     }
 
     fn next_token(&mut self) -> DResult<FileToken> {
