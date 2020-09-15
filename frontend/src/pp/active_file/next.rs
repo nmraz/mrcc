@@ -167,23 +167,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn expect_macro_name(&mut self) -> DResult<Option<Token<Symbol>>> {
-        let tok = self.next_directive_token()?.tok;
-
-        match tok.maybe_map(|kind| match kind {
-            TokenKind::Ident(name) => Some(name),
-            _ => None,
-        }) {
-            Some(tok) => Ok(Some(tok)),
-            None => {
-                self.reporter()
-                    .error(tok.range, "expected a macro name")
-                    .emit()?;
-
-                self.advance_if_non_eof(tok.data)?;
-
-                Ok(None)
-            }
-        }
+        self.expect_next(
+            |kind| match kind {
+                TokenKind::Ident(name) => Some(name),
+                _ => None,
+            },
+            "expected a macro name",
+        )
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
@@ -245,6 +235,23 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
 
         Ok(())
+    }
+
+    fn expect_next<T>(
+        &mut self,
+        f: impl FnOnce(TokenKind) -> Option<T>,
+        msg: &str,
+    ) -> DResult<Option<Token<T>>> {
+        let tok = self.next_directive_token()?.tok;
+
+        match tok.maybe_map(f) {
+            Some(tok) => Ok(Some(tok)),
+            None => {
+                self.reporter().error(tok.range, msg).emit()?;
+                self.advance_if_non_eof(tok.data)?;
+                Ok(None)
+            }
+        }
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
