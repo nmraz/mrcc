@@ -125,7 +125,7 @@ fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<Ren
     })
 }
 
-fn render_stripped_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
+fn render_anon_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
     RenderedSubDiagnostic {
         inner: SubDiagnostic {
             msg: raw.msg.clone(),
@@ -138,7 +138,7 @@ fn render_stripped_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
 
 fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagnostic {
     match &raw.ranges {
-        None => render_stripped_subdiag(raw),
+        None => render_anon_subdiag(raw),
         Some(ranges) => {
             let (primary_ranges, expansion_ranges) = render_ranges(ranges, smap);
             let rendered_suggestion = raw
@@ -191,7 +191,7 @@ pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
             RenderedDiagnostic { inner, includes }
         }
         None => RenderedDiagnostic {
-            inner: render_with(raw, render_stripped_subdiag),
+            inner: render_with(raw, render_anon_subdiag),
             includes: Vec::new(),
         },
     }
