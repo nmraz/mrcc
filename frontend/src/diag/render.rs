@@ -113,11 +113,9 @@ fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<Ren
     // Suggestions don't play very well with expansions - it is unclear exactly *where* along the
     // expansion stack the suggestion should be applied, and sometimes there is no good way to apply
     // the suggestion without restructuring other code; conservatively bail out for now.
-    if !smap.get_source(start_id).is_file() || !smap.get_source(end_id).is_file() {
+    if start_id != end_id || !smap.get_source(start_id).is_file() {
         return None;
     }
-
-    assert!(start_id == end_id, "Suggestion spans multiple files");
 
     Some(RenderedSuggestion {
         replacement_range: SourceRange::new(range.start, range.end.offset_from(range.start)),
