@@ -163,7 +163,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         .data;
 
         self.state.macro_table.undef(name);
-        Ok(())
+        self.finish_directive()
     }
 
     fn expect_macro_name(&mut self) -> DResult<Option<Token<Symbol>>> {
