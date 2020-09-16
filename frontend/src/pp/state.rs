@@ -1,17 +1,17 @@
 use crate::lex::{Interner, LexCtx, Symbol};
 
-use super::macro_info::MacroTable;
+use super::expand::MacroState;
 
 pub struct State {
     pub known_idents: KnownIdents,
-    pub macro_table: MacroTable,
+    pub macro_state: MacroState,
 }
 
 impl State {
     pub fn new(ctx: &mut LexCtx<'_, '_>) -> Self {
         Self {
             known_idents: KnownIdents::new(&mut ctx.interner),
-            macro_table: MacroTable::new(),
+            macro_state: MacroState::new(),
         }
     }
 }

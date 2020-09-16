@@ -8,7 +8,7 @@ use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
-use crate::pp::macro_info::{MacroDef, MacroInfo, ReplacementList};
+use crate::pp::expand::{MacroDef, MacroInfo, ReplacementList};
 use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
@@ -98,7 +98,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             _ => return Ok(()),
         };
 
-        if let Some(prev) = self.state.macro_table.define(def) {
+        if let Some(prev) = self.state.macro_state.define(def) {
             let prev_range = prev.name_tok.range;
             let msg = format!(
                 "redefinition of macro '{}'",
@@ -162,7 +162,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
         .data;
 
-        self.state.macro_table.undef(name);
+        self.state.macro_state.undef(name);
         self.finish_directive()
     }
 

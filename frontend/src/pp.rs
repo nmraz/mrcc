@@ -13,9 +13,9 @@ use state::State;
 pub use lexer::PpToken;
 
 mod active_file;
+mod expand;
 mod file;
 mod lexer;
-mod macro_info;
 mod state;
 
 pub struct PreprocessorBuilder<'a, 'b, 'h> {
