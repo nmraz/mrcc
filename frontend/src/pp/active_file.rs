@@ -10,12 +10,10 @@ use super::file::{File, IncludeKind};
 use super::state::State;
 use super::PpToken;
 
-pub use macro_arg_lexer::MacroArgLexer;
 use next::NextActionCtx;
 use processor::Processor;
 use state::FileState;
 
-mod macro_arg_lexer;
 mod next;
 mod processor;
 mod state;
@@ -52,13 +50,6 @@ impl ActiveFile {
 
     pub fn next_action(&mut self, ctx: &mut LexCtx<'_, '_>, state: &mut State) -> DResult<Action> {
         self.with_processor(|processor| NextActionCtx::new(ctx, state, processor).next_action())
-    }
-
-    pub fn with_macro_arg_lexer<R, F>(&mut self, f: F) -> R
-    where
-        F: FnOnce(MacroArgLexer<'_, '_>) -> R,
-    {
-        self.with_processor(|processor| f(MacroArgLexer::new(processor)))
     }
 
     fn with_processor<R, F: FnOnce(&mut Processor<'_>) -> R>(&mut self, f: F) -> R {
