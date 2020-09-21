@@ -47,7 +47,7 @@ impl FileToken {
 }
 
 pub struct Processor<'a> {
-    pub state: &'a mut FileState,
+    state: &'a mut FileState,
     tokenizer: Tokenizer<'a>,
     base_pos: SourcePos,
 }
