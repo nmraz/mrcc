@@ -1,4 +1,4 @@
-use crate::SourcePos;
+use mrcc_source::SourcePos;
 
 use super::processor::FileToken;
 

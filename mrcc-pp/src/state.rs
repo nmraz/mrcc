@@ -1,6 +1,6 @@
-use crate::lex::{Interner, LexCtx, Symbol};
+use mrcc_lex::{Interner, LexCtx, Symbol};
 
-use super::expand::MacroState;
+use crate::expand::MacroState;
 
 pub struct State {
     pub known_idents: KnownIdents,

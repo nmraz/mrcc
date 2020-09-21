@@ -1,11 +1,11 @@
 use std::mem;
 
-use crate::lex::raw::{Reader, Tokenizer};
-use crate::lex::{ConvertedTokenKind, LexCtx, TokenKind};
-use crate::{DResult, SourcePos};
+use mrcc_lex::raw::{Reader, Tokenizer};
+use mrcc_lex::{ConvertedTokenKind, LexCtx, TokenKind};
+use mrcc_source::{DResult, SourcePos};
 
 use super::FileState;
-use super::PpToken;
+use crate::PpToken;
 
 #[derive(Debug, Copy, Clone)]
 pub enum FileTokenKind {

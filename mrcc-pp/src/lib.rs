@@ -1,10 +1,10 @@
+#![warn(rust_2018_idioms)]
+
 use std::mem;
 use std::path::PathBuf;
 
-use crate::diag::Level;
-use crate::lex::{LexCtx, Lexer, Token, TokenKind};
-use crate::smap::SourceId;
-use crate::{DResult, SourceRange};
+use mrcc_lex::{LexCtx, Lexer, Token, TokenKind};
+use mrcc_source::{diag::Level, DResult, SourceId, SourceRange};
 
 use active_file::{Action, ActiveFiles};
 use file::{IncludeError, IncludeKind, IncludeLoader};

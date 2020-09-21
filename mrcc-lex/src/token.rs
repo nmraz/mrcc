@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::SourceRange;
+use mrcc_source::SourceRange;
 
 use super::{raw, LexCtx, PunctKind, Symbol};
 

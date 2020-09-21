@@ -3,8 +3,9 @@ use std::mem;
 
 use rustc_hash::FxHashMap;
 
-use crate::lex::{Symbol, Token};
-use crate::pp::PpToken;
+use mrcc_lex::{Symbol, Token};
+
+use crate::PpToken;
 
 #[derive(Debug, Clone)]
 pub struct ReplacementList {

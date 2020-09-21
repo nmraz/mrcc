@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::lex::{LexCtx, PunctKind, Token, TokenKind};
-use crate::{DResult, SourceRange};
+use mrcc_lex::{LexCtx, PunctKind, Token, TokenKind};
+use mrcc_source::{DResult, SourceRange};
 
 pub trait PpLexer {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;

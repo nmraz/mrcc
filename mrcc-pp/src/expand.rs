@@ -1,4 +1,4 @@
-use crate::lex::Symbol;
+use mrcc_lex::Symbol;
 
 use data::MacroTable;
 pub use data::{MacroDef, MacroDefInfo, ReplacementList};

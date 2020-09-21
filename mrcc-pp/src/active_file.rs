@@ -1,10 +1,9 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::lex::LexCtx;
-use crate::smap::{FileName, SourceId, SourcesTooLargeError};
-use crate::DResult;
-use crate::{SourceMap, SourcePos, SourceRange};
+use mrcc_lex::LexCtx;
+use mrcc_source::smap::{FileName, SourcesTooLargeError};
+use mrcc_source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
 
 use super::file::{File, IncludeKind};
 use super::state::State;

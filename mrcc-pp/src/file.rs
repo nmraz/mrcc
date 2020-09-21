@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use crate::smap::FileContents;
+use mrcc_source::smap::FileContents;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum IncludeKind {

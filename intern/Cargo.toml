@@ -1,5 +1,5 @@
 [package]
-name = "mrcc"
+name = "intern"
 version = "0.1.0"
 authors = ["Noam Raz <noamraz8@gmail.com>"]
 edition = "2018"
@@ -7,8 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-structopt = "0.3.17"
-
-mrcc-lex = { path = "../mrcc-lex" }
-mrcc-pp = { path = "../mrcc-pp" }
-mrcc-source = { path = "../mrcc-source" }
+indexmap = "1.6.0"
+rustc-hash = "1.1.0"

@@ -1,8 +1,4 @@
-use crate::diag::Reporter;
-use crate::intern;
-use crate::SourceMap;
-use crate::{DResult, DiagManager};
-use crate::{SourcePos, SourceRange};
+use mrcc_source::{DResult, DiagManager, DiagReporter, SourceMap, SourcePos, SourceRange};
 
 pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};
@@ -38,8 +34,8 @@ impl<'a, 'h> LexCtx<'a, 'h> {
         }
     }
 
-    pub fn reporter(&mut self) -> Reporter<'_, 'h> {
-        Reporter::new(self.diags, self.smap)
+    pub fn reporter(&mut self) -> DiagReporter<'_, 'h> {
+        DiagReporter::new(self.diags, self.smap)
     }
 
     pub fn convert_raw(

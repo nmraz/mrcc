@@ -3,10 +3,10 @@ use std::path::PathBuf;
 
 use structopt::StructOpt;
 
-use frontend::lex::{Interner, LexCtx, TokenKind};
-use frontend::pp::PreprocessorBuilder;
-use frontend::smap::{FileContents, FileName, SourceMap};
-use frontend::{diag::Level, DResult, DiagManager};
+use mrcc_lex::{Interner, LexCtx, TokenKind};
+use mrcc_pp::PreprocessorBuilder;
+use mrcc_source::smap::{FileContents, FileName, SourceMap};
+use mrcc_source::{diag::Level, DResult, DiagManager};
 
 #[derive(StructOpt)]
 struct Opts {

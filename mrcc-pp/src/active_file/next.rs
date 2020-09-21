@@ -1,15 +1,18 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use crate::diag::{RawSubDiagnostic, RawSuggestion, Reporter};
-use crate::lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
-use crate::DResult;
-use crate::SourceRange;
+use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
+use mrcc_source::SourceRange;
+use mrcc_source::{
+    diag::{RawSubDiagnostic, RawSuggestion, Reporter},
+    DResult,
+};
+
+use crate::expand::{MacroDef, MacroDefInfo, ReplacementList};
+use crate::state::State;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
-use crate::pp::expand::{MacroDef, MacroDefInfo, ReplacementList};
-use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,

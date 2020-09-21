@@ -1,5 +1,5 @@
 [package]
-name = "frontend"
+name = "mrcc-lex"
 version = "0.1.0"
 authors = ["Noam Raz <noamraz8@gmail.com>"]
 edition = "2018"
@@ -7,7 +7,5 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-indexmap = "1.5.1"
-itertools = "0.9.0"
-normalize-line-endings = "0.3.0"
-rustc-hash = "1.1.0"
+mrcc-source = { path = "../mrcc-source" }
+intern = { path = "../intern" }
