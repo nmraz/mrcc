@@ -50,7 +50,7 @@ pub struct FileContents {
 
 impl FileContents {
     pub fn new(src: &str) -> Rc<Self> {
-        let normalized_src: String = normalize_line_endings::normalized(src.chars()).collect();
+        let normalized_src = src.replace("\r\n", "\n");
         let line_table = LineTable::new_for_src(&normalized_src);
 
         Rc::new(FileContents {
