@@ -5,6 +5,11 @@ use crate::{DResult, SourceRange};
 
 pub trait PpLexer {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+    fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+
+    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
+        self.next(ctx)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
