@@ -62,10 +62,39 @@ impl<'a> Processor<'a> {
     }
 
     pub fn next_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
+        self.state
+            .lookahead
+            .take()
+            .map(Ok)
+            .unwrap_or_else(|| self.lex_next_token(ctx))
+    }
+
+    pub fn peek_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
+        match self.state.lookahead {
+            Some(tok) => Ok(tok),
+            None => {
+                let tok = self.lex_next_token(ctx)?;
+                self.state.lookahead = Some(tok);
+                Ok(tok)
+            }
+        }
+    }
+
+    pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
+        self.next_token(ctx)
+            .map(|tok| tok.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof)))
+    }
+
+    pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {
+        while !self.next_token(ctx)?.is_eod() {}
+        Ok(())
+    }
+
+    pub fn lex_next_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
         let mut leading_trivia = false;
 
         let (tok, new_line_start) = loop {
-            let converted = ctx.convert_raw(&self.tokenizer.next_token(), self.base_pos)?;
+            let converted = ctx.convert_raw(&self.tokenizer_mut().next_token(), self.base_pos)?;
             match converted.data {
                 ConvertedTokenKind::Real(kind) => {
                     break (converted.map(|_| FileTokenKind::Real(kind)), false)
@@ -88,25 +117,32 @@ impl<'a> Processor<'a> {
         })
     }
 
-    pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        self.next_token(ctx)
-            .map(|tok| tok.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof)))
-    }
-
-    pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {
-        while !self.next_token(ctx)?.is_eod() {}
-        Ok(())
-    }
-
     pub fn reader(&mut self) -> &mut Reader<'a> {
-        &mut self.tokenizer.reader
+        &mut self.tokenizer_mut().reader
     }
 
     pub fn off(&self) -> u32 {
-        self.tokenizer.reader.off()
+        self.tokenizer().reader.off()
     }
 
     pub fn pos(&self) -> SourcePos {
         self.base_pos.offset(self.off())
+    }
+
+    fn tokenizer(&self) -> &Tokenizer<'a> {
+        self.check_lookahead();
+        &self.tokenizer
+    }
+
+    fn tokenizer_mut(&mut self) -> &mut Tokenizer<'a> {
+        self.check_lookahead();
+        &mut self.tokenizer
+    }
+
+    fn check_lookahead(&self) {
+        assert!(
+            self.state.lookahead.is_none(),
+            "accessing tokenizer with pending lookahead"
+        )
     }
 }
