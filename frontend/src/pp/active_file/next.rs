@@ -8,7 +8,7 @@ use crate::SourceRange;
 
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
-use crate::pp::expand::{MacroDef, MacroInfo, ReplacementList};
+use crate::pp::expand::{MacroDef, MacroDefInfo, ReplacementList};
 use crate::pp::State;
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
@@ -151,7 +151,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         Ok(Some(MacroDef {
             name_tok,
-            info: MacroInfo::Object(replacement),
+            info: MacroDefInfo::Object(replacement),
         }))
     }
 
