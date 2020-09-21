@@ -34,6 +34,7 @@ impl fmt::Display for Level {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct FatalErrorEmitted;
 
 pub type Result<T> = std::result::Result<T, FatalErrorEmitted>;
