@@ -17,16 +17,16 @@ impl SourcePos {
         self.0
     }
 
-    /// Returns a new position lying `offset` characters forward from `self`.
+    /// Returns a new position lying `offset` bytes forward from `self`.
     ///
     /// The position returned can be meaningless if the source containing `self` does not contain
-    /// at least `offset` more characters (including a sentinel past-the-end "character").
+    /// at least `offset` more bytes (including a sentinel past-the-end "byte").
     #[inline]
     pub fn offset(self, offset: u32) -> Self {
         SourcePos(self.0 + offset)
     }
 
-    /// Returns the distance in characters between `self` and `rhs`, assuming that `rhs` lies before
+    /// Returns the distance in bytes between `self` and `rhs`, assuming that `rhs` lies before
     /// `self` in the same source.
     #[inline]
     pub fn offset_from(self, rhs: SourcePos) -> u32 {
@@ -34,7 +34,7 @@ impl SourcePos {
     }
 }
 
-/// Represents a contiguous character range within a single source.
+/// Represents a contiguous byte range within a single source.
 ///
 /// Contrast with [`FragmentedSourceRange`](struct.FragmentedSourceRange.html), which can represent
 /// ranges whose endpoints lie within different sources (such as macro expansions). Generally,
@@ -48,7 +48,7 @@ impl SourcePos {
 pub struct SourceRange(SourcePos, u32);
 
 impl SourceRange {
-    /// Creates a new range starting at `begin` and covering `len` characters.
+    /// Creates a new range starting at `begin` and covering `len` bytes.
     #[inline]
     pub fn new(begin: SourcePos, len: u32) -> Self {
         SourceRange(begin, len)
@@ -66,7 +66,7 @@ impl SourceRange {
         self.1
     }
 
-    /// Returns `true` if `self` covers 0 characters.
+    /// Returns `true` if `self` covers 0 bytes.
     #[inline]
     pub fn is_empty(self) -> bool {
         self.1 == 0
@@ -80,7 +80,7 @@ impl SourceRange {
         self.start().offset(self.len())
     }
 
-    /// Returns a position `off` (zero-based) characters into the range.
+    /// Returns a position `off` (zero-based) bytes into the range.
     ///
     /// # Panics
     ///
@@ -91,7 +91,7 @@ impl SourceRange {
         self.start().offset(off)
     }
 
-    /// Returns a subrange starting `off` (zero-based) characters in and having length `len`.
+    /// Returns a subrange starting `off` (zero-based) bytes in and having length `len`.
     ///
     /// # Panics
     ///
@@ -140,7 +140,7 @@ impl From<SourcePos> for SourceRange {
 ///
 /// [`SourceMap::get_unfragmented_range()`](smap/struct.SourceMap.html#method.get_unfragmented_range)
 /// can be used to try to convert a fragmented range to a contiguous range covering both its
-/// endpoints.
+/// endpoints (possibly after macro expansion).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FragmentedSourceRange {
     /// The starting position of the range.
