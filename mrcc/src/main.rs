@@ -1,3 +1,5 @@
+#![warn(rust_2018_idioms)]
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -13,7 +15,7 @@ struct Opts {
     pub filename: PathBuf,
 }
 
-fn run(diags: &mut DiagManager) -> DResult<()> {
+fn run(diags: &mut DiagManager<'_>) -> DResult<()> {
     let opts = Opts::from_args();
 
     let main_src = fs::read_to_string(&opts.filename).map_err(|err| {

@@ -1,3 +1,5 @@
+#![warn(rust_2018_idioms)]
+
 use mrcc_source::{DResult, DiagManager, DiagReporter, SourceMap, SourcePos, SourceRange};
 
 pub use punct::PunctKind;
