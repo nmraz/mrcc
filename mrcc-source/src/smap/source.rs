@@ -169,21 +169,31 @@ impl FileSourceInfo {
     }
 }
 
+/// The different kinds of expansions that can be tracked by an expansion source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExpansionType {
+    /// An ordinary macro expansion.
     Macro,
+    /// The expansion of a macro argument into its owning macro.
     MacroArg,
+    /// An expansion synthesized by the compiler, such as those for token pastes and stringization.
     Synth,
 }
 
+/// Holds information about an expansion [source](struct.SourceMap.html#sources).
 #[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
+    /// The start of this expansion's spelling range. The length of the range is already available
+    /// in [`Source::range`](struct.Source.html#structfield.range).
     pub spelling_pos: SourcePos,
+    /// The range into which the expansion was performed.
     pub expansion_range: SourceRange,
+    /// The type of expansion recoreded here.
     pub expansion_type: ExpansionType,
 }
 
 impl ExpansionSourceInfo {
+    /// Creates a new `ExpansionSourceInfo`.
     pub fn new(
         spelling_pos: SourcePos,
         expansion_range: SourceRange,
@@ -196,17 +206,22 @@ impl ExpansionSourceInfo {
         }
     }
 
+    /// Returns the position at which the byte at the specified offset was spelled.
     pub fn spelling_pos(&self, off: u32) -> SourcePos {
         self.spelling_pos.offset(off)
     }
 
+    /// Returns the source range at which the specified range within the expansion was spelled.
     pub fn spelling_range(&self, range: Range<u32>) -> SourceRange {
         SourceRange::new(self.spelling_pos(range.start), range.len() as u32)
     }
 
+    /// Returns the source range within the macro caller corresponding to the specified range within
+    /// the expansion.
+    ///
+    /// For macro arguments, the caller is where the argument was spelled, while for other types of
+    /// expansions it is where the expansion was performed.
     pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
-        // For macro arguments, the caller is where the argument was spelled, while for
-        // everything else the caller recieves the expansion.
         match self.expansion_type {
             ExpansionType::MacroArg => self.spelling_range(range),
             _ => self.expansion_range,
@@ -214,30 +229,46 @@ impl ExpansionSourceInfo {
     }
 }
 
+/// Information held by a source, which can be either a file or an expansion.
 #[derive(Clone)]
 pub enum SourceInfo {
     File(FileSourceInfo),
     Expansion(ExpansionSourceInfo),
 }
 
+/// A single source in the `SourceMap`.
 #[derive(Clone)]
 pub struct Source {
+    /// The attached (file or expansion) information.
     pub info: SourceInfo,
+    /// The range spanned by this source.
     pub range: SourceRange,
 }
 
 impl Source {
+    /// Computes the local offset within the source given a position.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.range` does not contain `pos`.
     pub fn local_off(&self, pos: SourcePos) -> u32 {
         assert!(self.range.contains(pos));
         pos.offset_from(self.range.start())
     }
 
+    /// Computes the local range within this source, given a `SourceRange`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `self.range` does not contain `range`.
     pub fn local_range(&self, range: SourceRange) -> Range<u32> {
         assert!(self.range.contains_range(range));
         let off = self.local_off(range.start());
         off..off + range.len()
     }
 
+    /// If this source contains a file, returns a reference to the contained file information.
+    /// Otherwise, returns `None`.
     pub fn as_file(&self) -> Option<&FileSourceInfo> {
         match self.info {
             SourceInfo::File(ref file) => Some(file),
@@ -245,6 +276,8 @@ impl Source {
         }
     }
 
+    /// If this source contains an expansion, returns a reference to the contained expansion
+    /// information. Otherwise, returns `None`.
     pub fn as_expansion(&self) -> Option<&ExpansionSourceInfo> {
         match self.info {
             SourceInfo::Expansion(ref exp) => Some(exp),
@@ -252,10 +285,12 @@ impl Source {
         }
     }
 
+    /// Returns `true` if this source contains a file.
     pub fn is_file(&self) -> bool {
         self.as_file().is_some()
     }
 
+    /// Returns `true` if this source contains an expansion.
     pub fn is_expansion(&self) -> bool {
         self.as_expansion().is_some()
     }

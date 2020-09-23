@@ -3,6 +3,7 @@ use std::vec::Vec;
 use crate::LineCol;
 
 pub struct LineTable {
+    /// Holds the starting offsets of lines in the source
     line_offsets: Vec<u32>,
 }
 
