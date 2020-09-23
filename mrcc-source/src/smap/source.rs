@@ -173,7 +173,7 @@ impl FileSourceInfo {
 pub enum ExpansionType {
     Macro,
     MacroArg,
-    Synthesized,
+    Synth,
 }
 
 #[derive(Debug, Clone, Copy)]
