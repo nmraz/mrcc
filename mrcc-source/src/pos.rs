@@ -1,5 +1,5 @@
 /// An opaque type representing a position in the source code managed by a
-/// [`SourceMap`](../smap/struct.SourceMap.html).
+/// [`SourceMap`](smap/struct.SourceMap.html).
 ///
 /// This can be resolved back to file/line/column/expansion information using the appropriate
 /// methods on `SourceMap`.
@@ -19,8 +19,9 @@ impl SourcePos {
 
     /// Returns a new position lying `offset` bytes forward from `self`.
     ///
-    /// The position returned can be meaningless if the source containing `self` does not contain
-    /// at least `offset` more bytes (including a sentinel past-the-end "byte").
+    /// The position returned can be meaningless if the [source](smap/struct.SourceMap.html#sources)
+    /// containing `self` does not contain at least `offset` more bytes (including a sentinel
+    /// past-the-end "byte").
     #[inline]
     pub fn offset(self, offset: u32) -> Self {
         SourcePos(self.0 + offset)
@@ -34,7 +35,7 @@ impl SourcePos {
     }
 }
 
-/// Represents a contiguous byte range within a single source.
+/// Represents a contiguous byte range within a single [source](smap/struct.SourceMap.html#sources).
 ///
 /// Contrast with [`FragmentedSourceRange`](struct.FragmentedSourceRange.html), which can represent
 /// ranges whose endpoints lie within different sources (such as macro expansions). Generally,
@@ -124,12 +125,13 @@ impl From<SourcePos> for SourceRange {
     }
 }
 
-/// Represents a range whose endpoints may lie in different sources.
+/// Represents a range whose endpoints may lie in different
+/// [sources](smap/struct.SourceMap.html#sources).
 ///
-/// For example, consider the following code:
+/// Reusing the example discussed in the source map documentation, consider the following code:
 ///
 /// ```c
-/// #define A 2
+/// #define A (2 + 3)
 /// int x = A + 1;
 /// ```
 ///
