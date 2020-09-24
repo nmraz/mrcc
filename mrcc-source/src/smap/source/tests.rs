@@ -85,7 +85,7 @@ fn source_file() {
     let contents = FileContents::new("source");
     let file = FileSourceInfo::new(filename.clone(), contents, None);
     let source = Source {
-        info: SourceInfo::File(file),
+        info: Box::new(SourceInfo::File(file)),
         range: SourceRange::new(SourcePos::from_raw(0), 5),
     };
 
@@ -104,7 +104,7 @@ fn source_expansion() {
 
     let exp = ExpansionSourceInfo::new(spelling_pos, expansion_range, ExpansionType::Macro);
     let source = Source {
-        info: SourceInfo::Expansion(exp),
+        info: Box::new(SourceInfo::Expansion(exp)),
         range: SourceRange::new(SourcePos::from_raw(40), 5),
     };
 

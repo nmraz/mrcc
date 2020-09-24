@@ -240,7 +240,7 @@ pub enum SourceInfo {
 #[derive(Clone)]
 pub struct Source {
     /// The attached (file or expansion) information.
-    pub info: SourceInfo,
+    pub info: Box<SourceInfo>,
     /// The range spanned by this source.
     pub range: SourceRange,
 }
@@ -270,7 +270,7 @@ impl Source {
     /// If this source contains a file, returns a reference to the contained file information.
     /// Otherwise, returns `None`.
     pub fn as_file(&self) -> Option<&FileSourceInfo> {
-        match self.info {
+        match *self.info {
             SourceInfo::File(ref file) => Some(file),
             _ => None,
         }
@@ -279,7 +279,7 @@ impl Source {
     /// If this source contains an expansion, returns a reference to the contained expansion
     /// information. Otherwise, returns `None`.
     pub fn as_expansion(&self) -> Option<&ExpansionSourceInfo> {
-        match self.info {
+        match *self.info {
             SourceInfo::Expansion(ref exp) => Some(exp),
             _ => None,
         }

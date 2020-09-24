@@ -216,7 +216,7 @@ impl SourceMap {
 
         let id = SourceId(self.sources.len());
         self.sources.push(Source {
-            info: ctor(),
+            info: Box::new(ctor()),
             range,
         });
 
