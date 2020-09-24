@@ -7,7 +7,7 @@ use rustc_hash::FxHasher;
 
 use crate::smap::{ExpansionType, SourceId};
 use crate::SourceMap;
-use crate::{FragmentedSourceRange, SourceRange};
+use crate::SourceRange;
 
 use super::{Diagnostic, RawDiagnostic, RenderedDiagnostic};
 use super::{Ranges, RawRanges, RenderedRanges};
@@ -19,26 +19,22 @@ use super::{RawSuggestion, RenderedSuggestion};
 /// This is almost like the caller chain, except that ranges in macro arguments are moved to point
 /// into the macros themselves.
 fn trace_expansions(
-    range: FragmentedSourceRange,
+    range: SourceRange,
     smap: &SourceMap,
 ) -> impl Iterator<Item = (SourceId, SourceRange)> + '_ {
-    smap.get_unfragmented_range(range)
-        .into_iter()
-        .flat_map(move |range| {
-            smap.get_caller_chain(range).map(move |(id, range)| {
-                let source = smap.get_source(id);
+    smap.get_caller_chain(range).map(move |(id, range)| {
+        let source = smap.get_source(id);
 
-                // Shift macro arguments to their use in the macro
-                if let Some(exp) = source.as_expansion() {
-                    if exp.expansion_type == ExpansionType::MacroArg {
-                        let use_range = exp.expansion_range;
-                        return (smap.lookup_source_id(use_range.start()), use_range);
-                    }
-                }
+        // Shift macro arguments to their use in the macro
+        if let Some(exp) = source.as_expansion() {
+            if exp.expansion_type == ExpansionType::MacroArg {
+                let use_range = exp.expansion_range;
+                return (smap.lookup_source_id(use_range.start()), use_range);
+            }
+        }
 
-                (id, range)
-            })
-        })
+        (id, range)
+    })
 }
 
 /// Deduplicates the provided subranges and coalesces overlapping ones.
@@ -65,17 +61,28 @@ fn get_spelling_range(smap: &SourceMap, range: SourceRange) -> SourceRange {
     SourceRange::new(smap.get_spelling_pos(range.start()), range.len())
 }
 
-/// Renders the provided ranges, returning the newly-rendered (expanded) ranges and a trace of the
-/// expansions leading up to them, from outermost to innermost.
+/// Renders the provided ranges, returning the newly-rendered (outermost) ranges and a trace of the
+/// expansions leading up to them, ordered from outermost to innermost.
 fn render_ranges(ranges: &RawRanges, smap: &SourceMap) -> (RenderedRanges, Vec<RenderedRanges>) {
     type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
-    let mut expansion_map: FxIndexMap<_, _> = trace_expansions(ranges.primary_range, smap)
+    // We always need a primary range, so arbitrarily fall back to the start if it spans multiple
+    // files.
+    let primary_range = smap
+        .get_unfragmented_range(ranges.primary_range)
+        .unwrap_or_else(|| ranges.primary_range.start.into());
+
+    let mut expansion_map: FxIndexMap<_, _> = trace_expansions(primary_range, smap)
         .map(|(id, range)| (id, RenderedRanges::new(range)))
         .collect();
 
     for (range, label) in ranges.subranges.iter() {
-        for (id, trace_range) in trace_expansions(*range, smap) {
+        let expansions = smap
+            .get_unfragmented_range(*range)
+            .into_iter()
+            .flat_map(|range| trace_expansions(range, smap));
+
+        for (id, trace_range) in expansions {
             if let Some(RenderedRanges { subranges, .. }) = expansion_map.get_mut(&id) {
                 subranges.push((trace_range, label.clone()))
             }
