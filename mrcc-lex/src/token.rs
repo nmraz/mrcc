@@ -11,7 +11,6 @@ pub enum TokenKind {
     Eof,
 
     Punct(PunctKind),
-
     Ident(Symbol),
 
     /// A preprocessing number. Note that the definition of preprocessing numbers is rather lax and
