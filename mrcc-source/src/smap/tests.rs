@@ -43,7 +43,7 @@ fn create_expansion() {
     let exp_source = sm.get_source(exp_source_id);
     let exp = exp_source.as_expansion().unwrap();
 
-    assert_eq!(exp.spelling_pos, file_range.subpos(10));
+    assert_eq!(exp.spelling_range, file_range.subrange(10, 1));
     assert_eq!(exp.expansion_type, ExpansionType::Macro);
 }
 

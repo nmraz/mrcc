@@ -279,7 +279,7 @@ impl SourceMap {
         self.add_source(
             || {
                 SourceInfo::Expansion(ExpansionSourceInfo::new(
-                    spelling_range.start(),
+                    spelling_range,
                     expansion_range,
                     expansion_type,
                 ))

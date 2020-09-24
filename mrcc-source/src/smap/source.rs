@@ -183,9 +183,9 @@ pub enum ExpansionType {
 /// Holds information about an expansion [source](index.html#sources).
 #[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
-    /// The start of this expansion's spelling range. The length of the range is already available
-    /// in [`Source::range`](struct.Source.html#structfield.range).
-    pub spelling_pos: SourcePos,
+    /// The expansion's spelling range. The length of this range always matches that of the
+    /// enclosing source.
+    pub spelling_range: SourceRange,
     /// The range into which the expansion was performed.
     pub expansion_range: SourceRange,
     /// The type of expansion recoreded here.
@@ -195,25 +195,34 @@ pub struct ExpansionSourceInfo {
 impl ExpansionSourceInfo {
     /// Creates a new `ExpansionSourceInfo`.
     pub fn new(
-        spelling_pos: SourcePos,
+        spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> Self {
         ExpansionSourceInfo {
-            spelling_pos,
+            spelling_range,
             expansion_range,
             expansion_type,
         }
     }
 
     /// Returns the position at which the byte at the specified offset was spelled.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `off` lies beyond the bounds of the spelling range.
     pub fn spelling_pos(&self, off: u32) -> SourcePos {
-        self.spelling_pos.offset(off)
+        self.spelling_range.subpos(off)
     }
 
     /// Returns the source range at which the specified range within the expansion was spelled.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `range` does not fit in the spelling range.
     pub fn spelling_range(&self, range: Range<u32>) -> SourceRange {
-        SourceRange::new(self.spelling_pos(range.start), range.len() as u32)
+        self.spelling_range
+            .subrange(range.start, range.len() as u32)
     }
 
     /// Returns the source range within the macro caller corresponding to the specified range within
