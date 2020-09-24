@@ -14,6 +14,10 @@ use super::{Ranges, RawRanges, RenderedRanges};
 use super::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
 use super::{RawSuggestion, RenderedSuggestion};
 
+/// Returns an iterator tracing through the expansions of `range`.
+///
+/// This is almost like the caller chain, except that ranges in macro arguments are moved to point
+/// into the macros themselves.
 fn trace_expansions(
     range: FragmentedSourceRange,
     smap: &SourceMap,
@@ -37,6 +41,7 @@ fn trace_expansions(
         })
 }
 
+/// Deduplicates the provided subranges and coalesces overlapping ones.
 fn dedup_subranges(
     mut subranges: Vec<(SourceRange, String)>,
 ) -> impl Iterator<Item = (SourceRange, String)> {
@@ -55,10 +60,13 @@ fn dedup_subranges(
     })
 }
 
+/// Retrieves the spelling range of `range` in the source map.
 fn get_spelling_range(smap: &SourceMap, range: SourceRange) -> SourceRange {
     SourceRange::new(smap.get_spelling_pos(range.start()), range.len())
 }
 
+/// Renders the provided ranges, returning the newly-rendered (expanded) ranges and a trace of the
+/// expansions leading up to them, from outermost to innermost.
 fn render_ranges(ranges: &RawRanges, smap: &SourceMap) -> (RenderedRanges, Vec<RenderedRanges>) {
     type FxIndexMap<K, V> = IndexMap<K, V, BuildHasherDefault<FxHasher>>;
 
@@ -105,6 +113,8 @@ fn render_ranges(ranges: &RawRanges, smap: &SourceMap) -> (RenderedRanges, Vec<R
     (outermost, expansions)
 }
 
+/// Attemts to render the specified suggestion, returning `None` if there was no unambiguous or
+/// meaningful way to do so.
 fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<RenderedSuggestion> {
     let range = suggestion.replacement_range;
     let start_id = smap.lookup_source_id(range.start);
@@ -123,6 +133,7 @@ fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<Ren
     })
 }
 
+/// Renders a subdiagnostic with no location information.
 fn render_anon_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
     RenderedSubDiagnostic {
         inner: SubDiagnostic {
@@ -134,6 +145,7 @@ fn render_anon_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
     }
 }
 
+/// Renders the provided subdiagnostic using the source map.
 fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagnostic {
     match &raw.ranges {
         None => render_anon_subdiag(raw),
@@ -156,6 +168,7 @@ fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagno
     }
 }
 
+/// Renders `raw` by invoking `f` on each of its subdiagnostics to obtain a rendered subdiagnostic.
 fn render_with<'s>(
     raw: &RawDiagnostic<'s>,
     mut f: impl FnMut(&RawSubDiagnostic) -> RenderedSubDiagnostic,
@@ -168,6 +181,15 @@ fn render_with<'s>(
     }
 }
 
+/// Renders the provided raw diagnostic, using the contained location information and source map to
+/// resolve expansions and include traces.
+///
+/// If the diagnostic has no source map, the rendered diagnostic will have no location information
+/// attached, even if the original did.
+///
+/// # Panics
+///
+/// This function may panic if any of the ranges in `raw` is invalid or malformed.
 pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
     match raw.smap {
         Some(smap) => {
