@@ -1,4 +1,52 @@
-//! Contains [`SourceMap`](struct.SourceMap.html) and auxiliary structures.
+//! [`SourceMap`](struct.SourceMap.html) is a structure holding all of the source code used in a
+//! compilation.
+//!
+//! It is inspired by the analagous `SourceManager` in clang. In addition to holding the source
+//! code, it is responsible for tracking detailed location information within the code, and can
+//! resolve a [`SourcePos`](../struct.SourcePos.html) or [`SourceRange`](../struct.SourceRange.html)
+//! into file/line/column information with macro traces.
+//!
+//! # Sources
+//!
+//! The `SourceMap` contains a number of [`Source`](struct.Source.html) objects, each of which
+//! represents an area to which source code can be attributed. There are two kinds of sources: files
+//! and expansions.
+//!
+//! [File sources](struct.FileSourceInfo.html) represent actual source files from which code was
+//! read. They point to the content of the file itself and record additional metadata, such as the
+//! file name as spelled in the code. Note that a single file on disk may have multiple file source
+//! entries in the `SourceMap`, one for every time it is included.
+//!
+//! [Expansion sources](struct.ExpansionSourceInfo.html) are how the `SourceMap` tracks macro
+//! expansions. Instead of containing actual source code, the expansion source merely points to two
+//! ranges, the _spelling range_ and the _expansion range_. The spelling range indicates where the
+//! expanded code came from, while the expansion range indicates where the code was expanded. Both
+//! the spelling and expansion ranges may themselves point into another expansion source, forming a
+//! DAG of spellings and expansions.
+//!
+//! ## Expansion Examples
+//!
+//! Consider the following c code:
+//!
+//! ```c
+//! #define A (2 + 3)
+//! int x = A + 1;
+//! ```
+//!
+//! The expansion of `A` on line 2 has a spelling range corresponding to the `(2 + 3)` on line 1 and
+//! an expansion range covering the `A` on line 2.
+//!
+//! Nesting macros can cause expansion ranges to point into other expansions. In the following
+//! example, there is an expansion of `B` on line 3, spelled at line 2. There is then an expansion
+//! of `A` into the expansion of `B` spelled at line 1:
+//!
+//! ```c
+//! #define A 4
+//! #define B (A * 2)
+//! int x = B;
+//! ```
+//!
+//! Spelling ranges can also point into expansions when macros pass arguments to other macros.
 
 use std::convert::TryInto;
 use std::ops::Range;
@@ -120,54 +168,10 @@ impl<'f> InterpretedFileRange<'f> {
 #[derive(Debug)]
 pub struct SourcesTooLargeError;
 
-/// A structure holding all of the source code used in a compilation.
+/// A structure holding the source code used in a compilation.
 ///
-/// The `SourceMap` is inspired by the analagous `SourceManager` in clang. In addition to holding
-/// the source code, it is responsible for tracking detailed location information within the code,
-/// and can resolve a [`SourcePos`](../struct.SourcePos.html) or
-/// [`SourceRange`](../struct.SourceRange.html) into file/line/column information with macro traces.
-///
-/// # Sources
-///
-/// The `SourceMap` contains a number of [`Source`](struct.Source.html) objects, each of which
-/// represents an area to which source code can be attributed. There are two kinds of sources: files
-/// and expansions.
-///
-/// [File sources](struct.FileSourceInfo.html) represent actual source files from which code was
-/// read. They point to the content of the file itself and record additional metadata, such as the
-/// file name as spelled in the code. Note that a single file on disk may have multiple file source
-/// entries in the `SourceMap`, one for every time it is included.
-///
-/// [Expansion sources](struct.ExpansionSourceInfo.html) are how the `SourceMap` tracks macro
-/// expansions. Instead of containing actual source code, the expansion source merely points to two
-/// ranges, the _spelling range_ and the _expansion range_. The spelling range indicates where the
-/// expanded code came from, while the expansion range indicates where the code was expanded. Both
-/// the spelling and expansion ranges may themselves point into another expansion source, forming a
-/// DAG of spellings and expansions.
-///
-/// ## Expansion Examples
-///
-/// Consider the following c code:
-///
-/// ```c
-/// #define A (2 + 3)
-/// int x = A + 1;
-/// ```
-///
-/// The expansion of `A` on line 2 has a spelling range corresponding to the `(2 + 3)` on line 1 and
-/// an expansion range covering the `A` on line 2.
-///
-/// Nesting macros can cause expansion ranges to point into other expansions. In the following
-/// example, there is an expansion of `B` on line 3, spelled at line 2. There is then an expansion
-/// of `A` into the expansion of `B` spelled at line 1:
-///
-/// ```c
-/// #define A 4
-/// #define B (A * 2)
-/// int x = B;
-/// ```
-///
-/// Spelling ranges can also point into expansions when macros pass arguments to other macros.
+/// See the module-level documentation for a higher-level explanation of the `SourceMap`'s
+/// architecture.
 ///
 /// # Panics
 ///

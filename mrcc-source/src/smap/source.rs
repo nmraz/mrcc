@@ -142,7 +142,7 @@ impl FileContents {
     }
 }
 
-/// Holds information about a file [source](struct.SourceMap.html#sources).
+/// Holds information about a file [source](index.html#sources).
 #[derive(Clone)]
 pub struct FileSourceInfo {
     /// The name of the file.
@@ -180,7 +180,7 @@ pub enum ExpansionType {
     Synth,
 }
 
-/// Holds information about an expansion [source](struct.SourceMap.html#sources).
+/// Holds information about an expansion [source](index.html#sources).
 #[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
     /// The start of this expansion's spelling range. The length of the range is already available
@@ -220,7 +220,7 @@ impl ExpansionSourceInfo {
     /// the expansion.
     ///
     /// For macro arguments, the caller is where the argument was spelled, while for other types of
-    /// expansions it is where the expansion was performed.
+    /// expansions it is the expansion range.
     pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
         match self.expansion_type {
             ExpansionType::MacroArg => self.spelling_range(range),
