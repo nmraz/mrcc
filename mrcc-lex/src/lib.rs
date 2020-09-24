@@ -37,7 +37,7 @@ impl<'a, 'h> LexCtx<'a, 'h> {
     }
 
     pub fn reporter(&mut self) -> DiagReporter<'_, 'h> {
-        DiagReporter::new(self.diags, self.smap)
+        self.diags.reporter(self.smap)
     }
 
     pub fn convert_raw(

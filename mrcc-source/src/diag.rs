@@ -438,16 +438,12 @@ impl<'h> Manager<'h> {
         }
     }
 
-    /// Reports a diagnostic at the specified location, returning a diagnostic builder to allow the
-    /// diagnostic to be finished and emitted.
-    pub fn report<'a>(
-        &'a mut self,
-        smap: &'a SourceMap,
-        level: Level,
-        primary_range: FragmentedSourceRange,
-        msg: String,
-    ) -> DiagnosticBuilder<'a, 'h> {
-        DiagnosticBuilder::new(self, level, msg, Some((primary_range, smap)))
+    /// Creates a new reporter for reporting diagnostics with location information.
+    pub fn reporter<'a>(&'a mut self, smap: &'a SourceMap) -> Reporter<'a, 'h> {
+        Reporter {
+            manager: self,
+            smap,
+        }
     }
 
     /// Reports a diagnostic with no location information, returning a diagnostic builder.
@@ -491,16 +487,14 @@ impl<'h> Manager<'h> {
 }
 
 /// Helper for reporting diagnostics with location information.
+///
+/// Use [`Manager::reporter()`](struct.Manager.html#method.reporter) to create a new reporter.
 pub struct Reporter<'a, 'h> {
     manager: &'a mut Manager<'h>,
     smap: &'a SourceMap,
 }
 
 impl<'a, 'h> Reporter<'a, 'h> {
-    pub fn new(manager: &'a mut Manager<'h>, smap: &'a SourceMap) -> Self {
-        Self { manager, smap }
-    }
-
     /// Reports a diagnostic at the specified location, returning a diagnostic builder to allow the
     /// diagnostic to be finished and emitted.
     pub fn report(
@@ -509,8 +503,12 @@ impl<'a, 'h> Reporter<'a, 'h> {
         primary_range: impl Into<FragmentedSourceRange>,
         msg: impl Into<String>,
     ) -> DiagnosticBuilder<'_, 'h> {
-        self.manager
-            .report(self.smap, level, primary_range.into(), msg.into())
+        DiagnosticBuilder::new(
+            self.manager,
+            level,
+            msg.into(),
+            Some((primary_range.into(), self.smap)),
+        )
     }
 
     /// Reports a warning at the specified location, returning a diagnostic builder.
