@@ -272,20 +272,8 @@ pub struct Manager<'h> {
 }
 
 impl<'h> Manager<'h> {
-    pub fn new(handler: Box<dyn RawHandler + 'h>, error_limit: Option<u32>) -> Self {
-        Manager {
-            handler,
-            error_limit,
-            warning_count: 0,
-            error_count: 0,
-        }
-    }
-
-    pub fn with_rendered_handler(
-        handler: impl RenderedHandler + 'h,
-        error_limit: Option<u32>,
-    ) -> Self {
-        Self::new(
+    pub fn new(handler: impl RenderedHandler + 'h, error_limit: Option<u32>) -> Self {
+        Self::with_raw_handler(
             Box::new(RenderingHandlerAdaptor {
                 rendered_handler: handler,
             }),
@@ -294,7 +282,16 @@ impl<'h> Manager<'h> {
     }
 
     pub fn new_annotating(error_limit: Option<u32>) -> Manager<'static> {
-        Manager::with_rendered_handler(AnnotatingHandler, error_limit)
+        Manager::new(AnnotatingHandler, error_limit)
+    }
+
+    pub fn with_raw_handler(handler: Box<dyn RawHandler + 'h>, error_limit: Option<u32>) -> Self {
+        Manager {
+            handler,
+            error_limit,
+            warning_count: 0,
+            error_count: 0,
+        }
     }
 
     pub fn report<'a>(
