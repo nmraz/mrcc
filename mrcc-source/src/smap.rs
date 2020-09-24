@@ -253,13 +253,17 @@ impl SourceMap {
     ///
     /// # Panics
     ///
-    /// This function may panic if either of `spelling_range` or `expansion_range` is invalid.
+    /// This function may panic if one of `spelling_range` or `expansion_range` is invalid, or if
+    /// either is empty.
     pub fn create_expansion(
         &mut self,
         spelling_range: SourceRange,
         expansion_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> Result<SourceId, SourcesTooLargeError> {
+        assert!(!spelling_range.is_empty());
+        assert!(!expansion_range.is_empty());
+
         if cfg!(debug_assertions) {
             // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
             // extra search through the list of sources, so avoid them in release builds.
