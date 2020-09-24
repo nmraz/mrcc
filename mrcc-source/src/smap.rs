@@ -497,7 +497,9 @@ impl SourceMap {
         let (source, local_range) = self.lookup_source_range(range);
 
         InterpretedFileRange {
-            file: source.as_file().unwrap(),
+            file: source
+                .as_file()
+                .expect("`get_interpreted_range` requires a file range"),
             off: local_range.start,
             len: range.len(),
         }
