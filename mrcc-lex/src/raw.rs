@@ -19,17 +19,24 @@ pub enum RawTokenKind {
 
     Ws,
     LineComment,
-    BlockComment,
+
+    BlockComment {
+        terminated: bool,
+    },
 
     Punct(PunctKind),
-
     Ident,
 
     /// A preprocessing number. Note that the definition of preprocessing numbers is rather lax and
     /// matches many invalid numeric literals as well. See §6.4.8 for details.
     Number,
-    Str,
-    Char,
+
+    Str {
+        terminated: bool,
+    },
+    Char {
+        terminated: bool,
+    },
 }
 
 /// A slice of the actual source string.
@@ -51,9 +58,6 @@ pub struct RawToken<'a> {
     pub kind: RawTokenKind,
     /// The source contents of the token.
     pub content: RawContent<'a>,
-    /// Indicates whether this token is terminated (e.g. whether a string literal has its closing
-    /// `"`).
-    pub terminated: bool,
 }
 
 impl<'a> RawContent<'a> {
@@ -297,16 +301,16 @@ impl<'a> Tokenizer<'a> {
         self.reader.begin_tok();
 
         let c = match self.reader.bump() {
-            None => return self.tok_term(RawTokenKind::Eof),
+            None => return self.tok(RawTokenKind::Eof),
             Some(c) => c,
         };
 
         match c {
             ws if is_line_ws(ws) => {
                 self.reader.eat_line_ws();
-                self.tok_term(RawTokenKind::Ws)
+                self.tok(RawTokenKind::Ws)
             }
-            '\n' => self.tok_term(RawTokenKind::Newline),
+            '\n' => self.tok(RawTokenKind::Newline),
 
             'U' | 'L' => self.handle_encoding_prefix(true),
             'u' => {
@@ -314,8 +318,8 @@ impl<'a> Tokenizer<'a> {
                 self.handle_encoding_prefix(allow_char)
             }
 
-            '"' => self.handle_str_like('"', RawTokenKind::Str),
-            '\'' => self.handle_str_like('\'', RawTokenKind::Char),
+            '"' => self.handle_str(),
+            '\'' => self.handle_char(),
 
             '.' => {
                 if self.reader.eat_if(|c| c.is_ascii_digit()) {
@@ -334,16 +338,16 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
-    /// Finishes reading and returns an identifier token.
+    /// Finishes consuming and returns an identifier token.
     fn handle_ident(&mut self) -> RawToken<'a> {
         self.reader.eat_while(is_ident_continue);
-        self.tok_term(RawTokenKind::Ident)
+        self.tok(RawTokenKind::Ident)
     }
 
-    /// Finishes reading and returns a preprocessing number token.
+    /// Finishes consuming and returns a preprocessing number token.
     fn handle_number(&mut self) -> RawToken<'a> {
         while self.eat_number_char() {}
-        self.tok_term(RawTokenKind::Number)
+        self.tok(RawTokenKind::Number)
     }
 
     /// Consumes the next character or pair of characters if they form a part of a preprocessing
@@ -365,29 +369,45 @@ impl<'a> Tokenizer<'a> {
     /// character (if `allow_char` is `true`) or identifier token, as appropriate.
     fn handle_encoding_prefix(&mut self, allow_char: bool) -> RawToken<'a> {
         if self.reader.eat('"') {
-            self.handle_str_like('"', RawTokenKind::Str)
+            self.handle_str()
         } else if allow_char && self.reader.eat('\'') {
-            self.handle_str_like('\'', RawTokenKind::Char)
+            self.handle_char()
         } else {
             self.handle_ident()
         }
     }
 
-    /// Consumes characters until after `term` and returns a token of the specified type, handling
-    /// escapes and checking termination.
-    fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'a> {
+    /// Finishes consuming and emits a string token.
+    fn handle_str(&mut self) -> RawToken<'a> {
+        self.handle_str_like('"', |terminated| RawTokenKind::Str { terminated })
+    }
+
+    /// Finishes consuming and emits a character token.
+    fn handle_char(&mut self) -> RawToken<'a> {
+        self.handle_str_like('\'', |terminated| RawTokenKind::Char { terminated })
+    }
+
+    /// Consumes characters until after `delim` or the nearest newline, using `f` create a token
+    /// type based on whether the token was terminated.
+    ///
+    /// This function correctly handles escaping of `delim`.
+    fn handle_str_like(
+        &mut self,
+        delim: char,
+        f: impl FnOnce(bool) -> RawTokenKind,
+    ) -> RawToken<'a> {
         let mut escaped = false;
 
         while let Some(c) = self.reader.bump() {
             match c {
                 '\\' => escaped = !escaped,
                 '\n' => break,
-                c if c == term && !escaped => return self.tok_term(kind),
+                c if c == delim && !escaped => return self.tok(f(true)),
                 _ => {}
             }
         }
 
-        self.tok(kind, false)
+        self.tok(f(false))
     }
 
     /// Handles a suspected punctuator character `c`, and returns either the appropriate punctuator
@@ -537,7 +557,7 @@ impl<'a> Tokenizer<'a> {
                     self.punct(Eq)
                 }
             }
-            _ => self.tok_term(RawTokenKind::Unknown),
+            _ => self.tok(RawTokenKind::Unknown),
         }
     }
 
@@ -548,7 +568,7 @@ impl<'a> Tokenizer<'a> {
     /// preprocessor.
     fn handle_line_comment(&mut self) -> RawToken<'a> {
         self.reader.eat_while(|c| c != '\n');
-        self.tok_term(RawTokenKind::LineComment)
+        self.tok(RawTokenKind::LineComment)
     }
 
     /// Consumes and emits a block comment token.
@@ -562,25 +582,24 @@ impl<'a> Tokenizer<'a> {
             }
         };
 
-        self.tok(RawTokenKind::BlockComment, terminated)
+        self.tok(RawTokenKind::BlockComment { terminated })
     }
 
     /// Returns a punctuator token with the current content and the specified type.
     fn punct(&self, kind: PunctKind) -> RawToken<'a> {
-        self.tok_term(RawTokenKind::Punct(kind))
+        self.tok(RawTokenKind::Punct(kind))
     }
 
     /// Returns a terminated token with the current content and the specified type.
-    fn tok_term(&self, kind: RawTokenKind) -> RawToken<'a> {
-        self.tok(kind, true)
+    fn tok(&self, kind: RawTokenKind) -> RawToken<'a> {
+        self.tok1(kind, true)
     }
 
-    /// Returns a token with the current content and the specified parameters.
-    fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
+    /// Returns a token with the current content and the specified type.
+    fn tok1(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
         RawToken {
             kind,
             content: self.reader.cur_content(),
-            terminated,
         }
     }
 }

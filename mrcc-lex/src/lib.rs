@@ -64,8 +64,8 @@ impl<'a, 'h> LexCtx<'a, 'h> {
     ) -> DResult<ConvertedToken> {
         let pos = base_pos.offset(raw.content.off);
 
-        let check_terminated = |this: &mut LexCtx<'_, '_>, kind: &str| {
-            if !raw.terminated {
+        let check_terminated = |this: &mut LexCtx<'_, '_>, terminated: bool, kind: &str| {
+            if !terminated {
                 this.reporter()
                     .error(pos, format!("unterminated {}", kind))
                     .emit()?;
@@ -83,8 +83,8 @@ impl<'a, 'h> LexCtx<'a, 'h> {
             RawTokenKind::Newline => ConvertedTokenKind::Newline,
 
             RawTokenKind::Ws | RawTokenKind::LineComment => ConvertedTokenKind::Trivia,
-            RawTokenKind::BlockComment => {
-                check_terminated(self, "block comment")?;
+            RawTokenKind::BlockComment { terminated } => {
+                check_terminated(self, terminated, "block comment")?;
                 ConvertedTokenKind::Trivia
             }
 
@@ -94,13 +94,13 @@ impl<'a, 'h> LexCtx<'a, 'h> {
                 ConvertedTokenKind::Real(TokenKind::Number(intern_content(self)))
             }
 
-            RawTokenKind::Str => {
-                check_terminated(self, "string literal")?;
+            RawTokenKind::Str { terminated } => {
+                check_terminated(self, terminated, "string literal")?;
                 ConvertedTokenKind::Real(TokenKind::Str(intern_content(self)))
             }
 
-            RawTokenKind::Char => {
-                check_terminated(self, "character literal")?;
+            RawTokenKind::Char { terminated } => {
+                check_terminated(self, terminated, "character literal")?;
                 ConvertedTokenKind::Real(TokenKind::Char(intern_content(self)))
             }
         };
