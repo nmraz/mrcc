@@ -1,7 +1,15 @@
+//! Raw tokens and tokenization.
+//!
+//! Raw tokens differ from "ordinary" tokens in that they are lossless and point back into the
+//! original source string. Lexing them requires no auxiliary state (such as interners) and can
+//! never fail. To validate  a raw token and convert it to a "real" token, use
+//! [`LexCtx::convert_raw()`](../struct.LexCtx.html#method.convert_raw).
+
 use std::borrow::Cow;
 
 use super::PunctKind;
 
+/// Enum representing raw token types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RawTokenKind {
     Unknown,
@@ -16,26 +24,40 @@ pub enum RawTokenKind {
     Punct(PunctKind),
 
     Ident,
+
+    /// A preprocessing number. Note that the definition of preprocessing numbers is rather lax and
+    /// matches many invalid numeric literals as well. See §6.4.8 for details.
     Number,
     Str,
     Char,
 }
 
+/// A slice of the actual source string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawContent<'a> {
+    /// The offset within the string at which the slice starts.
     pub off: u32,
+    /// The relevant slice of the source string.
     pub str: &'a str,
+    /// Indicates whether the slice contains escaped newlines that should be deleted before use,
+    /// as per translation phase 2.
     pub tainted: bool,
 }
 
+/// Represents a raw token lexed from a string.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawToken<'a> {
+    /// The type of token.
     pub kind: RawTokenKind,
+    /// The source contents of the token.
     pub content: RawContent<'a>,
+    /// Indicates whether this token is terminated (e.g. whether a string literal has its closing
+    /// `"`).
     pub terminated: bool,
 }
 
 impl<'a> RawContent<'a> {
+    /// Returns the string corresponding to this slice with escaped newlines deleted.
     pub fn cleaned_str(&self) -> Cow<'a, str> {
         if self.tainted {
             Cow::Owned(clean(self.str))
@@ -45,10 +67,13 @@ impl<'a> RawContent<'a> {
     }
 }
 
+/// Deletes escaped newlines (`\` immediately followed by a newline) from `tok`, as specified in
+/// translation phase 2 (§5.1.1.2).
 pub fn clean(tok: &str) -> String {
     tok.replace("\\\n", "")
 }
 
+/// Checks whether `c` is a non-newline whitespace character, as per §6.4.
 fn is_line_ws(c: char) -> bool {
     match c {
         ' ' | '\t' | '\x0b' | '\x0c' => true,
@@ -56,14 +81,19 @@ fn is_line_ws(c: char) -> bool {
     }
 }
 
+/// Checks whether `c` is the start of an identifier (identifier-nondigit), as per §6.4.2.1.
 fn is_ident_start(c: char) -> bool {
     c.is_ascii_alphabetic() || c == '_'
 }
 
+/// Checks whether `c` is an identifier continuation character, as per §6.4.2.1.
 fn is_ident_continue(c: char) -> bool {
     is_ident_start(c) || c.is_ascii_digit()
 }
 
+/// An iterator through the characters of a string that skips escaped newlines within it.
+///
+/// The iterator also tracks whether it has seen any escaped newlines and become "tainted".
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     input: &'a str,
@@ -72,6 +102,7 @@ struct SkipEscapedNewlines<'a> {
 }
 
 impl<'a> SkipEscapedNewlines<'a> {
+    /// Creates a new iterator with the specified input string.
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
@@ -80,22 +111,28 @@ impl<'a> SkipEscapedNewlines<'a> {
         }
     }
 
+    /// Returns the entire input string.
     pub fn input(&self) -> &'a str {
         self.input
     }
 
+    /// Returns the portion of the input not yet iterated through.
     pub fn remaining(&self) -> &'a str {
         &self.input[self.off as usize..]
     }
 
+    /// Returns the current offset within the input string.
     pub fn off(&self) -> u32 {
         self.off
     }
 
+    /// Returns whether any escaped newlines have been encountered since the last call to
+    /// `untaint()`.
     pub fn tainted(&self) -> bool {
         self.tainted
     }
 
+    /// Resets the "tainted" flag to `false`.
     pub fn untaint(&mut self) {
         self.tainted = false
     }
@@ -119,13 +156,20 @@ impl Iterator for SkipEscapedNewlines<'_> {
     }
 }
 
+/// A utility for reading content from a source string.
+///
+/// `Reader` also implements translation phase 2 (§5.1.1.2) and transparently skips any `\`
+/// characters immediately followed by a newline in the source.
 #[derive(Clone)]
 pub struct Reader<'a> {
+    /// The underlying character iterator.
     iter: SkipEscapedNewlines<'a>,
+    /// The start of the current token being read.
     start: u32,
 }
 
 impl<'a> Reader<'a> {
+    /// Creates a new reader with the specified source string.
     #[inline]
     pub fn new(input: &'a str) -> Self {
         Self {
@@ -134,11 +178,16 @@ impl<'a> Reader<'a> {
         }
     }
 
+    /// Returns the current offset of this reader within the source.
     #[inline]
     pub fn off(&self) -> u32 {
         self.iter.off()
     }
 
+    /// Returns the current content of this reader.
+    ///
+    /// The current content consists of all characters consumed since the last call to
+    /// [`begin_tok()`](#method.begin_tok).
     #[inline]
     pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
@@ -148,19 +197,30 @@ impl<'a> Reader<'a> {
         }
     }
 
+    /// Consumes and returns the next character from the source string.
     pub fn bump(&mut self) -> Option<char> {
         self.iter.next()
     }
 
+    /// Marks the current offset as the start of a new token.
+    ///
+    /// Subsequent calls to [`cur_content()`](#method.cur_content) will return all characters
+    /// consumed since this point.
     pub fn begin_tok(&mut self) {
         self.start = self.off();
         self.iter.untaint();
     }
 
+    /// Consumes the next character from the source if it is exactly `c`.
+    ///
+    /// Returns whether a character was consumed.
     pub fn eat(&mut self, c: char) -> bool {
         self.eat_if(|cur| cur == c)
     }
 
+    /// Consumes the next character from the source if `pred` evaluates to `true` on it.
+    ///
+    /// Returns whether a character was consumed.
     pub fn eat_if(&mut self, mut pred: impl FnMut(char) -> bool) -> bool {
         let mut iter = self.iter.clone();
         if iter.next().map_or(false, &mut pred) {
@@ -170,6 +230,9 @@ impl<'a> Reader<'a> {
         false
     }
 
+    /// Consumes characters from the source as long as `pred` evaluates to `true` on them.
+    ///
+    /// Returns the number of characters consumed (excluding escaped newlines).
     pub fn eat_while(&mut self, mut pred: impl FnMut(char) -> bool) -> u32 {
         let mut eaten = 0;
         while self.eat_if(&mut pred) {
@@ -178,6 +241,10 @@ impl<'a> Reader<'a> {
         eaten
     }
 
+    /// Consumes characters until just after the next occurrence of `term`.
+    ///
+    /// Returns `true` if `term` was found and consumed, and `false` if the end of the source
+    /// was reached without seeing `term`.
     pub fn eat_to_after(&mut self, term: char) -> bool {
         while let Some(c) = self.bump() {
             if c == term {
@@ -188,6 +255,10 @@ impl<'a> Reader<'a> {
         false
     }
 
+    /// Consumes the next `s.len()` characters if they match `s` exactly (ignoring escaped
+    /// newlines).
+    ///
+    /// Returns `true` if there was a match, `false` otherwise.
     pub fn eat_str(&mut self, s: &str) -> bool {
         let mut iter = self.iter.clone();
         for c in s.chars() {
@@ -199,16 +270,21 @@ impl<'a> Reader<'a> {
         true
     }
 
+    /// Consumes characters from the source as long as they are non-newline whitespace characters
+    /// (using the definition of "whitespace" given in §6.4).
     pub fn eat_line_ws(&mut self) -> bool {
         self.eat_while(is_line_ws) > 0
     }
 }
 
+/// Reads raw tokens out of a string.
 pub struct Tokenizer<'a> {
+    /// The underlying reader used to tokenize the string.
     pub reader: Reader<'a>,
 }
 
 impl<'a> Tokenizer<'a> {
+    /// Creates a new tokenizer with the specified source string.
     #[inline]
     pub fn new(input: &'a str) -> Self {
         Self {
@@ -216,6 +292,7 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Reads the next token using `self.reader`.
     pub fn next_token(&mut self) -> RawToken<'a> {
         self.reader.begin_tok();
 
@@ -257,16 +334,22 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Finishes reading and returns an identifier token.
     fn handle_ident(&mut self) -> RawToken<'a> {
         self.reader.eat_while(is_ident_continue);
         self.tok_term(RawTokenKind::Ident)
     }
 
+    /// Finishes reading and returns a preprocessing number token.
     fn handle_number(&mut self) -> RawToken<'a> {
         while self.eat_number_char() {}
         self.tok_term(RawTokenKind::Number)
     }
 
+    /// Consumes the next character or pair of characters if they form a part of a preprocessing
+    /// number; see §6.4.8 for details.
+    ///
+    /// Returns `true` if characters were consumed.
     fn eat_number_char(&mut self) -> bool {
         // If any of these characters are followed by a sign, they designate an exponent. Otherwise,
         // they are a part of the pp-number anyway.
@@ -278,6 +361,8 @@ impl<'a> Tokenizer<'a> {
         self.reader.eat_if(|c| c == '.' || is_ident_continue(c))
     }
 
+    /// Reacts to a possible encoding prefix (`L`, `u8`, etc.) and returns either a string,
+    /// character (if `allow_char` is `true`) or identifier token, as appropriate.
     fn handle_encoding_prefix(&mut self, allow_char: bool) -> RawToken<'a> {
         if self.reader.eat('"') {
             self.handle_str_like('"', RawTokenKind::Str)
@@ -288,6 +373,8 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Consumes characters until after `term` and returns a token of the specified type, handling
+    /// escapes and checking termination.
     fn handle_str_like(&mut self, term: char, kind: RawTokenKind) -> RawToken<'a> {
         let mut escaped = false;
 
@@ -303,6 +390,8 @@ impl<'a> Tokenizer<'a> {
         self.tok(kind, false)
     }
 
+    /// Handles a suspected punctuator character `c`, and returns either the appropriate punctuator
+    /// or an `Unknown` token.
     #[allow(clippy::cognitive_complexity)]
     fn handle_punct(&mut self, c: char) -> RawToken<'a> {
         use PunctKind::*;
@@ -452,13 +541,17 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// Consumes and emits a line comment token.
+    ///
+    /// The terminating newline is _not_ consumed, to allow it to be emitted as a separate token.
+    /// This is important for clients that must react specially to newlines, such as the
+    /// preprocessor.
     fn handle_line_comment(&mut self) -> RawToken<'a> {
-        // Note: we intentionally don't consume the newline - it will be emitted as a separate
-        // newline token.
         self.reader.eat_while(|c| c != '\n');
         self.tok_term(RawTokenKind::LineComment)
     }
 
+    /// Consumes and emits a block comment token.
     fn handle_block_comment(&mut self) -> RawToken<'a> {
         let terminated = loop {
             self.reader.eat_to_after('*');
@@ -472,14 +565,17 @@ impl<'a> Tokenizer<'a> {
         self.tok(RawTokenKind::BlockComment, terminated)
     }
 
+    /// Returns a punctuator token with the current content and the specified type.
     fn punct(&self, kind: PunctKind) -> RawToken<'a> {
         self.tok_term(RawTokenKind::Punct(kind))
     }
 
+    /// Returns a terminated token with the current content and the specified type.
     fn tok_term(&self, kind: RawTokenKind) -> RawToken<'a> {
         self.tok(kind, true)
     }
 
+    /// Returns a token with the current content and the specified parameters.
     fn tok(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
         RawToken {
             kind,

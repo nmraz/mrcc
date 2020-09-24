@@ -1,5 +1,6 @@
 use std::fmt;
 
+/// Enum representing punctuator types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PunctKind {
     Hash,
@@ -58,6 +59,7 @@ pub enum PunctKind {
 }
 
 impl PunctKind {
+    /// Returns the appropriate punctuator string corresponding to `self`.
     pub fn as_str(self) -> &'static str {
         use PunctKind::*;
 

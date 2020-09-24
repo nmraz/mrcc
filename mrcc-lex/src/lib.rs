@@ -1,3 +1,5 @@
+//! Lexer traits and definitions.
+
 #![warn(rust_2018_idioms)]
 
 use mrcc_source::{DResult, DiagManager, DiagReporter, SourceMap, SourcePos, SourceRange};
@@ -10,20 +12,31 @@ mod punct;
 pub mod raw;
 mod token;
 
+/// A string interner type, used to hold identifiers and literals.
 pub type Interner = intern::Interner<str>;
+/// A symbol for use with `Interner`.
 pub type Symbol = intern::Symbol<str>;
 
+/// Trait representing a source of tokens.
 pub trait Lexer {
+    /// Lexes the next token from the stream.
+    ///
+    /// This function returns a `DResult` as it may report diagnostics through `ctx`.
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token>;
 }
 
+/// A context structure passed to lexers, tying together different pieces of state.
 pub struct LexCtx<'a, 'h> {
+    /// The interner into which the lexer should place lexed identifiers and literals.
     pub interner: &'a mut Interner,
+    /// The diagnostics manager to use when reporting warnings and errors.
     pub diags: &'a mut DiagManager<'h>,
+    /// The source map, for use with `diags` and for generating token locations.
     pub smap: &'a mut SourceMap,
 }
 
 impl<'a, 'h> LexCtx<'a, 'h> {
+    /// Creates a new context with the provided fields.
     pub fn new(
         interner: &'a mut Interner,
         diags: &'a mut DiagManager<'h>,
@@ -36,10 +49,14 @@ impl<'a, 'h> LexCtx<'a, 'h> {
         }
     }
 
+    /// Returns a reporter for emitting diagnostics.
     pub fn reporter(&mut self) -> DiagReporter<'_, 'h> {
         self.diags.reporter(self.smap)
     }
 
+    /// Converts a raw token to a proper token, emitting errors if it is malformed.
+    ///
+    /// `base_pos` should be the position relative to which `raw.content.off` was specified.
     pub fn convert_raw(
         &mut self,
         raw: &RawToken<'_>,
