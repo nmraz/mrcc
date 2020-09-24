@@ -1,6 +1,6 @@
 //! A simple interner for types implementing `ToOwned`.
 
-use std::borrow::Borrow;
+use std::borrow::{Borrow, Cow};
 use std::hash::BuildHasherDefault;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -59,9 +59,20 @@ where
     /// Returns a symbol uniquely identifying the interned value. If the same value is interned
     /// multiple times, the same symbol will be returned every time.
     pub fn intern(&mut self, val: &T) -> Symbol<T> {
-        let idx = match self.pool.get_full(val) {
+        self.intern_cow(Cow::Borrowed(val))
+    }
+
+    /// Interns the provided value, storing it as an owned one if necessary.
+    ///
+    /// This method enables less potential allocations than [`intern()`](#method.intern) if `val` is
+    /// already owned.
+    ///
+    /// Returns a symbol uniquely identifying the interned value. If the same value is interned
+    /// multiple times, the same symbol will be returned every time.
+    pub fn intern_cow(&mut self, val: Cow<T>) -> Symbol<T> {
+        let idx = match self.pool.get_full(&*val) {
             Some((idx, _)) => idx,
-            None => self.pool.insert_full(val.to_owned()).0,
+            None => self.pool.insert_full(val.into_owned()).0,
         };
 
         Symbol::new(idx)

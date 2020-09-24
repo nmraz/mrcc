@@ -57,7 +57,7 @@ impl<'a, 'h> LexCtx<'a, 'h> {
         };
 
         let intern_content =
-            |this: &mut LexCtx<'_, '_>| this.interner.intern(&raw.content.cleaned_str());
+            |this: &mut LexCtx<'_, '_>| this.interner.intern_cow(raw.content.cleaned_str());
 
         let kind = match raw.kind {
             RawTokenKind::Unknown => ConvertedTokenKind::Real(TokenKind::Unknown),
