@@ -20,8 +20,7 @@ impl SourcePos {
     /// Returns a new position lying `offset` bytes forward from `self`.
     ///
     /// The position returned can be meaningless if the [source](smap/index.html#sources)
-    /// containing `self` does not contain at least `offset` more bytes (including a sentinel
-    /// past-the-end "byte").
+    /// containing `self` does not contain at least `offset` more bytes.
     #[inline]
     pub fn offset(self, offset: u32) -> Self {
         SourcePos(self.0 + offset)
