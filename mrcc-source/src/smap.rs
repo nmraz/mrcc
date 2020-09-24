@@ -558,7 +558,6 @@ impl SourceMap {
                 }
             })?;
 
-        assert!(start_pos <= end_pos, "invalid source range");
         Some(SourceRange::new(start_pos, end_pos.offset_from(start_pos)))
     }
 }

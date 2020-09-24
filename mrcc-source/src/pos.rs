@@ -28,8 +28,13 @@ impl SourcePos {
 
     /// Returns the distance in bytes between `self` and `rhs`, assuming that `rhs` lies before
     /// `self` in the same source.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rhs` lies after `self`.
     #[inline]
     pub fn offset_from(self, rhs: SourcePos) -> u32 {
+        assert!(rhs <= self);
         self.to_raw() - rhs.to_raw()
     }
 }
