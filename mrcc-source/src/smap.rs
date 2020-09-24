@@ -226,15 +226,26 @@ impl SourceMap {
     /// The created file source will have an additional past-the-end sentinel position, useful for
     /// representing EOF positions and disambiguating empty sources from their successors.
     ///
-    /// Note that a new file source should be created (potentially referencing the same `contents`)
-    /// every time a file is included, as the `include_pos` is different and the filename may be
-    /// spelled differently.
+    /// `include_pos`, if provided, should point into an existing file source. Note that a new file
+    /// source should be created (potentially referencing the same `contents`) every time a file is
+    /// included, as the `include_pos` is different and the filename may be spelled differently.
+    ///
+    /// # Panics
+    ///
+    /// This function may panic if `include_pos` is invalid or does not point into a file.
     pub fn create_file(
         &mut self,
         filename: FileName,
         contents: Rc<FileContents>,
         include_pos: Option<SourcePos>,
     ) -> Result<SourceId, SourcesTooLargeError> {
+        #[cfg(debug_assertions)]
+        if let Some(pos) = include_pos {
+            // Verify that the include position points into a file. This incurs an extra source
+            // lookup, so avoid it in release builds.
+            assert!(self.lookup_source_off(pos).0.is_file());
+        }
+
         let len = u32::try_from(contents.src.len())
             .map_err(|_| SourcesTooLargeError)?
             .checked_add(1) // Sentinel byte
@@ -265,8 +276,8 @@ impl SourceMap {
         assert!(!expansion_range.is_empty());
 
         if cfg!(debug_assertions) {
-            // Verify that the ranges do not cross source boundaries. Each of these checks incurs an
-            // extra search through the list of sources, so avoid them in release builds.
+            // Verify that the ranges are valid. Each of these checks incurs an extra search through
+            // the list of sources, so avoid them in release builds.
             self.lookup_source_range(spelling_range);
             self.lookup_source_range(expansion_range);
         }

@@ -48,6 +48,39 @@ fn create_expansion() {
 }
 
 #[test]
+#[should_panic]
+fn include_pos_non_file() {
+    let mut sm = SourceMap::new();
+
+    let main_file_id = sm
+        .create_file(
+            FileName::real("file.c"),
+            FileContents::new("#define A 5\nA;"),
+            None,
+        )
+        .unwrap();
+
+    let file_range = sm.get_source(main_file_id).range;
+
+    let exp_source_id = sm
+        .create_expansion(
+            file_range.subrange(10, 1),
+            file_range.subrange(12, 1),
+            ExpansionType::Macro,
+        )
+        .unwrap();
+
+    let exp_range = sm.get_source(exp_source_id).range;
+
+    sm.create_file(
+        FileName::real("test.h"),
+        FileContents::new("#define B 3"),
+        Some(exp_range.start()),
+    )
+    .unwrap();
+}
+
+#[test]
 fn lookup_pos() {
     let mut sm = SourceMap::new();
 
