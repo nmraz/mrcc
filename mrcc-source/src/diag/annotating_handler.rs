@@ -7,6 +7,7 @@ use crate::{LineCol, SourceMap, SourcePos};
 
 use super::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic};
 
+/// A rendered diagnostic handler that emits messages and annotated code snippets to `stderr`.
 pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
