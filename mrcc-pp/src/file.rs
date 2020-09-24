@@ -110,11 +110,10 @@ impl IncludeLoader {
             return do_load(&mut self.cache, filename);
         }
 
-        let initial_dir = if kind == IncludeKind::Str {
-            includer.parent_dir.as_ref()
-        } else {
-            None
-        };
+        let initial_dir = includer
+            .parent_dir
+            .as_ref()
+            .filter(|_| kind == IncludeKind::Str);
 
         let dirs = initial_dir.into_iter().chain(self.include_dirs.iter());
 
