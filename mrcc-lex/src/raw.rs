@@ -590,13 +590,8 @@ impl<'a> Tokenizer<'a> {
         self.tok(RawTokenKind::Punct(kind))
     }
 
-    /// Returns a terminated token with the current content and the specified type.
-    fn tok(&self, kind: RawTokenKind) -> RawToken<'a> {
-        self.tok1(kind, true)
-    }
-
     /// Returns a token with the current content and the specified type.
-    fn tok1(&self, kind: RawTokenKind, terminated: bool) -> RawToken<'a> {
+    fn tok(&self, kind: RawTokenKind) -> RawToken<'a> {
         RawToken {
             kind,
             content: self.reader.cur_content(),
