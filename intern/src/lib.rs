@@ -1,3 +1,5 @@
+//! A simple interner for types implementing `ToOwned`.
+
 use std::borrow::Borrow;
 use std::hash::BuildHasherDefault;
 use std::hash::Hash;
@@ -7,6 +9,7 @@ use std::ops::Index;
 use indexmap::IndexSet;
 use rustc_hash::FxHasher;
 
+/// Opaque type used to refer to interned data.
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Symbol<T: ToOwned + ?Sized> {
     idx: usize,
@@ -33,6 +36,7 @@ impl<T: ToOwned + ?Sized> Clone for Symbol<T> {
 
 type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
+/// A simple interner for types implementing `ToOwned`.
 #[derive(Default)]
 pub struct Interner<T: ToOwned + ?Sized> {
     pool: FxIndexSet<T::Owned>,
@@ -43,12 +47,17 @@ where
     T: Hash + Eq,
     T::Owned: Hash + Eq,
 {
+    /// Creates a new, empty interner.
     pub fn new() -> Self {
         Self {
             pool: FxIndexSet::with_capacity_and_hasher(0, Default::default()),
         }
     }
 
+    /// Interns the provided value, upgrading it to an owned one if necessary.
+    ///
+    /// Returns a symbol uniquely identifying the interned value. If the same value is interned
+    /// multiple times, the same symbol will be returned every time.
     pub fn intern(&mut self, val: &T) -> Symbol<T> {
         let idx = match self.pool.get_full(val) {
             Some((idx, _)) => idx,
@@ -58,8 +67,17 @@ where
         Symbol::new(idx)
     }
 
-    pub fn resolve(&self, sym: Symbol<T>) -> Option<&T> {
-        self.pool.get_index(sym.idx).map(|val| val.borrow())
+    /// Resolves the symbol to its interned content.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `sym` has no associated data in this interner. This can happen if it came from a
+    /// different interner.
+    pub fn resolve(&self, sym: Symbol<T>) -> &T {
+        self.pool
+            .get_index(sym.idx)
+            .expect("symbol used with wrong interner")
+            .borrow()
     }
 }
 
@@ -71,7 +89,7 @@ where
     type Output = T;
 
     fn index(&self, sym: Symbol<T>) -> &T {
-        self.resolve(sym).unwrap()
+        self.resolve(sym)
     }
 }
 
