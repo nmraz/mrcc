@@ -90,7 +90,19 @@ impl<'a> Processor<'a> {
         Ok(())
     }
 
-    pub fn lex_next_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
+    pub fn reader(&mut self) -> &mut Reader<'a> {
+        &mut self.tokenizer_mut().reader
+    }
+
+    pub fn off(&self) -> u32 {
+        self.tokenizer().reader.off()
+    }
+
+    pub fn pos(&self) -> SourcePos {
+        self.base_pos.offset(self.off())
+    }
+
+    fn lex_next_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
         let mut leading_trivia = false;
 
         let (tok, new_line_start) = loop {
@@ -115,18 +127,6 @@ impl<'a> Processor<'a> {
             line_start: mem::replace(&mut self.state.line_start, new_line_start),
             leading_trivia,
         })
-    }
-
-    pub fn reader(&mut self) -> &mut Reader<'a> {
-        &mut self.tokenizer_mut().reader
-    }
-
-    pub fn off(&self) -> u32 {
-        self.tokenizer().reader.off()
-    }
-
-    pub fn pos(&self) -> SourcePos {
-        self.base_pos.offset(self.off())
     }
 
     fn tokenizer(&self) -> &Tokenizer<'a> {
