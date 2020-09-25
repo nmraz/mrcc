@@ -206,6 +206,17 @@ impl<'a> Reader<'a> {
         self.iter.next()
     }
 
+    /// Consumes and returns the next character from the source if `pred` evaluates to `true` on it.
+    pub fn bump_if(&mut self, mut pred: impl FnMut(char) -> bool) -> Option<char> {
+        let mut iter = self.iter.clone();
+        let c = iter.next();
+        if c.map_or(false, &mut pred) {
+            self.iter = iter;
+            return c;
+        }
+        None
+    }
+
     /// Marks the current offset as the start of a new token.
     ///
     /// Subsequent calls to [`cur_content()`](#method.cur_content) will return all characters
@@ -225,13 +236,8 @@ impl<'a> Reader<'a> {
     /// Consumes the next character from the source if `pred` evaluates to `true` on it.
     ///
     /// Returns whether a character was consumed.
-    pub fn eat_if(&mut self, mut pred: impl FnMut(char) -> bool) -> bool {
-        let mut iter = self.iter.clone();
-        if iter.next().map_or(false, &mut pred) {
-            self.iter = iter;
-            return true;
-        }
-        false
+    pub fn eat_if(&mut self, pred: impl FnMut(char) -> bool) -> bool {
+        self.bump_if(pred).is_some()
     }
 
     /// Consumes characters from the source as long as `pred` evaluates to `true` on them.
