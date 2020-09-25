@@ -397,6 +397,10 @@ impl<'a> Tokenizer<'a> {
     /// type based on whether the token was terminated.
     ///
     /// This function correctly handles escaping of `delim`.
+    ///
+    /// If a newline is encountered, it is _not_ consumed, to allow it to be emitted as a separate
+    /// token. This is important for clients that must react specially to newlines, such as the
+    /// preprocessor.
     fn handle_str_like(
         &mut self,
         delim: char,
@@ -404,10 +408,9 @@ impl<'a> Tokenizer<'a> {
     ) -> RawToken<'a> {
         let mut escaped = false;
 
-        while let Some(c) = self.reader.bump() {
+        while let Some(c) = self.reader.bump_if(|c| c != '\n') {
             match c {
                 '\\' => escaped = !escaped,
-                '\n' => break,
                 c if c == delim && !escaped => return self.tok(f(true)),
                 _ => {}
             }
@@ -569,9 +572,7 @@ impl<'a> Tokenizer<'a> {
 
     /// Consumes and emits a line comment token.
     ///
-    /// The terminating newline is _not_ consumed, to allow it to be emitted as a separate token.
-    /// This is important for clients that must react specially to newlines, such as the
-    /// preprocessor.
+    /// The terminating newline is not consumed, to allow it to be emitted as a separate token.
     fn handle_line_comment(&mut self) -> RawToken<'a> {
         self.reader.eat_while(|c| c != '\n');
         self.tok(RawTokenKind::LineComment)
