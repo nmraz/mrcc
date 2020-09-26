@@ -1,16 +1,7 @@
 use std::fmt;
 
 use mrcc_lex::{LexCtx, PunctKind, Token, TokenKind};
-use mrcc_source::{DResult, SourceRange};
-
-pub trait PpLexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-    fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-
-    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        self.next(ctx)
-    }
-}
+use mrcc_source::SourceRange;
 
 #[derive(Debug, Copy, Clone)]
 pub struct PpToken<D = TokenKind> {
@@ -42,8 +33,8 @@ impl<D: Copy> PpToken<D> {
 }
 
 impl PpToken {
-    pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> DisplayPpToken<'t, 'a, 'h> {
-        DisplayPpToken { ppt: self, ctx }
+    pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> Display<'t, 'a, 'h> {
+        Display { ppt: self, ctx }
     }
 
     pub(super) fn is_directive_start(&self) -> bool {
@@ -51,12 +42,12 @@ impl PpToken {
     }
 }
 
-pub struct DisplayPpToken<'t, 'a, 'h> {
+pub struct Display<'t, 'a, 'h> {
     ppt: &'t PpToken,
     ctx: &'t LexCtx<'a, 'h>,
 }
 
-impl fmt::Display for DisplayPpToken<'_, '_, '_> {
+impl fmt::Display for Display<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ppt = self.ppt;
         if ppt.leading_trivia {

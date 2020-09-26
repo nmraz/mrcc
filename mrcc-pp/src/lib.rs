@@ -10,13 +10,13 @@ use active_file::{Action, ActiveFiles};
 use file::{IncludeError, IncludeKind, IncludeLoader};
 use state::State;
 
-pub use lexer::PpToken;
+pub use token::PpToken;
 
 mod active_file;
 mod expand;
 mod file;
-mod lexer;
 mod state;
+mod token;
 
 pub struct PreprocessorBuilder<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,

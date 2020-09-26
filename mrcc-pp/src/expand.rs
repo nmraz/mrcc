@@ -1,9 +1,18 @@
-use mrcc_lex::Symbol;
+use mrcc_lex::{LexCtx, Symbol};
+use mrcc_source::DResult;
 
 use data::MacroTable;
 pub use data::{MacroDef, MacroDefInfo, ReplacementList};
 
+use crate::PpToken;
+
 mod data;
+
+pub trait ReplacementLexer {
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+    fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+}
 
 pub struct MacroState {
     definitions: MacroTable,
