@@ -1,4 +1,4 @@
-use mrcc_lex::{LexCtx, Symbol, TokenKind};
+use mrcc_lex::{LexCtx, PunctKind, Symbol, TokenKind};
 use mrcc_source::DResult;
 
 use crate::PpToken;
@@ -63,7 +63,19 @@ impl MacroState {
                 MacroDefKind::Object(replacement) => {
                     self.replacements.push(ctx, name_tok, replacement)?;
                 }
-                MacroDefKind::Function { .. } => unimplemented!("function-like macro expansion"),
+
+                MacroDefKind::Function {
+                    params,
+                    replacement,
+                } => {
+                    let is_lparen = |kind| kind == TokenKind::Punct(PunctKind::LParen);
+
+                    if !self.replacements.eat_or_lex(ctx, lexer, is_lparen)? {
+                        return Ok(false);
+                    }
+
+                    unimplemented!("function-like macro expansion")
+                }
             }
 
             return Ok(true);
