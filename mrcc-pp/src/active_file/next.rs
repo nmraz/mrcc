@@ -8,7 +8,7 @@ use mrcc_source::{
     DResult,
 };
 
-use crate::expand::{MacroDef, MacroDefInfo, ReplacementList};
+use crate::expand::{MacroDef, MacroDefKind, ReplacementList};
 use crate::state::State;
 
 use super::lexer::FileLexer;
@@ -163,7 +163,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         Ok(Some(MacroDef {
             name_tok,
-            info: MacroDefInfo::Object(replacement),
+            kind: MacroDefKind::Object(replacement),
         }))
     }
 

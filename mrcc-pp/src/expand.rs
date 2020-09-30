@@ -2,7 +2,7 @@ use mrcc_lex::{LexCtx, Symbol};
 use mrcc_source::DResult;
 
 use data::MacroTable;
-pub use data::{MacroDef, MacroDefInfo, ReplacementList};
+pub use data::{MacroDef, MacroDefKind, ReplacementList};
 
 use crate::PpToken;
 

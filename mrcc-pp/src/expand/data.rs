@@ -40,7 +40,7 @@ impl ReplacementList {
 }
 
 #[derive(Debug, Clone)]
-pub enum MacroDefInfo {
+pub enum MacroDefKind {
     Object(ReplacementList),
     Function {
         args: Vec<Symbol>,
@@ -48,16 +48,16 @@ pub enum MacroDefInfo {
     },
 }
 
-impl MacroDefInfo {
-    pub fn is_identical_to(&self, rhs: &MacroDefInfo) -> bool {
+impl MacroDefKind {
+    pub fn is_identical_to(&self, rhs: &MacroDefKind) -> bool {
         match (self, rhs) {
-            (MacroDefInfo::Object(lhs), MacroDefInfo::Object(rhs)) => lhs.is_identical_to(rhs),
+            (MacroDefKind::Object(lhs), MacroDefKind::Object(rhs)) => lhs.is_identical_to(rhs),
             (
-                MacroDefInfo::Function {
+                MacroDefKind::Function {
                     args: lhs_args,
                     replacement: lhs_replacement,
                 },
-                MacroDefInfo::Function {
+                MacroDefKind::Function {
                     args: rhs_args,
                     replacement: rhs_replacement,
                 },
@@ -70,7 +70,7 @@ impl MacroDefInfo {
 #[derive(Debug, Clone)]
 pub struct MacroDef {
     pub name_tok: Token<Symbol>,
-    pub info: MacroDefInfo,
+    pub kind: MacroDefKind,
 }
 
 pub struct MacroTable {
@@ -88,7 +88,7 @@ impl MacroTable {
         match self.map.entry(def.name_tok.data) {
             Entry::Occupied(ent) => {
                 let prev = ent.into_mut();
-                let identical = prev.info.is_identical_to(&def.info);
+                let identical = prev.kind.is_identical_to(&def.kind);
 
                 // The standard allows redefinition iff the replacement lists are identical - always
                 // redefine here to try to make things more accurate later, but report the previous
