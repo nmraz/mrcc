@@ -71,7 +71,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             TokenKind::Ident(ident) => ident,
             TokenKind::Eof => return Ok(None), // Null directive
             _ => {
-                self.invalid_directive(ppt.range())?;
+                self.invalid_directive(ppt)?;
                 return Ok(None);
             }
         };
@@ -91,16 +91,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             self.handle_error_directive(ppt.range())?;
             Ok(None)
         } else {
-            self.invalid_directive(ppt.range())?;
+            self.invalid_directive(ppt)?;
             Ok(None)
         }
     }
 
-    fn invalid_directive(&mut self, range: SourceRange) -> DResult<()> {
-        self.reporter()
-            .error(range, "invalid preprocessing directive")
-            .emit()?;
-        self.advance_to_eod()
+    fn invalid_directive(&mut self, ppt: PpToken) -> DResult<()> {
+        self.report_and_advance(ppt, "invalid preprocessing directive")
     }
 
     fn handle_define_directive(&mut self) -> DResult<()> {
@@ -264,11 +261,15 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         match ppt.maybe_map(f) {
             Some(tok) => Ok(Some(tok)),
             None => {
-                self.reporter().error(ppt.range(), msg).emit()?;
-                self.advance_if_non_eof(ppt.data())?;
+                self.report_and_advance(ppt, msg)?;
                 Ok(None)
             }
         }
+    }
+
+    fn report_and_advance(&mut self, ppt: PpToken, msg: &str) -> DResult<()> {
+        self.reporter().error(ppt.range(), msg).emit()?;
+        self.advance_if_non_eof(ppt.data())
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
