@@ -36,7 +36,7 @@ impl MacroState {
     pub fn begin_expand(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
-        tok: PpToken,
+        ppt: PpToken,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<bool> {
         Ok(false)
