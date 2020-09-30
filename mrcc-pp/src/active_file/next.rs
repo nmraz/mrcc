@@ -101,7 +101,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_define_directive(&mut self) -> DResult<()> {
-        let name_tok = match self.expect_directive_macro_name()? {
+        let name_tok = match self.expect_macro_name()? {
             Some(name) => name,
             None => return Ok(()),
         };
@@ -216,7 +216,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_undef_directive(&mut self) -> DResult<()> {
-        let name = match self.expect_directive_macro_name()? {
+        let name = match self.expect_macro_name()? {
             Some(tok) => tok,
             None => return Ok(()),
         }
@@ -226,14 +226,16 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         self.finish_directive()
     }
 
-    fn expect_directive_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
-        self.expect_directive_token(
-            |kind| match kind {
-                TokenKind::Ident(name) => Some(name),
-                _ => None,
-            },
-            "expected a macro name",
-        )
+    fn expect_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
+        let ppt = self.next_directive_token()?;
+
+        match ppt.data() {
+            TokenKind::Ident(name) => Ok(Some(ppt.map(|_| name))),
+            _ => {
+                self.report_and_advance(ppt, "expected a macro name")?;
+                Ok(None)
+            }
+        }
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
@@ -295,22 +297,6 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
 
         Ok(())
-    }
-
-    fn expect_directive_token<T>(
-        &mut self,
-        f: impl FnOnce(TokenKind) -> Option<T>,
-        msg: &str,
-    ) -> DResult<Option<PpToken<T>>> {
-        let ppt = self.next_directive_token()?;
-
-        match ppt.maybe_map(f) {
-            Some(tok) => Ok(Some(tok)),
-            None => {
-                self.report_and_advance(ppt, msg)?;
-                Ok(None)
-            }
-        }
     }
 
     fn report_and_advance(&mut self, ppt: PpToken, msg: &str) -> DResult<()> {
