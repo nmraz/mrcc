@@ -125,6 +125,7 @@ impl<'a> Processor<'a> {
     }
 
     pub fn pos(&self) -> SourcePos {
+        self.check_lookahead();
         self.base_pos.offset(self.off())
     }
 
