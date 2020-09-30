@@ -183,21 +183,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn expect_directive_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
-        let ppt = self.next_directive_token()?;
-
-        match ppt.maybe_map(|kind| match kind {
-            TokenKind::Ident(name) => Some(name),
-            _ => None,
-        }) {
-            Some(tok) => Ok(Some(tok)),
-            None => {
-                self.reporter()
-                    .error(ppt.range(), "expected a macro name")
-                    .emit()?;
-                self.advance_if_non_eof(ppt.data())?;
-                Ok(None)
-            }
-        }
+        self.expect_directive_token(
+            |kind| match kind {
+                TokenKind::Ident(name) => Some(name),
+                _ => None,
+            },
+            "expected a macro name",
+        )
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
@@ -259,6 +251,23 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
 
         Ok(())
+    }
+
+    fn expect_directive_token<T>(
+        &mut self,
+        f: impl FnOnce(TokenKind) -> Option<T>,
+        msg: &str,
+    ) -> DResult<Option<PpToken<T>>> {
+        let ppt = self.next_directive_token()?;
+
+        match ppt.maybe_map(f) {
+            Some(tok) => Ok(Some(tok)),
+            None => {
+                self.reporter().error(ppt.range(), msg).emit()?;
+                self.advance_if_non_eof(ppt.data())?;
+                Ok(None)
+            }
+        }
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
