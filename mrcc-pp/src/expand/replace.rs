@@ -2,17 +2,28 @@ use std::collections::VecDeque;
 
 use rustc_hash::FxHashSet;
 
-use mrcc_lex::{LexCtx, Symbol};
+use mrcc_lex::{LexCtx, Symbol, TokenKind};
 use mrcc_source::DResult;
 use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
 
 use super::data::ReplacementList;
+use super::ReplacementLexer;
 
 struct PendingReplacement {
     name: Symbol,
     tokens: VecDeque<PpToken>,
+}
+
+impl PendingReplacement {
+    fn next_token(&mut self) -> Option<PpToken> {
+        self.tokens.pop_front()
+    }
+
+    fn peek_token(&self) -> Option<PpToken> {
+        self.tokens.front().copied()
+    }
 }
 
 pub struct PendingReplacements {
@@ -84,8 +95,43 @@ impl PendingReplacements {
     }
 
     pub fn next_token(&mut self) -> Option<PpToken> {
+        self.next(PendingReplacement::next_token)
+    }
+
+    pub fn peek_token(&mut self) -> Option<PpToken> {
+        self.next(|replacement| replacement.peek_token())
+    }
+
+    pub fn eat_or_lex(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+        f: impl FnOnce(TokenKind) -> bool,
+    ) -> DResult<bool> {
+        if let Some(ppt) = self.peek_token() {
+            let ret = f(ppt.data());
+            if ret {
+                self.next_token();
+            }
+            return Ok(ret);
+        }
+
+        let ppt = lexer.peek(ctx)?;
+
+        if f(ppt.data()) {
+            lexer.next(ctx)?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
+    fn next(
+        &mut self,
+        mut f: impl FnMut(&mut PendingReplacement) -> Option<PpToken>,
+    ) -> Option<PpToken> {
         while let Some(top) = self.replacements.last_mut() {
-            if let Some(ppt) = top.tokens.pop_front() {
+            if let Some(ppt) = f(top) {
                 return Some(ppt);
             }
 
