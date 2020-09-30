@@ -11,6 +11,7 @@ use mrcc_source::{
 use crate::expand::{MacroDef, MacroDefInfo, ReplacementList};
 use crate::state::State;
 
+use super::lexer::FileLexer;
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
 
@@ -35,13 +36,25 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
+            if let Some(ppt) = self
+                .state
+                .macro_state
+                .next_expanded_token(self.ctx, &mut FileLexer::new(self.processor))?
+            {
+                break Ok(Action::Tok(ppt));
+            }
+
             let ppt = self.next_real_token()?;
 
             if ppt.is_directive_start() {
                 if let Some(action) = self.handle_directive()? {
                     break Ok(action);
                 }
-            } else {
+            } else if !self.state.macro_state.begin_expand(
+                self.ctx,
+                ppt,
+                &mut FileLexer::new(self.processor),
+            )? {
                 break Ok(Action::Tok(ppt));
             }
         }
