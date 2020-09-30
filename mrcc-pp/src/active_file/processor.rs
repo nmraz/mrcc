@@ -41,6 +41,10 @@ impl FileToken {
         self.maybe_map(|kind| kind.non_eod())
     }
 
+    pub fn as_directive_token(&self) -> PpToken {
+        self.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof))
+    }
+
     pub fn is_eod(&self) -> bool {
         self.data().is_eod()
     }
@@ -80,9 +84,16 @@ impl<'a> Processor<'a> {
         }
     }
 
+    pub fn next_real_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
+        loop {
+            if let Some(ppt) = self.next_token(ctx)?.real() {
+                break Ok(ppt);
+            }
+        }
+    }
+
     pub fn next_directive_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        self.next_token(ctx)
-            .map(|tok| tok.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof)))
+        self.next_token(ctx).map(|tok| tok.as_directive_token())
     }
 
     pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {

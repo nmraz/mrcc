@@ -35,11 +35,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
-            let ppt = loop {
-                if let Some(ppt) = self.next_token()?.real() {
-                    break ppt;
-                }
-            };
+            let ppt = self.next_real_token()?;
 
             if ppt.is_directive_start() {
                 if let Some(action) = self.handle_directive()? {
@@ -271,6 +267,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     fn next_token(&mut self) -> DResult<FileToken> {
         self.processor.next_token(self.ctx)
+    }
+
+    fn next_real_token(&mut self) -> DResult<PpToken> {
+        self.processor.next_real_token(self.ctx)
     }
 
     fn next_directive_token(&mut self) -> DResult<PpToken> {
