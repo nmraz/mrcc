@@ -529,6 +529,15 @@ impl<'a, 'h> Reporter<'a, 'h> {
         self.report(Level::Error, primary_range, msg)
     }
 
+    /// Reports a fatal error at the specified location, returning a diagnostic builder.
+    pub fn fatal(
+        &mut self,
+        primary_range: impl Into<FragmentedSourceRange>,
+        msg: impl Into<String>,
+    ) -> DiagnosticBuilder<'_, 'h> {
+        self.report(Level::Fatal, primary_range, msg)
+    }
+
     /// Reports an error that `delim` was expected at `pos` along with a suggestion to insert it.
     ///
     /// A diagnostic builder is returned to allow additional information to be attached.

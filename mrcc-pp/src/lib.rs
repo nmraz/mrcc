@@ -4,7 +4,7 @@ use std::mem;
 use std::path::PathBuf;
 
 use mrcc_lex::{LexCtx, Lexer, Token, TokenKind};
-use mrcc_source::{diag::Level, DResult, SourceId, SourceRange};
+use mrcc_source::{DResult, SourceId, SourceRange};
 
 use active_file::{Action, ActiveFiles};
 use file::{IncludeError, IncludeKind, IncludeLoader};
@@ -104,10 +104,7 @@ impl Preprocessor {
                         format!("failed to read '{}': {}", full_path.display(), error)
                     }
                 };
-                ctx.reporter()
-                    .report(Level::Fatal, range, msg)
-                    .emit()
-                    .unwrap_err()
+                ctx.reporter().fatal(range, msg).emit().unwrap_err()
             })?;
 
         if self
@@ -116,7 +113,7 @@ impl Preprocessor {
             .is_err()
         {
             ctx.reporter()
-                .report(Level::Fatal, range, "translation unit too large")
+                .fatal(range, "translation unit too large")
                 .emit()?;
         }
 

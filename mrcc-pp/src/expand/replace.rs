@@ -3,7 +3,7 @@ use std::collections::VecDeque;
 use rustc_hash::FxHashSet;
 
 use mrcc_lex::{LexCtx, Symbol};
-use mrcc_source::{diag::Level, DResult};
+use mrcc_source::DResult;
 use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
@@ -48,8 +48,7 @@ impl PendingReplacements {
             .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
             .map_err(|_| {
                 ctx.reporter()
-                    .report(
-                        Level::Fatal,
+                    .fatal(
                         name_tok.range(),
                         "translation unit too large for macro expansion",
                     )
