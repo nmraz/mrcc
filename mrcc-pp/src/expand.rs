@@ -32,4 +32,21 @@ impl MacroState {
     pub fn undef(&mut self, name: Symbol) {
         self.definitions.undef(name)
     }
+
+    pub fn begin_expand(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        tok: PpToken,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<bool> {
+        Ok(false)
+    }
+
+    pub fn next_expanded_token(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<Option<PpToken>> {
+        Ok(None)
+    }
 }
