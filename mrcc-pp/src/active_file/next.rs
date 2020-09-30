@@ -136,20 +136,27 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         if let Some(ppt) = self.next_token()?.non_eod() {
             if !ppt.leading_trivia {
                 if ppt.data() == TokenKind::Punct(PunctKind::LParen) {
-                    self.reporter()
-                        .error(ppt.range(), "function-like macros are not yet implemented")
-                        .emit()?;
-                    self.advance_to_eod()?;
-                    return Ok(None);
-                } else {
-                    self.reporter()
-                        .warn(
-                            ppt.range(),
-                            "object-like macros require whitespace after the macro name",
-                        )
-                        .set_suggestion(RawSuggestion::new(ppt.range().start(), " "))
-                        .emit()?;
+                    let params = match self.consume_macro_params()? {
+                        Some(params) => params,
+                        None => return Ok(None),
+                    };
+
+                    return Ok(Some(MacroDef {
+                        name_tok,
+                        kind: MacroDefKind::Function {
+                            params,
+                            replacement: self.consume_macro_body(tokens)?,
+                        },
+                    }));
                 }
+
+                self.reporter()
+                    .warn(
+                        ppt.range(),
+                        "object-like macros require whitespace after the macro name",
+                    )
+                    .set_suggestion(RawSuggestion::new(ppt.range().start(), " "))
+                    .emit()?;
             }
 
             tokens.push(ppt)
@@ -159,6 +166,45 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             name_tok,
             kind: MacroDefKind::Object(self.consume_macro_body(tokens)?),
         }))
+    }
+
+    fn consume_macro_params(&mut self) -> DResult<Option<Vec<Symbol>>> {
+        let mut params = Vec::new();
+
+        let ppt = self.next_directive_token()?;
+        match ppt.data() {
+            TokenKind::Punct(PunctKind::RParen) => {
+                return Ok(Some(params));
+            }
+            TokenKind::Ident(param) => {
+                params.push(param);
+            }
+            _ => {
+                self.report_and_advance(ppt, "expected a parameter name or ')'")?;
+                return Ok(None);
+            }
+        }
+
+        loop {
+            let ppt = self.next_directive_token()?;
+            match ppt.data() {
+                TokenKind::Punct(PunctKind::Comma) => {}
+                TokenKind::Punct(PunctKind::RParen) => break Ok(Some(params)),
+                _ => {
+                    self.report_and_advance(ppt, "expected a ')'")?;
+                    break Ok(None);
+                }
+            }
+
+            let ppt = self.next_directive_token()?;
+            match ppt.data() {
+                TokenKind::Ident(param) => params.push(param),
+                _ => {
+                    self.report_and_advance(ppt, "expected a parameter name")?;
+                    break Ok(None);
+                }
+            }
+        }
     }
 
     fn consume_macro_body(&mut self, mut tokens: Vec<PpToken>) -> DResult<ReplacementList> {
