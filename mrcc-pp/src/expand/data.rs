@@ -4,6 +4,7 @@ use std::mem;
 use rustc_hash::FxHashMap;
 
 use mrcc_lex::{Symbol, Token};
+use mrcc_source::SourceRange;
 
 use crate::PpToken;
 
@@ -27,6 +28,16 @@ impl ReplacementList {
 
     pub fn tokens(&self) -> &[PpToken] {
         &self.tokens
+    }
+
+    pub fn spelling_range(&self) -> Option<SourceRange> {
+        self.tokens.first().map(|first| {
+            let last = self.tokens.last().unwrap();
+            SourceRange::new(
+                first.range().start(),
+                last.range().end().offset_from(first.range().start()),
+            )
+        })
     }
 
     pub fn is_identical_to(&self, rhs: &ReplacementList) -> bool {
