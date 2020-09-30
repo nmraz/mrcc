@@ -121,7 +121,7 @@ impl<'a> Processor<'a> {
     }
 
     pub fn off(&self) -> u32 {
-        self.tokenizer().reader.off()
+        self.tokenizer.reader.off()
     }
 
     pub fn pos(&self) -> SourcePos {
@@ -153,11 +153,6 @@ impl<'a> Processor<'a> {
             line_start: mem::replace(&mut self.state.line_start, new_line_start),
             leading_trivia,
         })
-    }
-
-    fn tokenizer(&self) -> &Tokenizer<'a> {
-        self.check_lookahead();
-        &self.tokenizer
     }
 
     fn tokenizer_mut(&mut self) -> &mut Tokenizer<'a> {
