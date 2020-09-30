@@ -54,7 +54,7 @@ impl ReplacementList {
 pub enum MacroDefKind {
     Object(ReplacementList),
     Function {
-        args: Vec<Symbol>,
+        params: Vec<Symbol>,
         replacement: ReplacementList,
     },
 }
@@ -65,14 +65,14 @@ impl MacroDefKind {
             (MacroDefKind::Object(lhs), MacroDefKind::Object(rhs)) => lhs.is_identical_to(rhs),
             (
                 MacroDefKind::Function {
-                    args: lhs_args,
+                    params: lhs_params,
                     replacement: lhs_replacement,
                 },
                 MacroDefKind::Function {
-                    args: rhs_args,
+                    params: rhs_params,
                     replacement: rhs_replacement,
                 },
-            ) => lhs_args == rhs_args && lhs_replacement.is_identical_to(rhs_replacement),
+            ) => lhs_params == rhs_params && lhs_replacement.is_identical_to(rhs_replacement),
             _ => false,
         }
     }
