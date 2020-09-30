@@ -3,7 +3,7 @@ use std::mem;
 
 use rustc_hash::FxHashMap;
 
-use mrcc_lex::{Symbol, Token};
+use mrcc_lex::Symbol;
 use mrcc_source::SourceRange;
 
 use crate::PpToken;
@@ -80,7 +80,7 @@ impl MacroDefKind {
 
 #[derive(Debug, Clone)]
 pub struct MacroDef {
-    pub name_tok: Token<Symbol>,
+    pub name_tok: PpToken<Symbol>,
     pub kind: MacroDefKind,
 }
 
@@ -96,7 +96,7 @@ impl MacroTable {
     }
 
     pub fn define(&mut self, def: MacroDef) -> Option<MacroDef> {
-        match self.map.entry(def.name_tok.data) {
+        match self.map.entry(def.name_tok.data()) {
             Entry::Occupied(ent) => {
                 let prev = ent.into_mut();
                 let identical = prev.kind.is_identical_to(&def.kind);

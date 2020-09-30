@@ -44,13 +44,15 @@ impl MacroState {
         ppt: PpToken,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<bool> {
-        let name = match ppt.maybe_map(|kind| match kind {
+        let name_tok = match ppt.maybe_map(|kind| match kind {
             TokenKind::Ident(name) => Some(name),
             _ => None,
         }) {
-            Some(name_tok) => name_tok.data(),
+            Some(tok) => tok,
             None => return Ok(false),
         };
+
+        let name = name_tok.data();
 
         if self.replacements.is_active(name) {
             return Ok(false);
@@ -59,7 +61,7 @@ impl MacroState {
         if let Some(def) = self.definitions.lookup(name) {
             match &def.kind {
                 MacroDefKind::Object(replacement) => {
-                    self.replacements.push(ctx, def.name_tok, replacement)?;
+                    self.replacements.push(ctx, name_tok, replacement)?;
                 }
                 MacroDefKind::Function { .. } => unimplemented!("function-like macro expansion"),
             }

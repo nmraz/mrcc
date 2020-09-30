@@ -2,9 +2,9 @@ use std::collections::VecDeque;
 
 use rustc_hash::FxHashSet;
 
-use mrcc_lex::{LexCtx, Symbol, Token};
-use mrcc_source::smap::ExpansionType;
+use mrcc_lex::{LexCtx, Symbol};
 use mrcc_source::{diag::Level, DResult};
+use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
 
@@ -35,7 +35,7 @@ impl PendingReplacements {
     pub fn push(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
-        name_tok: Token<Symbol>,
+        name_tok: PpToken<Symbol>,
         replacement_list: &ReplacementList,
     ) -> DResult<bool> {
         let spelling_range = match replacement_list.spelling_range() {
@@ -45,12 +45,12 @@ impl PendingReplacements {
 
         let exp_id = ctx
             .smap
-            .create_expansion(spelling_range, name_tok.range, ExpansionType::Macro)
+            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
             .map_err(|_| {
                 ctx.reporter()
                     .report(
                         Level::Fatal,
-                        name_tok.range,
+                        name_tok.range(),
                         "translation unit too large for macro expansion",
                     )
                     .emit()
@@ -60,20 +60,22 @@ impl PendingReplacements {
         let exp_range = ctx.smap.get_source(exp_id).range;
 
         self.push_replacement(PendingReplacement {
-            name: name_tok.data,
+            name: name_tok.data(),
             tokens: replacement_list
                 .tokens()
                 .iter()
-                .map(|ppt| {
+                .copied()
+                .enumerate()
+                .map(|(idx, mut ppt)| {
+                    if idx == 0 {
+                        // The first replacement token inherits `line_start` and `leading_trivia`
+                        // from the replaced token.
+                        ppt.line_start = name_tok.line_start;
+                        ppt.leading_trivia = name_tok.leading_trivia;
+                    }
+
                     // Move every token to point into the newly-created expansion source.
-
-                    let mut ppt = *ppt;
-                    let ppt_range = &mut ppt.tok.range;
-
-                    let off = ppt_range.start().offset_from(spelling_range.start());
-                    let len = ppt_range.len();
-
-                    *ppt_range = exp_range.subrange(off, len);
+                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
                     ppt
                 })
                 .collect(),
@@ -104,4 +106,15 @@ impl PendingReplacements {
             self.active_names.remove(&replacement.name);
         }
     }
+}
+
+fn move_subrange(
+    subrange: SourceRange,
+    old_range: SourceRange,
+    new_range: SourceRange,
+) -> SourceRange {
+    let off = subrange.start().offset_from(old_range.start());
+    let len = subrange.len();
+
+    new_range.subrange(off, len)
 }

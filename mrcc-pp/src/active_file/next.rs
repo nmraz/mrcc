@@ -1,7 +1,7 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
+use mrcc_lex::{LexCtx, PunctKind, Symbol, TokenKind};
 use mrcc_source::SourceRange;
 use mrcc_source::{
     diag::{RawSubDiagnostic, RawSuggestion, Reporter},
@@ -111,14 +111,14 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         };
 
         if let Some(prev) = self.state.macro_state.define(def) {
-            let prev_range = prev.name_tok.range;
+            let prev_range = prev.name_tok.range();
             let msg = format!(
                 "redefinition of macro '{}'",
-                &self.ctx.interner[name_tok.data]
+                &self.ctx.interner[name_tok.data()]
             );
 
             self.reporter()
-                .error(name_tok.range, msg)
+                .error(name_tok.range(), msg)
                 .add_note(RawSubDiagnostic::new(
                     "previous definition here",
                     prev_range.into(),
@@ -129,7 +129,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         Ok(())
     }
 
-    fn consume_macro_def(&mut self, name_tok: Token<Symbol>) -> DResult<Option<MacroDef>> {
+    fn consume_macro_def(&mut self, name_tok: PpToken<Symbol>) -> DResult<Option<MacroDef>> {
         let mut tokens = Vec::new();
 
         if let Some(ppt) = self.next_token()?.non_eod() {
@@ -172,13 +172,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             Some(tok) => tok,
             None => return Ok(()),
         }
-        .data;
+        .data();
 
         self.state.macro_state.undef(name);
         self.finish_directive()
     }
 
-    fn expect_macro_name(&mut self) -> DResult<Option<Token<Symbol>>> {
+    fn expect_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
         self.expect_next(
             |kind| match kind {
                 TokenKind::Ident(name) => Some(name),
@@ -253,14 +253,14 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         &mut self,
         f: impl FnOnce(TokenKind) -> Option<T>,
         msg: &str,
-    ) -> DResult<Option<Token<T>>> {
-        let tok = self.next_directive_token()?.tok;
+    ) -> DResult<Option<PpToken<T>>> {
+        let ppt = self.next_directive_token()?;
 
-        match tok.maybe_map(f) {
+        match ppt.maybe_map(f) {
             Some(tok) => Ok(Some(tok)),
             None => {
-                self.reporter().error(tok.range, msg).emit()?;
-                self.advance_if_non_eof(tok.data)?;
+                self.reporter().error(ppt.range(), msg).emit()?;
+                self.advance_if_non_eof(ppt.data())?;
                 Ok(None)
             }
         }
