@@ -152,23 +152,24 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
                         )
                         .set_suggestion(RawSuggestion::new(ppt.range().start(), " "))
                         .emit()?;
-                    tokens.push(ppt);
                 }
-            } else {
-                tokens.push(ppt);
             }
+
+            tokens.push(ppt)
         }
 
+        Ok(Some(MacroDef {
+            name_tok,
+            kind: MacroDefKind::Object(self.consume_macro_body(tokens)?),
+        }))
+    }
+
+    fn consume_macro_body(&mut self, mut tokens: Vec<PpToken>) -> DResult<ReplacementList> {
         while let Some(ppt) = self.next_token()?.non_eod() {
             tokens.push(ppt);
         }
 
-        let replacement = ReplacementList::new(tokens);
-
-        Ok(Some(MacroDef {
-            name_tok,
-            kind: MacroDefKind::Object(replacement),
-        }))
+        Ok(ReplacementList::new(tokens))
     }
 
     fn handle_undef_directive(&mut self) -> DResult<()> {
