@@ -1,10 +1,12 @@
-use mrcc_lex::{LexCtx, Symbol};
+use mrcc_lex::{LexCtx, Symbol, TokenKind};
 use mrcc_source::DResult;
 
-use data::MacroTable;
-pub use data::{MacroDef, MacroDefKind, ReplacementList};
-
 use crate::PpToken;
+
+use data::MacroTable;
+use replace::PendingReplacements;
+
+pub use data::{MacroDef, MacroDefKind, ReplacementList};
 
 mod data;
 mod replace;
@@ -17,12 +19,14 @@ pub trait ReplacementLexer {
 
 pub struct MacroState {
     definitions: MacroTable,
+    replacements: PendingReplacements,
 }
 
 impl MacroState {
     pub fn new() -> Self {
         Self {
             definitions: MacroTable::new(),
+            replacements: PendingReplacements::new(),
         }
     }
 
@@ -40,6 +44,29 @@ impl MacroState {
         ppt: PpToken,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<bool> {
+        let name = match ppt.maybe_map(|kind| match kind {
+            TokenKind::Ident(name) => Some(name),
+            _ => None,
+        }) {
+            Some(name_tok) => name_tok.data(),
+            None => return Ok(false),
+        };
+
+        if self.replacements.is_active(name) {
+            return Ok(false);
+        }
+
+        if let Some(def) = self.definitions.lookup(name) {
+            match &def.kind {
+                MacroDefKind::Object(replacement) => {
+                    self.replacements.push(ctx, def.name_tok, replacement)?;
+                }
+                MacroDefKind::Function { .. } => unimplemented!("function-like macro expansion"),
+            }
+
+            return Ok(true);
+        }
+
         Ok(false)
     }
 
@@ -48,6 +75,12 @@ impl MacroState {
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<Option<PpToken>> {
+        while let Some(ppt) = self.replacements.next_token() {
+            if !self.begin_expand(ctx, ppt, lexer)? {
+                return Ok(Some(ppt));
+            }
+        }
+
         Ok(None)
     }
 }
