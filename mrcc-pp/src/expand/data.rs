@@ -121,8 +121,4 @@ impl MacroTable {
     pub fn lookup(&self, name: Symbol) -> Option<&MacroDef> {
         self.map.get(&name)
     }
-
-    pub fn lookup_mut(&mut self, name: Symbol) -> Option<&mut MacroDef> {
-        self.map.get_mut(&name)
-    }
 }
