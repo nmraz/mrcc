@@ -36,11 +36,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
-            if let Some(ppt) = self
-                .state
-                .macro_state
-                .next_expanded_token(self.ctx, &mut FileLexer::new(self.processor))?
-            {
+            if let Some(ppt) = self.next_expanded_token()? {
                 break Ok(Action::Tok(ppt));
             }
 
@@ -50,14 +46,22 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
                 if let Some(action) = self.handle_directive()? {
                     break Ok(action);
                 }
-            } else if !self.state.macro_state.begin_expand(
-                self.ctx,
-                ppt,
-                &mut FileLexer::new(self.processor),
-            )? {
+            } else if !self.begin_expansion(ppt)? {
                 break Ok(Action::Tok(ppt));
             }
         }
+    }
+
+    fn next_expanded_token(&mut self) -> DResult<Option<PpToken>> {
+        self.state
+            .macro_state
+            .next_expanded_token(self.ctx, &mut FileLexer::new(self.processor))
+    }
+
+    fn begin_expansion(&mut self, ppt: PpToken) -> DResult<bool> {
+        self.state
+            .macro_state
+            .begin_expansion(self.ctx, ppt, &mut FileLexer::new(self.processor))
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
@@ -100,7 +104,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_define_directive(&mut self) -> DResult<()> {
-        let name_tok = match self.expect_macro_name()? {
+        let name_tok = match self.expect_directive_macro_name()? {
             Some(name) => name,
             None => return Ok(()),
         };
@@ -168,7 +172,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn handle_undef_directive(&mut self) -> DResult<()> {
-        let name = match self.expect_macro_name()? {
+        let name = match self.expect_directive_macro_name()? {
             Some(tok) => tok,
             None => return Ok(()),
         }
@@ -178,14 +182,22 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         self.finish_directive()
     }
 
-    fn expect_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
-        self.expect_next(
-            |kind| match kind {
-                TokenKind::Ident(name) => Some(name),
-                _ => None,
-            },
-            "expected a macro name",
-        )
+    fn expect_directive_macro_name(&mut self) -> DResult<Option<PpToken<Symbol>>> {
+        let ppt = self.next_directive_token()?;
+
+        match ppt.maybe_map(|kind| match kind {
+            TokenKind::Ident(name) => Some(name),
+            _ => None,
+        }) {
+            Some(tok) => Ok(Some(tok)),
+            None => {
+                self.reporter()
+                    .error(ppt.range(), "expected a macro name")
+                    .emit()?;
+                self.advance_if_non_eof(ppt.data())?;
+                Ok(None)
+            }
+        }
     }
 
     fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
@@ -247,23 +259,6 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
 
         Ok(())
-    }
-
-    fn expect_next<T>(
-        &mut self,
-        f: impl FnOnce(TokenKind) -> Option<T>,
-        msg: &str,
-    ) -> DResult<Option<PpToken<T>>> {
-        let ppt = self.next_directive_token()?;
-
-        match ppt.maybe_map(f) {
-            Some(tok) => Ok(Some(tok)),
-            None => {
-                self.reporter().error(ppt.range(), msg).emit()?;
-                self.advance_if_non_eof(ppt.data())?;
-                Ok(None)
-            }
-        }
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {

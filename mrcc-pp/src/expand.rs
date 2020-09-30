@@ -38,7 +38,7 @@ impl MacroState {
         self.definitions.undef(name)
     }
 
-    pub fn begin_expand(
+    pub fn begin_expansion(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         ppt: PpToken,
@@ -78,7 +78,7 @@ impl MacroState {
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<Option<PpToken>> {
         while let Some(ppt) = self.replacements.next_token() {
-            if !self.begin_expand(ctx, ppt, lexer)? {
+            if !self.begin_expansion(ctx, ppt, lexer)? {
                 return Ok(Some(ppt));
             }
         }
