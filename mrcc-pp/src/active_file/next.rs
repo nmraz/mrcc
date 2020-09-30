@@ -314,20 +314,11 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn report_and_advance(&mut self, ppt: PpToken, msg: &str) -> DResult<()> {
-        self.reporter().error(ppt.range(), msg).emit()?;
-        self.advance_if_non_eof(ppt.data())
+        self.processor.report_and_advance(self.ctx, ppt, msg)
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {
         self.processor.advance_to_eod(self.ctx)
-    }
-
-    fn advance_if_non_eof(&mut self, kind: TokenKind) -> DResult<()> {
-        if kind != TokenKind::Eof {
-            self.advance_to_eod()?;
-        }
-
-        Ok(())
     }
 
     fn next_token(&mut self) -> DResult<FileToken> {

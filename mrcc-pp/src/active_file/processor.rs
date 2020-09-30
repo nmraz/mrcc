@@ -96,6 +96,21 @@ impl<'a> Processor<'a> {
         self.next_token(ctx).map(|tok| tok.as_directive_token())
     }
 
+    pub fn report_and_advance(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        ppt: PpToken,
+        msg: &str,
+    ) -> DResult<()> {
+        ctx.reporter().error(ppt.range(), msg).emit()?;
+
+        if ppt.data() != TokenKind::Eof {
+            self.advance_to_eod(ctx)?;
+        }
+
+        Ok(())
+    }
+
     pub fn advance_to_eod(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<()> {
         while !self.next_token(ctx)?.is_eod() {}
         Ok(())
