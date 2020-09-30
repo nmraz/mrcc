@@ -7,6 +7,7 @@ pub use data::{MacroDef, MacroDefKind, ReplacementList};
 use crate::PpToken;
 
 mod data;
+mod replace;
 
 pub trait ReplacementLexer {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
