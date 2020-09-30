@@ -13,6 +13,7 @@ use next::NextActionCtx;
 use processor::Processor;
 use state::FileState;
 
+mod lexer;
 mod next;
 mod processor;
 mod state;
