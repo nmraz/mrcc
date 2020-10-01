@@ -26,6 +26,13 @@ impl From<PpToken> for ReplacementToken {
     }
 }
 
+pub fn next_or_lex(
+    next: impl FnOnce() -> Option<ReplacementToken>,
+    lex: impl FnOnce() -> DResult<PpToken>,
+) -> DResult<ReplacementToken> {
+    next().map_or_else(|| lex().map(|ppt| ppt.into()), Ok)
+}
+
 struct PendingReplacement {
     name: Symbol,
     tokens: VecDeque<ReplacementToken>,
@@ -117,36 +124,16 @@ impl PendingReplacements {
         self.next(|replacement| replacement.peek_token())
     }
 
-    pub fn next_or_lex(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<ReplacementToken> {
-        match self.next_token() {
-            Some(tok) => Ok(tok),
-            None => Ok(lexer.next(ctx)?.into()),
-        }
-    }
-
-    pub fn peek_or_lex(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<ReplacementToken> {
-        match self.peek_token() {
-            Some(tok) => Ok(tok),
-            None => Ok(lexer.peek(ctx)?.into()),
-        }
-    }
-
     pub fn eat_or_lex(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
         pred: impl FnOnce(TokenKind) -> bool,
     ) -> DResult<bool> {
-        if pred(self.peek_or_lex(ctx, lexer)?.ppt.data()) {
-            self.next_or_lex(ctx, lexer)?;
+        let ppt = next_or_lex(|| self.peek_token(), || lexer.peek(ctx))?.ppt;
+
+        if pred(ppt.data()) {
+            next_or_lex(|| self.next_token(), || lexer.next(ctx))?;
             Ok(true)
         } else {
             Ok(false)
