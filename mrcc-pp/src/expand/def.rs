@@ -19,10 +19,6 @@ impl ReplacementList {
             first.leading_trivia = false;
         }
 
-        for ppt in &mut tokens {
-            ppt.line_start = false;
-        }
-
         Self { tokens }
     }
 

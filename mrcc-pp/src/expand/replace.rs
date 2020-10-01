@@ -96,6 +96,8 @@ impl PendingReplacements {
                         // from the replaced token.
                         ppt.line_start = name_tok.line_start;
                         ppt.leading_trivia = name_tok.leading_trivia;
+                    } else {
+                        ppt.line_start = false;
                     }
 
                     // Move every token to point into the newly-created expansion source.
