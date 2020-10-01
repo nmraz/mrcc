@@ -2,14 +2,13 @@ use std::collections::VecDeque;
 
 use rustc_hash::FxHashSet;
 
-use mrcc_lex::{LexCtx, Symbol, TokenKind};
+use mrcc_lex::{LexCtx, Symbol};
 use mrcc_source::DResult;
 use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
 
 use super::def::ReplacementList;
-use super::ReplacementLexer;
 
 #[derive(Debug, Copy, Clone)]
 pub struct ReplacementToken {
@@ -24,13 +23,6 @@ impl From<PpToken> for ReplacementToken {
             allow_expansion: true,
         }
     }
-}
-
-pub fn next_or_lex(
-    next: impl FnOnce() -> Option<ReplacementToken>,
-    lex: impl FnOnce() -> DResult<PpToken>,
-) -> DResult<ReplacementToken> {
-    next().map_or_else(|| lex().map(|ppt| ppt.into()), Ok)
 }
 
 struct PendingReplacement {
@@ -122,22 +114,6 @@ impl PendingReplacements {
 
     pub fn peek_token(&mut self) -> Option<ReplacementToken> {
         self.next(|replacement| replacement.peek_token())
-    }
-
-    pub fn eat_or_lex(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
-        pred: impl FnOnce(TokenKind) -> bool,
-    ) -> DResult<bool> {
-        let ppt = next_or_lex(|| self.peek_token(), || lexer.peek(ctx))?.ppt;
-
-        if pred(ppt.data()) {
-            next_or_lex(|| self.next_token(), || lexer.next(ctx))?;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
     }
 
     fn next(

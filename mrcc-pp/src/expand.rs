@@ -1,4 +1,6 @@
-use mrcc_lex::{LexCtx, PunctKind, Symbol, TokenKind};
+use std::mem;
+
+use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
 use mrcc_source::DResult;
 
 use crate::PpToken;
@@ -92,11 +94,17 @@ impl MacroState {
                     params,
                     replacement,
                 } => {
-                    let is_lparen = |kind| kind == TokenKind::Punct(PunctKind::LParen);
+                    let replacements = &mut self.replacements;
+                    let peeked = next_or_lex(|| replacements.peek_token(), || lexer.peek(ctx))?;
 
-                    if !self.replacements.eat_or_lex(ctx, lexer, is_lparen)? {
+                    if peeked.ppt.data() != TokenKind::Punct(PunctKind::LParen) {
                         return Ok(false);
                     }
+
+                    let args = match parse_macro_args(replacements, ctx, name_tok.tok, lexer)? {
+                        Some(args) => args,
+                        None => return Ok(true),
+                    };
 
                     unimplemented!("function-like macro expansion")
                 }
@@ -121,4 +129,59 @@ impl MacroState {
 
         Ok(None)
     }
+}
+
+fn parse_macro_args(
+    replacements: &mut PendingReplacements,
+    ctx: &mut LexCtx<'_, '_>,
+    name_tok: Token<Symbol>,
+    lexer: &mut dyn ReplacementLexer,
+) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
+    let mut args = Vec::new();
+    let mut cur_arg = Vec::new();
+    let mut paren_level = 0;
+
+    loop {
+        let tok = next_or_lex(|| replacements.next_token(), || lexer.next_macro_arg(ctx))?;
+
+        match tok.ppt.data() {
+            TokenKind::Punct(PunctKind::LParen) => {
+                paren_level += 1;
+                cur_arg.push(tok)
+            }
+            TokenKind::Punct(PunctKind::RParen) => {
+                paren_level -= 1;
+                if paren_level == 0 {
+                    args.push(cur_arg);
+                    break;
+                }
+                cur_arg.push(tok);
+            }
+
+            TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
+                args.push(mem::take(&mut cur_arg))
+            }
+
+            TokenKind::Eof => {
+                let msg = format!(
+                    "unterminated invocation of macro '{}'",
+                    &ctx.interner[name_tok.data]
+                );
+
+                ctx.reporter().error(name_tok.range, msg).emit()?;
+                return Ok(None);
+            }
+
+            _ => cur_arg.push(tok),
+        }
+    }
+
+    Ok(Some(args))
+}
+
+fn next_or_lex(
+    next: impl FnOnce() -> Option<ReplacementToken>,
+    lex: impl FnOnce() -> DResult<PpToken>,
+) -> DResult<ReplacementToken> {
+    next().map_or_else(|| lex().map(|ppt| ppt.into()), Ok)
 }
