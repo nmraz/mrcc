@@ -173,12 +173,8 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         let ppt = self.next_directive_token()?;
         match ppt.data() {
-            TokenKind::Punct(PunctKind::RParen) => {
-                return Ok(Some(params));
-            }
-            TokenKind::Ident(param) => {
-                params.push(param);
-            }
+            TokenKind::Punct(PunctKind::RParen) => return Ok(Some(params)),
+            TokenKind::Ident(param) => params.push(param),
             _ => {
                 self.report_and_advance(ppt, "expected a parameter name or ')'")?;
                 return Ok(None);
@@ -198,7 +194,16 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
             let ppt = self.next_directive_token()?;
             match ppt.data() {
-                TokenKind::Ident(param) => params.push(param),
+                TokenKind::Ident(param) => {
+                    if params.contains(&param) {
+                        let msg =
+                            format!("duplicate macro parameter '{}'", &self.ctx.interner[param]);
+                        self.report_and_advance(ppt, &msg)?;
+                        return Ok(None);
+                    }
+
+                    params.push(param);
+                }
                 _ => {
                     self.report_and_advance(ppt, "expected a parameter name")?;
                     break Ok(None);
