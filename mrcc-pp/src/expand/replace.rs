@@ -8,7 +8,7 @@ use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
 
-use super::data::ReplacementList;
+use super::def::ReplacementList;
 use super::ReplacementLexer;
 
 #[derive(Debug, Copy, Clone)]

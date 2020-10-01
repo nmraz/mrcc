@@ -3,12 +3,12 @@ use mrcc_source::DResult;
 
 use crate::PpToken;
 
-use data::MacroTable;
+use def::MacroTable;
 use replace::{PendingReplacements, ReplacementToken};
 
-pub use data::{MacroDef, MacroDefKind, ReplacementList};
+pub use def::{MacroDef, MacroDefKind, ReplacementList};
 
-mod data;
+mod def;
 mod replace;
 
 pub trait ReplacementLexer {
