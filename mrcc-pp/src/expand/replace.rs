@@ -102,28 +102,40 @@ impl PendingReplacements {
         self.next(|replacement| replacement.peek_token())
     }
 
+    pub fn next_or_lex(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<PpToken> {
+        match self.next_token() {
+            Some(ppt) => Ok(ppt),
+            None => lexer.next(ctx),
+        }
+    }
+
+    pub fn peek_or_lex(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<PpToken> {
+        match self.peek_token() {
+            Some(ppt) => Ok(ppt),
+            None => lexer.peek(ctx),
+        }
+    }
+
     pub fn eat_or_lex(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
-        f: impl FnOnce(TokenKind) -> bool,
+        pred: impl FnOnce(TokenKind) -> bool,
     ) -> DResult<bool> {
-        if let Some(ppt) = self.peek_token() {
-            let ret = f(ppt.data());
-            if ret {
-                self.next_token();
-            }
-            return Ok(ret);
+        if pred(self.peek_or_lex(ctx, lexer)?.data()) {
+            self.next_or_lex(ctx, lexer)?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        let ppt = lexer.peek(ctx)?;
-
-        if f(ppt.data()) {
-            lexer.next(ctx)?;
-            return Ok(true);
-        }
-
-        Ok(false)
     }
 
     fn next(
