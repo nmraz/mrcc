@@ -4,7 +4,7 @@ use mrcc_source::DResult;
 use crate::PpToken;
 
 use data::MacroTable;
-use replace::PendingReplacements;
+use replace::{PendingReplacements, ReplacementToken};
 
 pub use data::{MacroDef, MacroDefKind, ReplacementList};
 
@@ -44,7 +44,29 @@ impl MacroState {
         ppt: PpToken,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<bool> {
-        let name_tok = match ppt.maybe_map(|kind| match kind {
+        self.begin_repl_expansion(ctx, &mut ppt.into(), lexer)
+    }
+
+    pub fn next_expanded_token(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<Option<PpToken>> {
+        self.next_expanded_repl_token(ctx, lexer)
+            .map(|res| res.map(|tok| tok.ppt))
+    }
+
+    fn begin_repl_expansion(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        tok: &mut ReplacementToken,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<bool> {
+        if !tok.allow_expansion {
+            return Ok(false);
+        }
+
+        let name_tok = match tok.ppt.maybe_map(|kind| match kind {
             TokenKind::Ident(name) => Some(name),
             _ => None,
         }) {
@@ -55,6 +77,8 @@ impl MacroState {
         let name = name_tok.data();
 
         if self.replacements.is_active(name) {
+            // Prevent further expansions of this token in all contexts, as per §6.10.3.4p2.
+            tok.allow_expansion = false;
             return Ok(false);
         }
 
@@ -84,14 +108,14 @@ impl MacroState {
         Ok(false)
     }
 
-    pub fn next_expanded_token(
+    fn next_expanded_repl_token(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<Option<PpToken>> {
-        while let Some(ppt) = self.replacements.next_token() {
-            if !self.begin_expansion(ctx, ppt, lexer)? {
-                return Ok(Some(ppt));
+    ) -> DResult<Option<ReplacementToken>> {
+        while let Some(mut tok) = self.replacements.next_token() {
+            if !self.begin_repl_expansion(ctx, &mut tok, lexer)? {
+                return Ok(Some(tok));
             }
         }
 

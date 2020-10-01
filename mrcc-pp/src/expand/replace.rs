@@ -11,17 +11,32 @@ use crate::PpToken;
 use super::data::ReplacementList;
 use super::ReplacementLexer;
 
+#[derive(Debug, Copy, Clone)]
+pub struct ReplacementToken {
+    pub ppt: PpToken,
+    pub allow_expansion: bool,
+}
+
+impl From<PpToken> for ReplacementToken {
+    fn from(ppt: PpToken) -> Self {
+        Self {
+            ppt,
+            allow_expansion: true,
+        }
+    }
+}
+
 struct PendingReplacement {
     name: Symbol,
-    tokens: VecDeque<PpToken>,
+    tokens: VecDeque<ReplacementToken>,
 }
 
 impl PendingReplacement {
-    fn next_token(&mut self) -> Option<PpToken> {
+    fn next_token(&mut self) -> Option<ReplacementToken> {
         self.tokens.pop_front()
     }
 
-    fn peek_token(&self) -> Option<PpToken> {
+    fn peek_token(&self) -> Option<ReplacementToken> {
         self.tokens.front().copied()
     }
 }
@@ -86,7 +101,7 @@ impl PendingReplacements {
 
                     // Move every token to point into the newly-created expansion source.
                     ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
-                    ppt
+                    ppt.into()
                 })
                 .collect(),
         });
@@ -94,11 +109,11 @@ impl PendingReplacements {
         Ok(true)
     }
 
-    pub fn next_token(&mut self) -> Option<PpToken> {
+    pub fn next_token(&mut self) -> Option<ReplacementToken> {
         self.next(PendingReplacement::next_token)
     }
 
-    pub fn peek_token(&mut self) -> Option<PpToken> {
+    pub fn peek_token(&mut self) -> Option<ReplacementToken> {
         self.next(|replacement| replacement.peek_token())
     }
 
@@ -106,10 +121,10 @@ impl PendingReplacements {
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<PpToken> {
+    ) -> DResult<ReplacementToken> {
         match self.next_token() {
-            Some(ppt) => Ok(ppt),
-            None => lexer.next(ctx),
+            Some(tok) => Ok(tok),
+            None => Ok(lexer.next(ctx)?.into()),
         }
     }
 
@@ -117,10 +132,10 @@ impl PendingReplacements {
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<PpToken> {
+    ) -> DResult<ReplacementToken> {
         match self.peek_token() {
-            Some(ppt) => Ok(ppt),
-            None => lexer.peek(ctx),
+            Some(tok) => Ok(tok),
+            None => Ok(lexer.peek(ctx)?.into()),
         }
     }
 
@@ -130,7 +145,7 @@ impl PendingReplacements {
         lexer: &mut dyn ReplacementLexer,
         pred: impl FnOnce(TokenKind) -> bool,
     ) -> DResult<bool> {
-        if pred(self.peek_or_lex(ctx, lexer)?.data()) {
+        if pred(self.peek_or_lex(ctx, lexer)?.ppt.data()) {
             self.next_or_lex(ctx, lexer)?;
             Ok(true)
         } else {
@@ -140,11 +155,11 @@ impl PendingReplacements {
 
     fn next(
         &mut self,
-        mut f: impl FnMut(&mut PendingReplacement) -> Option<PpToken>,
-    ) -> Option<PpToken> {
+        mut f: impl FnMut(&mut PendingReplacement) -> Option<ReplacementToken>,
+    ) -> Option<ReplacementToken> {
         while let Some(top) = self.replacements.last_mut() {
-            if let Some(ppt) = f(top) {
-                return Some(ppt);
+            if let Some(tok) = f(top) {
+                return Some(tok);
             }
 
             self.pop_replacement();
