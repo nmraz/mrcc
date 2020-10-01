@@ -1,7 +1,7 @@
 use std::mem;
 
 use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
-use mrcc_source::DResult;
+use mrcc_source::{diag::RawSubDiagnostic, DResult};
 
 use crate::PpToken;
 
@@ -101,10 +101,32 @@ impl MacroState {
                         return Ok(false);
                     }
 
-                    let args = match parse_macro_args(replacements, ctx, name_tok.tok, lexer)? {
+                    let args = match parse_macro_args(ctx, name_tok.tok, replacements, lexer)? {
                         Some(args) => args,
                         None => return Ok(true),
                     };
+
+                    if !check_arity(params, &args) {
+                        let quantifier = if args.len() > params.len() {
+                            "many"
+                        } else {
+                            "few"
+                        };
+
+                        let def_note = format!("macro '{}' defined here", &ctx.interner[name]);
+
+                        ctx.reporter()
+                            .error(
+                                name_tok.range(),
+                                format!(
+                                    "too {} arguments provided to macro invocation",
+                                    quantifier
+                                ),
+                            )
+                            .add_note(RawSubDiagnostic::new(def_note, def.name_tok.range.into()))
+                            .emit()?;
+                        return Ok(true);
+                    }
 
                     unimplemented!("function-like macro expansion")
                 }
@@ -131,10 +153,16 @@ impl MacroState {
     }
 }
 
+fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
+    // There is always at least one (empty) argument parsed, so if the macro takes no parameters
+    // just make sure that there is exactly one empty argument.
+    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].is_empty())
+}
+
 fn parse_macro_args(
-    replacements: &mut PendingReplacements,
     ctx: &mut LexCtx<'_, '_>,
     name_tok: Token<Symbol>,
+    replacements: &mut PendingReplacements,
     lexer: &mut dyn ReplacementLexer,
 ) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
     let mut args = Vec::new();
