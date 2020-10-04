@@ -99,7 +99,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                         return Ok(false);
                     }
 
-                    let args = match self.parse_macro_args(name_tok.tok)? {
+                    let args = match self.parse_macro_args(name_tok.tok, def.name_tok)? {
                         Some(args) => args,
                         None => return Ok(true),
                     };
@@ -111,7 +111,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                             "few"
                         };
 
-                        let def_note = format!("macro '{}' defined here", &self.ctx.interner[name]);
+                        let note = self.macro_def_note(def.name_tok);
 
                         self.ctx
                             .reporter()
@@ -122,7 +122,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                                     quantifier
                                 ),
                             )
-                            .add_note(RawSubDiagnostic::new(def_note, def.name_tok.range.into()))
+                            .add_note(note)
                             .emit()?;
                         return Ok(true);
                     }
@@ -140,6 +140,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     fn parse_macro_args(
         &mut self,
         name_tok: Token<Symbol>,
+        def_tok: Token<Symbol>,
     ) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
         let mut args = Vec::new();
         let mut cur_arg = Vec::new();
@@ -167,12 +168,13 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                 }
 
                 TokenKind::Eof => {
-                    let msg = format!(
-                        "unterminated invocation of macro '{}'",
-                        &self.ctx.interner[name_tok.data]
-                    );
+                    let note = self.macro_def_note(def_tok);
 
-                    self.ctx.reporter().error(name_tok.range, msg).emit()?;
+                    self.ctx
+                        .reporter()
+                        .error(name_tok.range, "unterminated macro invocation")
+                        .add_note(note)
+                        .emit()?;
                     return Ok(None);
                 }
 
@@ -181,6 +183,13 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         }
 
         Ok(Some(args))
+    }
+
+    fn macro_def_note(&self, name_tok: Token<Symbol>) -> RawSubDiagnostic {
+        RawSubDiagnostic::new(
+            format!("macro '{}' defined here", &self.ctx.interner[name_tok.data]),
+            name_tok.range.into(),
+        )
     }
 
     fn next_token(&mut self) -> DResult<ReplacementToken> {
