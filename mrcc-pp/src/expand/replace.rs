@@ -147,6 +147,19 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         let mut paren_level = 0;
 
         loop {
+            // Make sure that we don't consume the EOF token (if one exists), which could be crucial
+            // when using directive lexers and the like.
+            if self.peek_token()?.ppt.data() == TokenKind::Eof {
+                let note = self.macro_def_note(def_tok);
+
+                self.ctx
+                    .reporter()
+                    .error(name_tok.range, "unterminated macro invocation")
+                    .add_note(note)
+                    .emit()?;
+                return Ok(None);
+            }
+
             let tok = self.next_token()?;
 
             match tok.ppt.data() {
@@ -165,17 +178,6 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
                 TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
                     args.push(mem::take(&mut cur_arg))
-                }
-
-                TokenKind::Eof => {
-                    let note = self.macro_def_note(def_tok);
-
-                    self.ctx
-                        .reporter()
-                        .error(name_tok.range, "unterminated macro invocation")
-                        .add_note(note)
-                        .emit()?;
-                    return Ok(None);
                 }
 
                 _ => cur_arg.push(tok),
