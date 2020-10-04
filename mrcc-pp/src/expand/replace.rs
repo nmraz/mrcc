@@ -1,14 +1,14 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, mem};
 
 use rustc_hash::FxHashSet;
 
-use mrcc_lex::{LexCtx, Symbol};
-use mrcc_source::DResult;
+use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
+use mrcc_source::{diag::RawSubDiagnostic, DResult};
 use mrcc_source::{smap::ExpansionType, SourceRange};
 
 use crate::PpToken;
 
-use super::def::ReplacementList;
+use super::def::{MacroDefKind, MacroTable, ReplacementList};
 
 #[derive(Debug, Copy, Clone)]
 pub struct ReplacementToken {
@@ -23,6 +23,184 @@ impl From<PpToken> for ReplacementToken {
             allow_expansion: true,
         }
     }
+}
+
+pub trait ReplacementLexer {
+    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+    fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
+}
+
+pub struct ReplacementCtx<'a, 'b, 'h> {
+    ctx: &'a mut LexCtx<'b, 'h>,
+    defs: &'a MacroTable,
+    replacements: &'a mut PendingReplacements,
+    lexer: &'a mut dyn ReplacementLexer,
+}
+
+impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
+    pub fn new(
+        ctx: &'a mut LexCtx<'b, 'h>,
+        defs: &'a MacroTable,
+        replacements: &'a mut PendingReplacements,
+        lexer: &'a mut dyn ReplacementLexer,
+    ) -> Self {
+        Self {
+            ctx,
+            defs,
+            replacements,
+            lexer,
+        }
+    }
+
+    pub fn next_expanded_token(&mut self) -> DResult<Option<ReplacementToken>> {
+        while let Some(mut tok) = self.replacements.next_token() {
+            if !self.begin_expansion(&mut tok)? {
+                return Ok(Some(tok));
+            }
+        }
+
+        Ok(None)
+    }
+
+    pub fn begin_expansion(&mut self, tok: &mut ReplacementToken) -> DResult<bool> {
+        if !tok.allow_expansion {
+            return Ok(false);
+        }
+
+        let name_tok = match tok.ppt.maybe_map(|kind| match kind {
+            TokenKind::Ident(name) => Some(name),
+            _ => None,
+        }) {
+            Some(tok) => tok,
+            None => return Ok(false),
+        };
+
+        let name = name_tok.data();
+
+        if self.replacements.is_active(name) {
+            // Prevent further expansions of this token in all contexts, as per §6.10.3.4p2.
+            tok.allow_expansion = false;
+            return Ok(false);
+        }
+
+        if let Some(def) = self.defs.lookup(name) {
+            match &def.kind {
+                MacroDefKind::Object(replacement) => {
+                    self.replacements.push(self.ctx, name_tok, replacement)?;
+                }
+
+                MacroDefKind::Function {
+                    params,
+                    replacement,
+                } => {
+                    let peeked = self.peek_token()?;
+
+                    if peeked.ppt.data() != TokenKind::Punct(PunctKind::LParen) {
+                        return Ok(false);
+                    }
+
+                    let args = match self.parse_macro_args(name_tok.tok)? {
+                        Some(args) => args,
+                        None => return Ok(true),
+                    };
+
+                    if !check_arity(params, &args) {
+                        let quantifier = if args.len() > params.len() {
+                            "many"
+                        } else {
+                            "few"
+                        };
+
+                        let def_note = format!("macro '{}' defined here", &self.ctx.interner[name]);
+
+                        self.ctx
+                            .reporter()
+                            .error(
+                                name_tok.range(),
+                                format!(
+                                    "too {} arguments provided to macro invocation",
+                                    quantifier
+                                ),
+                            )
+                            .add_note(RawSubDiagnostic::new(def_note, def.name_tok.range.into()))
+                            .emit()?;
+                        return Ok(true);
+                    }
+
+                    unimplemented!("function-like macro expansion")
+                }
+            }
+
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
+    fn parse_macro_args(
+        &mut self,
+        name_tok: Token<Symbol>,
+    ) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
+        let mut args = Vec::new();
+        let mut cur_arg = Vec::new();
+        let mut paren_level = 0;
+
+        loop {
+            let tok = self.next_token()?;
+
+            match tok.ppt.data() {
+                TokenKind::Punct(PunctKind::LParen) => {
+                    paren_level += 1;
+                    cur_arg.push(tok)
+                }
+                TokenKind::Punct(PunctKind::RParen) => {
+                    paren_level -= 1;
+                    if paren_level == 0 {
+                        args.push(cur_arg);
+                        break;
+                    }
+                    cur_arg.push(tok);
+                }
+
+                TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
+                    args.push(mem::take(&mut cur_arg))
+                }
+
+                TokenKind::Eof => {
+                    let msg = format!(
+                        "unterminated invocation of macro '{}'",
+                        &self.ctx.interner[name_tok.data]
+                    );
+
+                    self.ctx.reporter().error(name_tok.range, msg).emit()?;
+                    return Ok(None);
+                }
+
+                _ => cur_arg.push(tok),
+            }
+        }
+
+        Ok(Some(args))
+    }
+
+    fn next_token(&mut self) -> DResult<ReplacementToken> {
+        self.replacements
+            .next_token()
+            .map_or_else(|| self.lexer.next_macro_arg(self.ctx).map(Into::into), Ok)
+    }
+
+    fn peek_token(&mut self) -> DResult<ReplacementToken> {
+        self.replacements
+            .peek_token()
+            .map_or_else(|| self.lexer.peek(self.ctx).map(Into::into), Ok)
+    }
+}
+
+fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
+    // There is always at least one (empty) argument parsed, so if the macro takes no parameters
+    // just make sure that there is exactly one empty argument.
+    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].is_empty())
 }
 
 struct PendingReplacement {
@@ -53,11 +231,11 @@ impl PendingReplacements {
         }
     }
 
-    pub fn is_active(&self, name: Symbol) -> bool {
+    fn is_active(&self, name: Symbol) -> bool {
         self.active_names.contains(&name)
     }
 
-    pub fn push(
+    fn push(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         name_tok: PpToken<Symbol>,
@@ -110,11 +288,11 @@ impl PendingReplacements {
         Ok(true)
     }
 
-    pub fn next_token(&mut self) -> Option<ReplacementToken> {
+    fn next_token(&mut self) -> Option<ReplacementToken> {
         self.next(PendingReplacement::next_token)
     }
 
-    pub fn peek_token(&mut self) -> Option<ReplacementToken> {
+    fn peek_token(&mut self) -> Option<ReplacementToken> {
         self.next(|replacement| replacement.peek_token())
     }
 

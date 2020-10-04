@@ -1,43 +1,46 @@
-use std::mem;
-
-use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
-use mrcc_source::{diag::RawSubDiagnostic, DResult};
+use mrcc_lex::{LexCtx, Symbol};
+use mrcc_source::DResult;
 
 use crate::PpToken;
 
 use def::MacroTable;
-use replace::{PendingReplacements, ReplacementToken};
+use replace::{PendingReplacements, ReplacementCtx};
 
 pub use def::{MacroDef, MacroDefKind, ReplacementList};
+pub use replace::ReplacementLexer;
 
 mod def;
 mod replace;
 
-pub trait ReplacementLexer {
-    fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-    fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-}
-
 pub struct MacroState {
-    definitions: MacroTable,
+    defs: MacroTable,
     replacements: PendingReplacements,
 }
 
 impl MacroState {
     pub fn new() -> Self {
         Self {
-            definitions: MacroTable::new(),
+            defs: MacroTable::new(),
             replacements: PendingReplacements::new(),
         }
     }
 
     pub fn define(&mut self, def: MacroDef) -> Option<MacroDef> {
-        self.definitions.define(def)
+        self.defs.define(def)
     }
 
     pub fn undef(&mut self, name: Symbol) {
-        self.definitions.undef(name)
+        self.defs.undef(name)
+    }
+
+    pub fn next_expanded_token(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        lexer: &mut dyn ReplacementLexer,
+    ) -> DResult<Option<PpToken>> {
+        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, lexer)
+            .next_expanded_token()
+            .map(|res| res.map(|tok| tok.ppt))
     }
 
     pub fn begin_expansion(
@@ -46,170 +49,7 @@ impl MacroState {
         ppt: PpToken,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<bool> {
-        self.begin_repl_expansion(ctx, &mut ppt.into(), lexer)
+        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, lexer)
+            .begin_expansion(&mut ppt.into())
     }
-
-    pub fn next_expanded_token(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<Option<PpToken>> {
-        self.next_expanded_repl_token(ctx, lexer)
-            .map(|res| res.map(|tok| tok.ppt))
-    }
-
-    fn begin_repl_expansion(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        tok: &mut ReplacementToken,
-        lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<bool> {
-        if !tok.allow_expansion {
-            return Ok(false);
-        }
-
-        let name_tok = match tok.ppt.maybe_map(|kind| match kind {
-            TokenKind::Ident(name) => Some(name),
-            _ => None,
-        }) {
-            Some(tok) => tok,
-            None => return Ok(false),
-        };
-
-        let name = name_tok.data();
-
-        if self.replacements.is_active(name) {
-            // Prevent further expansions of this token in all contexts, as per §6.10.3.4p2.
-            tok.allow_expansion = false;
-            return Ok(false);
-        }
-
-        if let Some(def) = self.definitions.lookup(name) {
-            match &def.kind {
-                MacroDefKind::Object(replacement) => {
-                    self.replacements.push(ctx, name_tok, replacement)?;
-                }
-
-                MacroDefKind::Function {
-                    params,
-                    replacement,
-                } => {
-                    let replacements = &mut self.replacements;
-                    let peeked = next_or_lex(|| replacements.peek_token(), || lexer.peek(ctx))?;
-
-                    if peeked.ppt.data() != TokenKind::Punct(PunctKind::LParen) {
-                        return Ok(false);
-                    }
-
-                    let args = match parse_macro_args(ctx, name_tok.tok, replacements, lexer)? {
-                        Some(args) => args,
-                        None => return Ok(true),
-                    };
-
-                    if !check_arity(params, &args) {
-                        let quantifier = if args.len() > params.len() {
-                            "many"
-                        } else {
-                            "few"
-                        };
-
-                        let def_note = format!("macro '{}' defined here", &ctx.interner[name]);
-
-                        ctx.reporter()
-                            .error(
-                                name_tok.range(),
-                                format!(
-                                    "too {} arguments provided to macro invocation",
-                                    quantifier
-                                ),
-                            )
-                            .add_note(RawSubDiagnostic::new(def_note, def.name_tok.range.into()))
-                            .emit()?;
-                        return Ok(true);
-                    }
-
-                    unimplemented!("function-like macro expansion")
-                }
-            }
-
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
-
-    fn next_expanded_repl_token(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
-    ) -> DResult<Option<ReplacementToken>> {
-        while let Some(mut tok) = self.replacements.next_token() {
-            if !self.begin_repl_expansion(ctx, &mut tok, lexer)? {
-                return Ok(Some(tok));
-            }
-        }
-
-        Ok(None)
-    }
-}
-
-fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
-    // There is always at least one (empty) argument parsed, so if the macro takes no parameters
-    // just make sure that there is exactly one empty argument.
-    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].is_empty())
-}
-
-fn parse_macro_args(
-    ctx: &mut LexCtx<'_, '_>,
-    name_tok: Token<Symbol>,
-    replacements: &mut PendingReplacements,
-    lexer: &mut dyn ReplacementLexer,
-) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
-    let mut args = Vec::new();
-    let mut cur_arg = Vec::new();
-    let mut paren_level = 0;
-
-    loop {
-        let tok = next_or_lex(|| replacements.next_token(), || lexer.next_macro_arg(ctx))?;
-
-        match tok.ppt.data() {
-            TokenKind::Punct(PunctKind::LParen) => {
-                paren_level += 1;
-                cur_arg.push(tok)
-            }
-            TokenKind::Punct(PunctKind::RParen) => {
-                paren_level -= 1;
-                if paren_level == 0 {
-                    args.push(cur_arg);
-                    break;
-                }
-                cur_arg.push(tok);
-            }
-
-            TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
-                args.push(mem::take(&mut cur_arg))
-            }
-
-            TokenKind::Eof => {
-                let msg = format!(
-                    "unterminated invocation of macro '{}'",
-                    &ctx.interner[name_tok.data]
-                );
-
-                ctx.reporter().error(name_tok.range, msg).emit()?;
-                return Ok(None);
-            }
-
-            _ => cur_arg.push(tok),
-        }
-    }
-
-    Ok(Some(args))
-}
-
-fn next_or_lex(
-    next: impl FnOnce() -> Option<ReplacementToken>,
-    lex: impl FnOnce() -> DResult<PpToken>,
-) -> DResult<ReplacementToken> {
-    next().map_or_else(|| lex().map(|ppt| ppt.into()), Ok)
 }
