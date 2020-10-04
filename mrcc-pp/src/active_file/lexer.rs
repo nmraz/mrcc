@@ -6,24 +6,20 @@ use crate::PpToken;
 
 use super::Processor;
 
-pub struct FileLexer<'a, 's> {
+pub struct MacroArgLexer<'a, 's> {
     processor: &'a mut Processor<'s>,
 }
 
-impl<'a, 's> FileLexer<'a, 's> {
+impl<'a, 's> MacroArgLexer<'a, 's> {
     pub fn new(processor: &'a mut Processor<'s>) -> Self {
         Self { processor }
     }
 }
 
-impl ReplacementLexer for FileLexer<'_, '_> {
+impl ReplacementLexer for MacroArgLexer<'_, '_> {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        self.processor.next_real_token(ctx)
-    }
-
-    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         loop {
-            let ppt = self.next(ctx)?;
+            let ppt = self.processor.next_real_token(ctx)?;
 
             if ppt.is_directive_start() {
                 ctx.reporter()
@@ -65,10 +61,6 @@ impl<'a, 's> DirectiveLexer<'a, 's> {
 impl ReplacementLexer for DirectiveLexer<'_, '_> {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         self.processor.next_directive_token(ctx)
-    }
-
-    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
-        self.next(ctx)
     }
 
     fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {

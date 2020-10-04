@@ -27,7 +27,6 @@ impl From<PpToken> for ReplacementToken {
 
 pub trait ReplacementLexer {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
-    fn next_macro_arg(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
     fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
 }
 
@@ -187,7 +186,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     fn next_token(&mut self) -> DResult<ReplacementToken> {
         self.replacements
             .next_token()
-            .map_or_else(|| self.lexer.next_macro_arg(self.ctx).map(Into::into), Ok)
+            .map_or_else(|| self.lexer.next(self.ctx).map(Into::into), Ok)
     }
 
     fn peek_token(&mut self) -> DResult<ReplacementToken> {
