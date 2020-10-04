@@ -69,8 +69,7 @@ impl<'a> Processor<'a> {
         self.state
             .lookahead
             .take()
-            .map(Ok)
-            .unwrap_or_else(|| self.lex_next_token(ctx))
+            .map_or_else(|| self.lex_next_token(ctx), Ok)
     }
 
     pub fn peek_token(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<FileToken> {
