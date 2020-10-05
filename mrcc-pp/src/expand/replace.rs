@@ -183,23 +183,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             None => return Ok(true),
         };
 
-        if !check_arity(params, &args) {
-            let quantifier = if args.len() > params.len() {
-                "many"
-            } else {
-                "few"
-            };
-
-            let note = self.macro_def_note(def_tok);
-
-            self.ctx
-                .reporter()
-                .error(
-                    name_tok.range,
-                    format!("too {} arguments provided to macro invocation", quantifier),
-                )
-                .add_note(note)
-                .emit()?;
+        if !self.check_arity(name_tok, def_tok, params, &args)? {
             return Ok(true);
         }
 
@@ -211,18 +195,15 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         name_tok: Token<Symbol>,
         def_tok: Token<Symbol>,
     ) -> DResult<Option<Vec<VecDeque<ReplacementToken>>>> {
-        fn finish_arg(
-            arg: &mut VecDeque<ReplacementToken>,
-            mut tok: ReplacementToken,
-        ) -> VecDeque<ReplacementToken> {
-            tok.ppt = tok.ppt.map(|_| TokenKind::Eof);
-            arg.push_back(tok);
-            mem::take(arg)
-        }
-
         let mut args = Vec::new();
         let mut cur_arg = VecDeque::new();
         let mut paren_level = 1; // We've already consumed the opening lparen.
+
+        let mut finish_arg = |arg: &mut VecDeque<ReplacementToken>, mut tok: ReplacementToken| {
+            tok.ppt = tok.ppt.map(|_| TokenKind::Eof);
+            arg.push_back(tok);
+            args.push(mem::take(arg))
+        };
 
         loop {
             // Make sure that we don't consume the EOF token (if one exists), which could be crucial
@@ -248,14 +229,14 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                 TokenKind::Punct(PunctKind::RParen) => {
                     paren_level -= 1;
                     if paren_level == 0 {
-                        args.push(finish_arg(&mut cur_arg, tok));
+                        finish_arg(&mut cur_arg, tok);
                         break;
                     }
                     cur_arg.push_back(tok);
                 }
 
                 TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
-                    args.push(finish_arg(&mut cur_arg, tok))
+                    finish_arg(&mut cur_arg, tok);
                 }
 
                 _ => cur_arg.push_back(tok),
@@ -263,6 +244,40 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         }
 
         Ok(Some(args))
+    }
+
+    fn check_arity(
+        &mut self,
+        name_tok: Token<Symbol>,
+        def_tok: Token<Symbol>,
+        params: &[Symbol],
+        args: &[VecDeque<ReplacementToken>],
+    ) -> DResult<bool> {
+        // There is always at least one (empty, EOF-only) argument parsed, so if the macro takes no
+        // parameters just make sure that there is exactly one empty argument.
+        if args.len() != params.len()
+            && !(params.is_empty() && args.len() == 1 && args[0].len() == 1)
+        {
+            let quantifier = if args.len() > params.len() {
+                "many"
+            } else {
+                "few"
+            };
+
+            let note = self.macro_def_note(def_tok);
+
+            self.ctx
+                .reporter()
+                .error(
+                    name_tok.range,
+                    format!("too {} arguments provided to macro invocation", quantifier),
+                )
+                .add_note(note)
+                .emit()?;
+            return Ok(false);
+        }
+
+        Ok(true)
     }
 
     fn pre_expand_macro_arg(
@@ -308,12 +323,6 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     ) -> DResult<ReplacementToken> {
         next(&mut self.replacements).map_or_else(|| lex(self.lexer, self.ctx).map(Into::into), Ok)
     }
-}
-
-fn check_arity(params: &[Symbol], args: &[VecDeque<ReplacementToken>]) -> bool {
-    // There is always at least one (empty, EOF-only) argument parsed, so if the macro takes no
-    //  parameters just make sure that there is exactly one empty argument.
-    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].len() == 1)
 }
 
 struct PendingReplacement {
