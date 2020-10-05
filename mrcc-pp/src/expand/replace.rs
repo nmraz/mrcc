@@ -142,6 +142,15 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         name_tok: Token<Symbol>,
         def_tok: Token<Symbol>,
     ) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
+        fn finish_arg(
+            arg: &mut Vec<ReplacementToken>,
+            mut tok: ReplacementToken,
+        ) -> Vec<ReplacementToken> {
+            tok.ppt = tok.ppt.map(|_| TokenKind::Eof);
+            arg.push(tok);
+            mem::take(arg)
+        }
+
         let mut args = Vec::new();
         let mut cur_arg = Vec::new();
         let mut paren_level = 0;
@@ -170,14 +179,14 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                 TokenKind::Punct(PunctKind::RParen) => {
                     paren_level -= 1;
                     if paren_level == 0 {
-                        args.push(cur_arg);
+                        args.push(finish_arg(&mut cur_arg, tok));
                         break;
                     }
                     cur_arg.push(tok);
                 }
 
                 TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
-                    args.push(mem::take(&mut cur_arg))
+                    args.push(finish_arg(&mut cur_arg, tok))
                 }
 
                 _ => cur_arg.push(tok),
@@ -218,9 +227,9 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 }
 
 fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
-    // There is always at least one (empty) argument parsed, so if the macro takes no parameters
-    // just make sure that there is exactly one empty argument.
-    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].is_empty())
+    // There is always at least one (empty, EOF-only) argument parsed, so if the macro takes no
+    //  parameters just make sure that there is exactly one empty argument.
+    args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].len() == 1)
 }
 
 struct PendingReplacement {
