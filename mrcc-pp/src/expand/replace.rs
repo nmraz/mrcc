@@ -293,9 +293,9 @@ impl PendingReplacements {
 
         let exp_range = ctx.smap.get_source(exp_id).range;
 
-        self.push_replacement(PendingReplacement {
-            name: name_tok.data(),
-            tokens: replacement_list
+        self.push_replacement(
+            name_tok.data(),
+            replacement_list
                 .tokens()
                 .iter()
                 .copied()
@@ -315,7 +315,7 @@ impl PendingReplacements {
                     ppt.into()
                 })
                 .collect(),
-        });
+        );
 
         Ok(true)
     }
@@ -343,9 +343,9 @@ impl PendingReplacements {
         None
     }
 
-    fn push_replacement(&mut self, replacement: PendingReplacement) {
-        self.active_names.insert(replacement.name);
-        self.replacements.push(replacement);
+    fn push_replacement(&mut self, name: Symbol, tokens: VecDeque<ReplacementToken>) {
+        self.active_names.insert(name);
+        self.replacements.push(PendingReplacement { name, tokens });
     }
 
     fn pop_replacement(&mut self) {
