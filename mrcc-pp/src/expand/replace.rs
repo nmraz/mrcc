@@ -99,6 +99,9 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                         return Ok(false);
                     }
 
+                    // Consume the peeked lparen.
+                    self.next_token()?;
+
                     let args = match self.parse_macro_args(name_tok.tok, def.name_tok)? {
                         Some(args) => args,
                         None => return Ok(true),
@@ -153,7 +156,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         let mut args = Vec::new();
         let mut cur_arg = Vec::new();
-        let mut paren_level = 0;
+        let mut paren_level = 1; // We've already consumed the opening lparen.
 
         loop {
             // Make sure that we don't consume the EOF token (if one exists), which could be crucial
