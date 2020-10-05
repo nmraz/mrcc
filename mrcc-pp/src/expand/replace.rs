@@ -1,4 +1,5 @@
-use std::{collections::VecDeque, mem};
+use std::collections::VecDeque;
+use std::{iter, mem};
 
 use rustc_hash::FxHashSet;
 
@@ -262,6 +263,21 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         }
 
         Ok(Some(args))
+    }
+
+    fn pre_expand_macro_arg(
+        &mut self,
+        arg: VecDeque<ReplacementToken>,
+    ) -> DResult<VecDeque<ReplacementToken>> {
+        self.replacements.push(None, arg);
+
+        itertools::process_results(
+            iter::from_fn(|| self.next_expanded_token().transpose()),
+            |iter| {
+                iter.take_while(|tok| tok.ppt.data() != TokenKind::Eof)
+                    .collect()
+            },
+        )
     }
 
     fn macro_def_note(&self, name_tok: Token<Symbol>) -> RawSubDiagnostic {
