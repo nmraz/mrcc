@@ -31,6 +31,11 @@ pub trait ReplacementLexer {
     fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
 }
 
+enum ArgState {
+    Raw(VecDeque<ReplacementToken>),
+    PreExpanded(Vec<ReplacementToken>),
+}
+
 pub struct ReplacementCtx<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     defs: &'a MacroTable,
@@ -96,7 +101,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                     replacement,
                 } => {
                     return self.try_push_function_macro(
-                        name_tok.tok,
+                        name_tok,
                         def.name_tok,
                         params,
                         replacement,
@@ -112,62 +117,21 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         &mut self,
         name_tok: PpToken<Symbol>,
         replacement_list: &ReplacementList,
-    ) -> DResult<bool> {
-        let spelling_range = match replacement_list.spelling_range() {
-            Some(range) => range,
-            None => return Ok(false),
+    ) -> DResult<()> {
+        let tokens = match self.get_replacement_tokens(name_tok, replacement_list)? {
+            Some(iter) => iter.collect(),
+            None => return Ok(()),
         };
-
-        let ctx = &mut self.ctx;
-
-        let exp_id = ctx
-            .smap
-            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
-            .map_err(|_| {
-                ctx.reporter()
-                    .fatal(
-                        name_tok.range(),
-                        "translation unit too large for macro expansion",
-                    )
-                    .emit()
-                    .unwrap_err()
-            })?;
-
-        let exp_range = ctx.smap.get_source(exp_id).range;
-
-        self.replacements.push(
-            Some(name_tok.data()),
-            replacement_list
-                .tokens()
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(idx, mut ppt)| {
-                    if idx == 0 {
-                        // The first replacement token inherits `line_start` and `leading_trivia`
-                        // from the replaced token.
-                        ppt.line_start = name_tok.line_start;
-                        ppt.leading_trivia = name_tok.leading_trivia;
-                    } else {
-                        ppt.line_start = false;
-                    }
-
-                    // Move every token to point into the newly-created expansion source.
-                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
-                    ppt.into()
-                })
-                .collect(),
-        );
-
-        Ok(true)
+        self.replacements.push(Some(name_tok.data()), tokens);
+        Ok(())
     }
 
     fn try_push_function_macro(
         &mut self,
-        name_tok: Token<Symbol>,
+        name_tok: PpToken<Symbol>,
         def_tok: Token<Symbol>,
         params: &[Symbol],
-        replacement: &ReplacementList,
+        replacement_list: &ReplacementList,
     ) -> DResult<bool> {
         let peeked = self.peek_token()?;
 
@@ -178,16 +142,17 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         // Consume the peeked lparen.
         self.next_token()?;
 
-        let args = match self.parse_macro_args(name_tok, def_tok)? {
+        let args = match self.parse_macro_args(name_tok.tok, def_tok)? {
             Some(args) => args,
             None => return Ok(true),
         };
 
-        if !self.check_arity(name_tok, def_tok, params, &args)? {
+        if !self.check_arity(name_tok.tok, def_tok, params, &args)? {
             return Ok(true);
         }
 
-        unimplemented!("function-like macro expansion")
+        self.push_parsed_function_macro(name_tok, replacement_list, params, args)?;
+        Ok(true)
     }
 
     fn parse_macro_args(
@@ -280,19 +245,110 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         Ok(true)
     }
 
+    fn push_parsed_function_macro(
+        &mut self,
+        name_tok: PpToken<Symbol>,
+        replacement_list: &ReplacementList,
+        params: &[Symbol],
+        args: Vec<VecDeque<ReplacementToken>>,
+    ) -> DResult<()> {
+        let body_tokens = match self.get_replacement_tokens(name_tok, replacement_list)? {
+            Some(iter) => iter,
+            None => return Ok(()),
+        };
+
+        let mut args: Vec<_> = args.into_iter().map(ArgState::Raw).collect();
+        let mut tokens = VecDeque::new();
+
+        for tok in body_tokens {
+            if let TokenKind::Ident(ident) = tok.ppt.data() {
+                if let Some(idx) = params.iter().position(|&name| name == ident) {
+                    // TODO: fix argument ranges and line start/leading trivia.
+                    tokens.extend(self.get_pre_expanded_arg(&mut args[idx])?);
+                    continue;
+                }
+            }
+
+            tokens.push_back(tok);
+        }
+
+        self.replacements.push(Some(name_tok.data()), tokens);
+        Ok(())
+    }
+
+    fn get_pre_expanded_arg<'c>(
+        &mut self,
+        arg: &'c mut ArgState,
+    ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
+        if let ArgState::Raw(unexp) = arg {
+            *arg = ArgState::PreExpanded(self.pre_expand_macro_arg(mem::take(unexp))?);
+        }
+
+        match arg {
+            ArgState::PreExpanded(preexp) => Ok(preexp.iter().copied()),
+            ArgState::Raw(_) => unreachable!(),
+        }
+    }
+
     fn pre_expand_macro_arg(
         &mut self,
         arg: VecDeque<ReplacementToken>,
-    ) -> DResult<VecDeque<ReplacementToken>> {
+    ) -> DResult<Vec<ReplacementToken>> {
         self.replacements.push(None, arg);
 
-        itertools::process_results(
-            iter::from_fn(|| self.next_expanded_token().transpose()),
-            |iter| {
-                iter.take_while(|tok| tok.ppt.data() != TokenKind::Eof)
-                    .collect()
-            },
-        )
+        iter::from_fn(|| self.next_expanded_token().transpose())
+            .take_while(|res| res.map_or(true, |tok| tok.ppt.data() != TokenKind::Eof))
+            .collect()
+    }
+
+    fn get_replacement_tokens<'c>(
+        &mut self,
+        name_tok: PpToken<Symbol>,
+        replacement_list: &'c ReplacementList,
+    ) -> DResult<Option<impl Iterator<Item = ReplacementToken> + 'c>> {
+        let spelling_range = match replacement_list.spelling_range() {
+            Some(range) => range,
+            None => return Ok(None),
+        };
+
+        let ctx = &mut self.ctx;
+
+        let exp_id = ctx
+            .smap
+            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
+            .map_err(|_| {
+                ctx.reporter()
+                    .fatal(
+                        name_tok.range(),
+                        "translation unit too large for macro expansion",
+                    )
+                    .emit()
+                    .unwrap_err()
+            })?;
+
+        let exp_range = ctx.smap.get_source(exp_id).range;
+
+        Ok(Some(
+            replacement_list
+                .tokens()
+                .iter()
+                .copied()
+                .enumerate()
+                .map(move |(idx, mut ppt)| {
+                    if idx == 0 {
+                        // The first replacement token inherits `line_start` and `leading_trivia`
+                        // from the replaced token.
+                        ppt.line_start = name_tok.line_start;
+                        ppt.leading_trivia = name_tok.leading_trivia;
+                    } else {
+                        ppt.line_start = false;
+                    }
+
+                    // Move every token to point into the newly-created expansion source.
+                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
+                    ppt.into()
+                }),
+        ))
     }
 
     fn macro_def_note(&self, name_tok: Token<Symbol>) -> RawSubDiagnostic {
