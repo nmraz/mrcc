@@ -87,54 +87,21 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             match &def.kind {
                 MacroDefKind::Object(replacement) => {
                     self.push_object_macro(name_tok, replacement)?;
+                    return Ok(true);
                 }
 
                 MacroDefKind::Function {
                     params,
                     replacement,
                 } => {
-                    let peeked = self.peek_token()?;
-
-                    if peeked.ppt.data() != TokenKind::Punct(PunctKind::LParen) {
-                        return Ok(false);
-                    }
-
-                    // Consume the peeked lparen.
-                    self.next_token()?;
-
-                    let args = match self.parse_macro_args(name_tok.tok, def.name_tok)? {
-                        Some(args) => args,
-                        None => return Ok(true),
-                    };
-
-                    if !check_arity(params, &args) {
-                        let quantifier = if args.len() > params.len() {
-                            "many"
-                        } else {
-                            "few"
-                        };
-
-                        let note = self.macro_def_note(def.name_tok);
-
-                        self.ctx
-                            .reporter()
-                            .error(
-                                name_tok.range(),
-                                format!(
-                                    "too {} arguments provided to macro invocation",
-                                    quantifier
-                                ),
-                            )
-                            .add_note(note)
-                            .emit()?;
-                        return Ok(true);
-                    }
-
-                    unimplemented!("function-like macro expansion")
+                    return self.try_push_function_macro(
+                        name_tok.tok,
+                        def.name_tok,
+                        params,
+                        replacement,
+                    );
                 }
             }
-
-            return Ok(true);
         }
 
         Ok(false)
@@ -192,6 +159,50 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         );
 
         Ok(true)
+    }
+
+    fn try_push_function_macro(
+        &mut self,
+        name_tok: Token<Symbol>,
+        def_tok: Token<Symbol>,
+        params: &[Symbol],
+        replacement: &ReplacementList,
+    ) -> DResult<bool> {
+        let peeked = self.peek_token()?;
+
+        if peeked.ppt.data() != TokenKind::Punct(PunctKind::LParen) {
+            return Ok(false);
+        }
+
+        // Consume the peeked lparen.
+        self.next_token()?;
+
+        let args = match self.parse_macro_args(name_tok, def_tok)? {
+            Some(args) => args,
+            None => return Ok(true),
+        };
+
+        if !check_arity(params, &args) {
+            let quantifier = if args.len() > params.len() {
+                "many"
+            } else {
+                "few"
+            };
+
+            let note = self.macro_def_note(def_tok);
+
+            self.ctx
+                .reporter()
+                .error(
+                    name_tok.range,
+                    format!("too {} arguments provided to macro invocation", quantifier),
+                )
+                .add_note(note)
+                .emit()?;
+            return Ok(true);
+        }
+
+        unimplemented!("function-like macro expansion")
     }
 
     fn parse_macro_args(
