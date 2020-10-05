@@ -195,15 +195,25 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     }
 
     fn next_token(&mut self) -> DResult<ReplacementToken> {
-        self.replacements
-            .next_token()
-            .map_or_else(|| self.lexer.next(self.ctx).map(Into::into), Ok)
+        self.next_or_lex(
+            |replacements| replacements.next_token(),
+            |lexer, ctx| lexer.next(ctx),
+        )
     }
 
     fn peek_token(&mut self) -> DResult<ReplacementToken> {
-        self.replacements
-            .peek_token()
-            .map_or_else(|| self.lexer.peek(self.ctx).map(Into::into), Ok)
+        self.next_or_lex(
+            |replacements| replacements.peek_token(),
+            |lexer, ctx| lexer.peek(ctx),
+        )
+    }
+
+    fn next_or_lex(
+        &mut self,
+        next: impl FnOnce(&mut PendingReplacements) -> Option<ReplacementToken>,
+        lex: impl FnOnce(&mut dyn ReplacementLexer, &mut LexCtx<'_, '_>) -> DResult<PpToken>,
+    ) -> DResult<ReplacementToken> {
+        next(&mut self.replacements).map_or_else(|| lex(self.lexer, self.ctx).map(Into::into), Ok)
     }
 }
 
