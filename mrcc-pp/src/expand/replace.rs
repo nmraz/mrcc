@@ -86,7 +86,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         if let Some(def) = self.defs.lookup(name) {
             match &def.kind {
                 MacroDefKind::Object(replacement) => {
-                    self.replacements.push(self.ctx, name_tok, replacement)?;
+                    self.push_object_macro(name_tok, replacement)?;
                 }
 
                 MacroDefKind::Function {
@@ -138,6 +138,60 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         }
 
         Ok(false)
+    }
+
+    fn push_object_macro(
+        &mut self,
+        name_tok: PpToken<Symbol>,
+        replacement_list: &ReplacementList,
+    ) -> DResult<bool> {
+        let spelling_range = match replacement_list.spelling_range() {
+            Some(range) => range,
+            None => return Ok(false),
+        };
+
+        let ctx = &mut self.ctx;
+
+        let exp_id = ctx
+            .smap
+            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
+            .map_err(|_| {
+                ctx.reporter()
+                    .fatal(
+                        name_tok.range(),
+                        "translation unit too large for macro expansion",
+                    )
+                    .emit()
+                    .unwrap_err()
+            })?;
+
+        let exp_range = ctx.smap.get_source(exp_id).range;
+
+        self.replacements.push(
+            Some(name_tok.data()),
+            replacement_list
+                .tokens()
+                .iter()
+                .copied()
+                .enumerate()
+                .map(|(idx, mut ppt)| {
+                    if idx == 0 {
+                        // The first replacement token inherits `line_start` and `leading_trivia`
+                        // from the replaced token.
+                        ppt.line_start = name_tok.line_start;
+                        ppt.leading_trivia = name_tok.leading_trivia;
+                    } else {
+                        ppt.line_start = false;
+                    }
+
+                    // Move every token to point into the newly-created expansion source.
+                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
+                    ppt.into()
+                })
+                .collect(),
+        );
+
+        Ok(true)
     }
 
     fn parse_macro_args(
@@ -267,65 +321,27 @@ impl PendingReplacements {
         self.active_names.contains(&name)
     }
 
-    fn push(
-        &mut self,
-        ctx: &mut LexCtx<'_, '_>,
-        name_tok: PpToken<Symbol>,
-        replacement_list: &ReplacementList,
-    ) -> DResult<bool> {
-        let spelling_range = match replacement_list.spelling_range() {
-            Some(range) => range,
-            None => return Ok(false),
-        };
-
-        let exp_id = ctx
-            .smap
-            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
-            .map_err(|_| {
-                ctx.reporter()
-                    .fatal(
-                        name_tok.range(),
-                        "translation unit too large for macro expansion",
-                    )
-                    .emit()
-                    .unwrap_err()
-            })?;
-
-        let exp_range = ctx.smap.get_source(exp_id).range;
-
-        self.push_replacement(
-            Some(name_tok.data()),
-            replacement_list
-                .tokens()
-                .iter()
-                .copied()
-                .enumerate()
-                .map(|(idx, mut ppt)| {
-                    if idx == 0 {
-                        // The first replacement token inherits `line_start` and `leading_trivia`
-                        // from the replaced token.
-                        ppt.line_start = name_tok.line_start;
-                        ppt.leading_trivia = name_tok.leading_trivia;
-                    } else {
-                        ppt.line_start = false;
-                    }
-
-                    // Move every token to point into the newly-created expansion source.
-                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
-                    ppt.into()
-                })
-                .collect(),
-        );
-
-        Ok(true)
-    }
-
     fn next_token(&mut self) -> Option<ReplacementToken> {
         self.next(PendingReplacement::next_token)
     }
 
     fn peek_token(&mut self) -> Option<ReplacementToken> {
         self.next(|replacement| replacement.peek_token())
+    }
+
+    fn push(&mut self, name: Option<Symbol>, tokens: VecDeque<ReplacementToken>) {
+        if let Some(name) = name {
+            self.active_names.insert(name);
+        }
+        self.replacements.push(PendingReplacement { name, tokens });
+    }
+
+    fn pop(&mut self) {
+        if let Some(replacement) = self.replacements.pop() {
+            if let Some(name) = replacement.name {
+                self.active_names.remove(&name);
+            }
+        }
     }
 
     fn next(
@@ -337,25 +353,10 @@ impl PendingReplacements {
                 return Some(tok);
             }
 
-            self.pop_replacement();
+            self.pop();
         }
 
         None
-    }
-
-    fn push_replacement(&mut self, name: Option<Symbol>, tokens: VecDeque<ReplacementToken>) {
-        if let Some(name) = name {
-            self.active_names.insert(name);
-        }
-        self.replacements.push(PendingReplacement { name, tokens });
-    }
-
-    fn pop_replacement(&mut self) {
-        if let Some(replacement) = self.replacements.pop() {
-            if let Some(name) = replacement.name {
-                self.active_names.remove(&name);
-            }
-        }
     }
 }
 
