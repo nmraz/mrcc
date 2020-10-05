@@ -209,18 +209,18 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         &mut self,
         name_tok: Token<Symbol>,
         def_tok: Token<Symbol>,
-    ) -> DResult<Option<Vec<Vec<ReplacementToken>>>> {
+    ) -> DResult<Option<Vec<VecDeque<ReplacementToken>>>> {
         fn finish_arg(
-            arg: &mut Vec<ReplacementToken>,
+            arg: &mut VecDeque<ReplacementToken>,
             mut tok: ReplacementToken,
-        ) -> Vec<ReplacementToken> {
+        ) -> VecDeque<ReplacementToken> {
             tok.ppt = tok.ppt.map(|_| TokenKind::Eof);
-            arg.push(tok);
+            arg.push_back(tok);
             mem::take(arg)
         }
 
         let mut args = Vec::new();
-        let mut cur_arg = Vec::new();
+        let mut cur_arg = VecDeque::new();
         let mut paren_level = 1; // We've already consumed the opening lparen.
 
         loop {
@@ -242,7 +242,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             match tok.ppt.data() {
                 TokenKind::Punct(PunctKind::LParen) => {
                     paren_level += 1;
-                    cur_arg.push(tok)
+                    cur_arg.push_back(tok)
                 }
                 TokenKind::Punct(PunctKind::RParen) => {
                     paren_level -= 1;
@@ -250,14 +250,14 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                         args.push(finish_arg(&mut cur_arg, tok));
                         break;
                     }
-                    cur_arg.push(tok);
+                    cur_arg.push_back(tok);
                 }
 
                 TokenKind::Punct(PunctKind::Comma) if paren_level == 1 => {
                     args.push(finish_arg(&mut cur_arg, tok))
                 }
 
-                _ => cur_arg.push(tok),
+                _ => cur_arg.push_back(tok),
             }
         }
 
@@ -294,7 +294,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     }
 }
 
-fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
+fn check_arity(params: &[Symbol], args: &[VecDeque<ReplacementToken>]) -> bool {
     // There is always at least one (empty, EOF-only) argument parsed, so if the macro takes no
     //  parameters just make sure that there is exactly one empty argument.
     args.len() == params.len() || (params.is_empty() && args.len() == 1 && args[0].len() == 1)
