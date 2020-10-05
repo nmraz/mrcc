@@ -236,7 +236,7 @@ fn check_arity(params: &[Symbol], args: &[Vec<ReplacementToken>]) -> bool {
 }
 
 struct PendingReplacement {
-    name: Symbol,
+    name: Option<Symbol>,
     tokens: VecDeque<ReplacementToken>,
 }
 
@@ -294,7 +294,7 @@ impl PendingReplacements {
         let exp_range = ctx.smap.get_source(exp_id).range;
 
         self.push_replacement(
-            name_tok.data(),
+            Some(name_tok.data()),
             replacement_list
                 .tokens()
                 .iter()
@@ -343,14 +343,18 @@ impl PendingReplacements {
         None
     }
 
-    fn push_replacement(&mut self, name: Symbol, tokens: VecDeque<ReplacementToken>) {
-        self.active_names.insert(name);
+    fn push_replacement(&mut self, name: Option<Symbol>, tokens: VecDeque<ReplacementToken>) {
+        if let Some(name) = name {
+            self.active_names.insert(name);
+        }
         self.replacements.push(PendingReplacement { name, tokens });
     }
 
     fn pop_replacement(&mut self) {
         if let Some(replacement) = self.replacements.pop() {
-            self.active_names.remove(&replacement.name);
+            if let Some(name) = replacement.name {
+                self.active_names.remove(&name);
+            }
         }
     }
 }
