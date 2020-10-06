@@ -311,11 +311,38 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             None => return Ok(None),
         };
 
+        self.map_replacement_tokens(
+            name_tok,
+            replacement_list.tokens().iter().copied().map(Into::into),
+            spelling_range,
+            ExpansionType::Macro,
+        )
+        .map(Some)
+    }
+
+    fn map_replacement_tokens<'c>(
+        &mut self,
+        name_tok: PpToken<Symbol>,
+        tokens: impl Iterator<Item = ReplacementToken> + 'c,
+        spelling_range: SourceRange,
+        expansion_type: ExpansionType,
+    ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
+        fn move_subrange(
+            subrange: SourceRange,
+            old_range: SourceRange,
+            new_range: SourceRange,
+        ) -> SourceRange {
+            let off = subrange.start().offset_from(old_range.start());
+            let len = subrange.len();
+
+            new_range.subrange(off, len)
+        }
+
         let ctx = &mut self.ctx;
 
         let exp_id = ctx
             .smap
-            .create_expansion(spelling_range, name_tok.range(), ExpansionType::Macro)
+            .create_expansion(spelling_range, name_tok.range(), expansion_type)
             .map_err(|_| {
                 ctx.reporter()
                     .fatal(
@@ -328,27 +355,22 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         let exp_range = ctx.smap.get_source(exp_id).range;
 
-        Ok(Some(
-            replacement_list
-                .tokens()
-                .iter()
-                .copied()
-                .enumerate()
-                .map(move |(idx, mut ppt)| {
-                    if idx == 0 {
-                        // The first replacement token inherits `line_start` and `leading_trivia`
-                        // from the replaced token.
-                        ppt.line_start = name_tok.line_start;
-                        ppt.leading_trivia = name_tok.leading_trivia;
-                    } else {
-                        ppt.line_start = false;
-                    }
+        Ok(tokens.enumerate().map(move |(idx, mut tok)| {
+            let ppt = &mut tok.ppt;
+            if idx == 0 {
+                // The first replacement token inherits `line_start` and `leading_trivia`
+                // from the replaced token.
+                ppt.line_start = name_tok.line_start;
+                ppt.leading_trivia = name_tok.leading_trivia;
+            } else {
+                ppt.line_start = false;
+            }
 
-                    // Move every token to point into the newly-created expansion source.
-                    ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
-                    ppt.into()
-                }),
-        ))
+            // Move every token to point into the newly-created expansion source.
+            ppt.tok.range = move_subrange(ppt.tok.range, spelling_range, exp_range);
+
+            tok
+        }))
     }
 
     fn macro_def_note(&self, name_tok: Token<Symbol>) -> RawSubDiagnostic {
@@ -450,15 +472,4 @@ impl PendingReplacements {
 
         None
     }
-}
-
-fn move_subrange(
-    subrange: SourceRange,
-    old_range: SourceRange,
-    new_range: SourceRange,
-) -> SourceRange {
-    let off = subrange.start().offset_from(old_range.start());
-    let len = subrange.len();
-
-    new_range.subrange(off, len)
 }
