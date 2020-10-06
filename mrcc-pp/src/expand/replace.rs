@@ -172,7 +172,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         loop {
             // Make sure that we don't consume the EOF token (if one exists), which could be crucial
-            // when using directive lexers and the like.
+            // when using directive lexers or pre-expanding macro arguments.
             if self.peek_token()?.ppt.data() == TokenKind::Eof {
                 let note = self.macro_def_note(def_tok);
 
