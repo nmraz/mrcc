@@ -1,11 +1,12 @@
 use std::collections::VecDeque;
 use std::{iter, mem};
 
+use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
 use mrcc_source::{diag::RawSubDiagnostic, DResult};
-use mrcc_source::{smap::ExpansionType, SourceRange};
+use mrcc_source::{smap::ExpansionType, SourceId, SourceRange};
 
 use crate::PpToken;
 
@@ -118,7 +119,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         name_tok: PpToken<Symbol>,
         replacement_list: &ReplacementList,
     ) -> DResult<()> {
-        let tokens = match self.get_replacement_tokens(name_tok, replacement_list)? {
+        let tokens = match self.map_replacement_tokens(name_tok, replacement_list)? {
             Some(iter) => iter.collect(),
             None => return Ok(()),
         };
@@ -252,7 +253,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         params: &[Symbol],
         args: Vec<VecDeque<ReplacementToken>>,
     ) -> DResult<()> {
-        let body_tokens = match self.get_replacement_tokens(name_tok, replacement_list)? {
+        let body_tokens = match self.map_replacement_tokens(name_tok, replacement_list)? {
             Some(iter) => iter,
             None => return Ok(()),
         };
@@ -263,8 +264,8 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         for tok in body_tokens {
             if let TokenKind::Ident(ident) = tok.ppt.data() {
                 if let Some(idx) = params.iter().position(|&name| name == ident) {
-                    // TODO: fix argument ranges and line start/leading trivia.
-                    tokens.extend(self.get_pre_expanded_arg(&mut args[idx])?);
+                    let preexp = self.get_pre_expanded_arg(&mut args[idx])?;
+                    tokens.extend(self.map_arg_tokens(tok.ppt.map(|_| ident), preexp)?);
                     continue;
                 }
             }
@@ -301,7 +302,46 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             .collect()
     }
 
-    fn get_replacement_tokens<'c>(
+    fn map_arg_tokens(
+        &mut self,
+        name_tok: PpToken<Symbol>,
+        tokens: impl Iterator<Item = ReplacementToken>,
+    ) -> DResult<Vec<ReplacementToken>> {
+        fn lookup_tok_source(
+            this: &ReplacementCtx<'_, '_, '_>,
+            tok: &ReplacementToken,
+        ) -> SourceId {
+            this.ctx.smap.lookup_source_id(tok.ppt.range().start())
+        }
+
+        let mut tokens = tokens.peekable();
+        let mut ret = Vec::new();
+        let mut first = true;
+
+        while let Some(tok) = tokens.next() {
+            let mut run = vec![tok];
+            let source = lookup_tok_source(self, &tok);
+
+            run.extend(tokens.peeking_take_while(|tok| lookup_tok_source(self, tok) == source));
+
+            let begin = run[0].ppt.range().start();
+            let end = run.last().unwrap().ppt.range().end();
+
+            let spelling_range = SourceRange::new(begin, end.offset_from(begin));
+
+            ret.extend(self.map_tokens(
+                name_tok,
+                mem::replace(&mut first, false),
+                run,
+                spelling_range,
+                ExpansionType::MacroArg,
+            )?);
+        }
+
+        Ok(ret)
+    }
+
+    fn map_replacement_tokens<'c>(
         &mut self,
         name_tok: PpToken<Symbol>,
         replacement_list: &'c ReplacementList,
@@ -311,8 +351,9 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             None => return Ok(None),
         };
 
-        self.map_replacement_tokens(
+        self.map_tokens(
             name_tok,
+            true,
             replacement_list.tokens().iter().copied().map(Into::into),
             spelling_range,
             ExpansionType::Macro,
@@ -320,10 +361,11 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         .map(Some)
     }
 
-    fn map_replacement_tokens<'c>(
+    fn map_tokens<'c>(
         &mut self,
         name_tok: PpToken<Symbol>,
-        tokens: impl Iterator<Item = ReplacementToken> + 'c,
+        first: bool,
+        tokens: impl IntoIterator<Item = ReplacementToken> + 'c,
         spelling_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
@@ -355,9 +397,9 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         let exp_range = ctx.smap.get_source(exp_id).range;
 
-        Ok(tokens.enumerate().map(move |(idx, mut tok)| {
+        Ok(tokens.into_iter().enumerate().map(move |(idx, mut tok)| {
             let ppt = &mut tok.ppt;
-            if idx == 0 {
+            if first && idx == 0 {
                 // The first replacement token inherits `line_start` and `leading_trivia`
                 // from the replaced token.
                 ppt.line_start = name_tok.line_start;
