@@ -306,8 +306,8 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         Ok(())
     }
 
-    fn report_and_advance(&mut self, ppt: PpToken, msg: &str) -> DResult<()> {
-        self.processor.report_and_advance(self.ctx, ppt, msg)
+    fn report_and_advance(&mut self, ppt: PpToken, msg: impl Into<String>) -> DResult<()> {
+        self.processor.report_and_advance(self.ctx, ppt, msg.into())
     }
 
     fn advance_to_eod(&mut self) -> DResult<()> {

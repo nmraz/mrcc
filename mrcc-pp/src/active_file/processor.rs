@@ -99,7 +99,7 @@ impl<'a> Processor<'a> {
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         ppt: PpToken,
-        msg: &str,
+        msg: String,
     ) -> DResult<()> {
         ctx.reporter().error(ppt.range(), msg).emit()?;
 
