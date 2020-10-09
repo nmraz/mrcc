@@ -33,10 +33,7 @@ impl FileName {
 
     /// Returns `true` if the file name is real.
     pub fn is_real(&self) -> bool {
-        match self {
-            FileName::Real(_) => true,
-            _ => false,
-        }
+        matches!(self, FileName::Real(_))
     }
 }
 
