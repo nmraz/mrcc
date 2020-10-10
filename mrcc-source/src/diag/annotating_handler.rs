@@ -15,11 +15,7 @@ pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
     fn handle(&mut self, diag: &RenderedDiagnostic<'_>) {
-        let subdiags = iter::once(DisplayableSubDiagnostic::from_main(diag)).chain(
-            diag.notes()
-                .iter()
-                .map(|note| DisplayableSubDiagnostic::from_note(note)),
-        );
+        let subdiags = main_diag_chain(diag).chain(diag.notes().iter().flat_map(note_diag_chain));
 
         match diag.smap() {
             Some(smap) => subdiags.for_each(|subdiag| print_subdiag(&subdiag, smap)),
@@ -28,6 +24,36 @@ impl RenderedHandler for AnnotatingHandler {
 
         eprintln!();
     }
+}
+
+fn main_diag_chain<'a>(
+    diag: &'a RenderedDiagnostic<'_>,
+) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
+    chain_expansions(
+        DisplayableSubDiagnostic::from_subdiag(diag.level(), diag.main(), &diag.includes),
+        diag.main(),
+    )
+}
+
+fn note_diag_chain(
+    note: &RenderedSubDiagnostic,
+) -> impl Iterator<Item = DisplayableSubDiagnostic<'_>> {
+    chain_expansions(
+        DisplayableSubDiagnostic::from_subdiag(Level::Note, note, &[]),
+        note,
+    )
+}
+
+fn chain_expansions<'a>(
+    primary: DisplayableSubDiagnostic<'a>,
+    expansion_subdiag: &'a RenderedSubDiagnostic,
+) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
+    iter::once(primary).chain(
+        expansion_subdiag
+            .expansions
+            .iter()
+            .map(|ranges| DisplayableSubDiagnostic::from_expansion(ranges)),
+    )
 }
 
 struct DisplayableSubDiagnostic<'a> {
@@ -53,12 +79,14 @@ impl<'a> DisplayableSubDiagnostic<'a> {
         }
     }
 
-    fn from_main(diag: &'a RenderedDiagnostic<'_>) -> Self {
-        Self::from_subdiag(diag.level(), diag.main(), &diag.includes)
-    }
-
-    fn from_note(note: &'a RenderedSubDiagnostic) -> Self {
-        Self::from_subdiag(Level::Note, note, &[])
+    fn from_expansion(ranges: &'a RenderedRanges) -> Self {
+        Self {
+            level: Level::Note,
+            msg: "expanded from here",
+            ranges: Some(ranges),
+            suggestion: None,
+            includes: &[],
+        }
     }
 }
 
