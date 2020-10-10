@@ -224,10 +224,10 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         if args.len() != params.len()
             && !(params.is_empty() && args.len() == 1 && args[0].len() == 1)
         {
-            let quantifier = if args.len() > params.len() {
-                "many"
+            let (quantifier, arg_tok) = if args.len() > params.len() {
+                ("many", args[params.len()][0])
             } else {
-                "few"
+                ("few", *args.last().unwrap().back().unwrap())
             };
 
             let note = self.macro_def_note(def_tok);
@@ -238,6 +238,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                     name_tok.range,
                     format!("too {} arguments provided to macro invocation", quantifier),
                 )
+                .add_range(arg_tok.ppt.range().into())
                 .add_note(note)
                 .emit()?;
             return Ok(false);
