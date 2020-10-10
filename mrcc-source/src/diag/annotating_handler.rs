@@ -5,7 +5,10 @@ use std::iter;
 use crate::smap::InterpretedFileRange;
 use crate::{LineCol, SourceMap, SourcePos};
 
-use super::{Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedSubDiagnostic};
+use super::{
+    Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedRanges, RenderedSubDiagnostic,
+    RenderedSuggestion,
+};
 
 /// A rendered diagnostic handler that emits messages and annotated code snippets to `stderr`.
 pub struct AnnotatingHandler;
@@ -20,7 +23,7 @@ impl RenderedHandler for AnnotatingHandler {
 
         match diag.smap() {
             Some(smap) => subdiags.for_each(|subdiag| print_subdiag(&subdiag, smap)),
-            None => subdiags.for_each(|subdiag| print_anon_subdiag(subdiag.level, subdiag.diag)),
+            None => subdiags.for_each(|subdiag| print_anon_subdiag(&subdiag)),
         }
 
         eprintln!();
@@ -29,38 +32,46 @@ impl RenderedHandler for AnnotatingHandler {
 
 struct DisplayableSubDiagnostic<'a> {
     level: Level,
-    diag: &'a RenderedSubDiagnostic,
+    msg: &'a str,
+    ranges: Option<&'a RenderedRanges>,
+    suggestion: Option<&'a RenderedSuggestion>,
     includes: &'a [SourcePos],
 }
 
 impl<'a> DisplayableSubDiagnostic<'a> {
-    fn from_main(diag: &'a RenderedDiagnostic<'_>) -> Self {
+    fn from_subdiag(
+        level: Level,
+        subdiag: &'a RenderedSubDiagnostic,
+        includes: &'a [SourcePos],
+    ) -> Self {
         Self {
-            level: diag.level(),
-            diag: diag.main(),
-            includes: &diag.includes,
+            level,
+            msg: subdiag.msg(),
+            ranges: subdiag.ranges(),
+            suggestion: subdiag.suggestion(),
+            includes,
         }
+    }
+
+    fn from_main(diag: &'a RenderedDiagnostic<'_>) -> Self {
+        Self::from_subdiag(diag.level(), diag.main(), &diag.includes)
     }
 
     fn from_note(note: &'a RenderedSubDiagnostic) -> Self {
-        Self {
-            level: Level::Note,
-            diag: note,
-            includes: &[],
-        }
+        Self::from_subdiag(Level::Note, note, &[])
     }
 }
 
-fn print_anon_subdiag(level: Level, subdiag: &RenderedSubDiagnostic) {
-    eprintln!("{}: {}", level, subdiag.msg());
+fn print_anon_subdiag(subdiag: &DisplayableSubDiagnostic<'_>) {
+    eprintln!("{}: {}", subdiag.level, subdiag.msg);
 }
 
 fn print_subdiag(subdiag: &DisplayableSubDiagnostic<'_>, smap: &SourceMap) {
-    print_anon_subdiag(subdiag.level, subdiag.diag);
+    print_anon_subdiag(subdiag);
 
-    if let Some(&Ranges { primary_range, .. }) = subdiag.diag.ranges() {
+    if let Some(&Ranges { primary_range, .. }) = subdiag.ranges {
         let interp = smap.get_interpreted_range(primary_range);
-        let suggestion = subdiag.diag.suggestion().map(|sugg| {
+        let suggestion = subdiag.suggestion.map(|sugg| {
             (
                 sugg.insert_text.as_str(),
                 smap.get_interpreted_range(sugg.replacement_range)
