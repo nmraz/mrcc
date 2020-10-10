@@ -297,9 +297,13 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
     ) -> DResult<Vec<ReplacementToken>> {
         self.replacements.push(None, arg);
 
-        iter::from_fn(|| self.next_expanded_token().transpose())
-            .take_while(|res| res.map_or(true, |tok| tok.ppt.data() != TokenKind::Eof))
-            .collect()
+        itertools::process_results(
+            iter::from_fn(|| self.next_expanded_token().transpose()),
+            |iter| {
+                iter.filter(|tok| tok.ppt.data() != TokenKind::Eof)
+                    .collect()
+            },
+        )
     }
 
     fn map_arg_tokens(
