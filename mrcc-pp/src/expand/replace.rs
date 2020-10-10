@@ -32,11 +32,6 @@ pub trait ReplacementLexer {
     fn peek(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken>;
 }
 
-enum ArgState {
-    Raw(VecDeque<ReplacementToken>),
-    PreExpanded(Vec<ReplacementToken>),
-}
-
 pub struct ReplacementCtx<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     defs: &'a MacroTable,
@@ -254,6 +249,25 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         params: &[Symbol],
         args: Vec<VecDeque<ReplacementToken>>,
     ) -> DResult<()> {
+        enum ArgState {
+            Raw(VecDeque<ReplacementToken>),
+            PreExpanded(Vec<ReplacementToken>),
+        }
+
+        fn get_pre_expanded_arg<'c>(
+            this: &mut ReplacementCtx<'_, '_, '_>,
+            arg: &'c mut ArgState,
+        ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
+            if let ArgState::Raw(unexp) = arg {
+                *arg = ArgState::PreExpanded(this.pre_expand_macro_arg(mem::take(unexp))?);
+            }
+
+            match arg {
+                ArgState::PreExpanded(preexp) => Ok(preexp.iter().copied()),
+                ArgState::Raw(_) => unreachable!(),
+            }
+        }
+
         let body_tokens = match self.map_replacement_tokens(name_tok, replacement_list)? {
             Some(iter) => iter,
             None => return Ok(()),
@@ -265,7 +279,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         for tok in body_tokens {
             if let TokenKind::Ident(ident) = tok.ppt.data() {
                 if let Some(idx) = params.iter().position(|&name| name == ident) {
-                    let preexp = self.get_pre_expanded_arg(&mut args[idx])?;
+                    let preexp = get_pre_expanded_arg(self, &mut args[idx])?;
                     tokens.extend(self.map_arg_tokens(tok.ppt.map(|_| ident), preexp)?);
                     continue;
                 }
@@ -276,20 +290,6 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         self.replacements.push(Some(name_tok.data()), tokens);
         Ok(())
-    }
-
-    fn get_pre_expanded_arg<'c>(
-        &mut self,
-        arg: &'c mut ArgState,
-    ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
-        if let ArgState::Raw(unexp) = arg {
-            *arg = ArgState::PreExpanded(self.pre_expand_macro_arg(mem::take(unexp))?);
-        }
-
-        match arg {
-            ArgState::PreExpanded(preexp) => Ok(preexp.iter().copied()),
-            ArgState::Raw(_) => unreachable!(),
-        }
     }
 
     fn pre_expand_macro_arg(
