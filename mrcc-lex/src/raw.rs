@@ -79,10 +79,7 @@ pub fn clean(tok: &str) -> String {
 
 /// Checks whether `c` is a non-newline whitespace character, as per §6.4.
 fn is_line_ws(c: char) -> bool {
-    match c {
-        ' ' | '\t' | '\x0b' | '\x0c' => true,
-        _ => false,
-    }
+    [' ', '\t', '\x0b', '\x0c'].contains(&c)
 }
 
 /// Checks whether `c` is the start of an identifier (identifier-nondigit), as per §6.4.2.1.
