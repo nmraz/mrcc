@@ -49,6 +49,7 @@
 //!
 //! Spelling ranges can also point into expansions when macros pass arguments to other macros.
 
+use std::cmp;
 use std::convert::TryFrom;
 use std::ops::Range;
 use std::option::Option;
@@ -528,10 +529,6 @@ impl SourceMap {
     /// `range.end` in the expansion forest. If the two endpoints lie in different files, `None` is
     /// returned.
     ///
-    /// # Panics
-    ///
-    /// Panics if the returned range would end before it starts.
-    ///
     /// # Example
     ///
     /// ```c
@@ -564,6 +561,7 @@ impl SourceMap {
                 }
             })?;
 
+        let (start_pos, end_pos) = (cmp::min(start_pos, end_pos), cmp::max(start_pos, end_pos));
         Some(SourceRange::new(start_pos, end_pos.offset_from(start_pos)))
     }
 }
