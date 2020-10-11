@@ -55,68 +55,66 @@ impl<'a, 'h> LexCtx<'a, 'h> {
     pub fn reporter(&mut self) -> DiagReporter<'_, 'h> {
         self.diags.reporter(self.smap)
     }
+}
 
-    /// Converts a raw token to a proper token, emitting errors if it is malformed.
-    ///
-    /// `base_pos` should be the position relative to which `raw.content.off` was specified.
-    pub fn convert_raw(
-        &mut self,
-        raw: &RawToken<'_>,
-        base_pos: SourcePos,
-    ) -> DResult<ConvertedToken> {
-        let pos = base_pos.offset(raw.content.off);
+/// Converts a raw token to a proper token, emitting errors if it is malformed.
+///
+/// `base_pos` should be the position relative to which `raw.content.off` was specified.
+pub fn convert_raw(
+    ctx: &mut LexCtx<'_, '_>,
+    raw: &RawToken<'_>,
+    base_pos: SourcePos,
+) -> DResult<ConvertedToken> {
+    let pos = base_pos.offset(raw.content.off);
 
-        let check_terminated = |this: &mut LexCtx<'_, '_>, terminated: bool, kind: &str| {
-            if !terminated {
-                this.reporter()
-                    .error(pos, format!("unterminated {}", kind))
-                    .emit()?;
-            }
-            Ok(())
-        };
+    let check_terminated = |ctx: &mut LexCtx<'_, '_>, terminated: bool, kind: &str| {
+        if !terminated {
+            ctx.reporter()
+                .error(pos, format!("unterminated {}", kind))
+                .emit()?;
+        }
+        Ok(())
+    };
 
-        let intern_content =
-            |this: &mut LexCtx<'_, '_>| this.interner.intern_cow(raw.content.cleaned_str());
+    let intern_content =
+        |ctx: &mut LexCtx<'_, '_>| ctx.interner.intern_cow(raw.content.cleaned_str());
 
-        let kind = match raw.kind {
-            RawTokenKind::Unknown => ConvertedTokenKind::Real(TokenKind::Unknown),
+    let kind = match raw.kind {
+        RawTokenKind::Unknown => ConvertedTokenKind::Real(TokenKind::Unknown),
 
-            RawTokenKind::Eof => ConvertedTokenKind::Real(TokenKind::Eof),
-            RawTokenKind::Newline => ConvertedTokenKind::Newline,
+        RawTokenKind::Eof => ConvertedTokenKind::Real(TokenKind::Eof),
+        RawTokenKind::Newline => ConvertedTokenKind::Newline,
 
-            RawTokenKind::Ws | RawTokenKind::LineComment => ConvertedTokenKind::Trivia,
-            RawTokenKind::BlockComment { terminated } => {
-                check_terminated(self, terminated, "block comment")?;
-                ConvertedTokenKind::Trivia
-            }
+        RawTokenKind::Ws | RawTokenKind::LineComment => ConvertedTokenKind::Trivia,
+        RawTokenKind::BlockComment { terminated } => {
+            check_terminated(ctx, terminated, "block comment")?;
+            ConvertedTokenKind::Trivia
+        }
 
-            RawTokenKind::Punct(punct) => ConvertedTokenKind::Real(TokenKind::Punct(punct)),
-            RawTokenKind::Ident => ConvertedTokenKind::Real(TokenKind::Ident(intern_content(self))),
-            RawTokenKind::Number => {
-                ConvertedTokenKind::Real(TokenKind::Number(intern_content(self)))
-            }
+        RawTokenKind::Punct(punct) => ConvertedTokenKind::Real(TokenKind::Punct(punct)),
+        RawTokenKind::Ident => ConvertedTokenKind::Real(TokenKind::Ident(intern_content(ctx))),
+        RawTokenKind::Number => ConvertedTokenKind::Real(TokenKind::Number(intern_content(ctx))),
 
-            RawTokenKind::Str { terminated } => {
-                check_terminated(self, terminated, "string literal")?;
-                ConvertedTokenKind::Real(TokenKind::Str(intern_content(self)))
-            }
+        RawTokenKind::Str { terminated } => {
+            check_terminated(ctx, terminated, "string literal")?;
+            ConvertedTokenKind::Real(TokenKind::Str(intern_content(ctx)))
+        }
 
-            RawTokenKind::Char { terminated } => {
-                check_terminated(self, terminated, "character literal")?;
-                ConvertedTokenKind::Real(TokenKind::Char(intern_content(self)))
-            }
-        };
+        RawTokenKind::Char { terminated } => {
+            check_terminated(ctx, terminated, "character literal")?;
+            ConvertedTokenKind::Real(TokenKind::Char(intern_content(ctx)))
+        }
+    };
 
-        let range = if kind == ConvertedTokenKind::Newline {
-            // Newlines are special: we don't want the range to cover the newline character itself,
-            // as that would make it end on the next line.
-            pos.into()
-        } else {
-            SourceRange::new(pos, raw.content.str.len() as u32)
-        };
+    let range = if kind == ConvertedTokenKind::Newline {
+        // Newlines are special: we don't want the range to cover the newline character itself,
+        // as that would make it end on the next line.
+        pos.into()
+    } else {
+        SourceRange::new(pos, raw.content.str.len() as u32)
+    };
 
-        Ok(ConvertedToken { data: kind, range })
-    }
+    Ok(ConvertedToken { data: kind, range })
 }
 
 /// Retrieves the source code snippet indicated by `range` from `smap`, cleaning out any escaped
