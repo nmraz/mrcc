@@ -21,7 +21,7 @@ pub enum TokenKind {
 }
 
 /// Represents the possible token types returned by
-/// [`LexCtx::convert_raw`](struct.LexCtx.html#method.convert_raw).
+/// [`convert_raw()`](fn.convert_raw.html).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConvertedTokenKind {
     /// A real token.
@@ -63,7 +63,7 @@ impl<D> Token<D> {
     }
 }
 
-/// Converted token returned by [`LexCtx::convert_raw`](struct.LexCtx.html#method.convert_raw).
+/// Converted token returned by [`convert_raw()`](fn.convert_raw.html).
 pub type ConvertedToken = Token<ConvertedTokenKind>;
 
 impl Token {

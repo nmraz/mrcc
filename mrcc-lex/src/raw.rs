@@ -3,7 +3,7 @@
 //! Raw tokens differ from "ordinary" tokens in that they are lossless and point back into the
 //! original source string. Lexing them requires no auxiliary state (such as interners) and can
 //! never fail. To validate  a raw token and convert it to a "real" token, use
-//! [`LexCtx::convert_raw()`](../struct.LexCtx.html#method.convert_raw).
+//! [`convert_raw()`](../fn.convert_raw.html).
 
 use std::borrow::Cow;
 
