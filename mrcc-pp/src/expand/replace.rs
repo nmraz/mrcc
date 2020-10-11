@@ -301,7 +301,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         itertools::process_results(
             iter::from_fn(|| self.next_expanded_token().transpose()),
             |iter| {
-                iter.filter(|tok| tok.ppt.data() != TokenKind::Eof)
+                iter.take_while(|tok| tok.ppt.data() != TokenKind::Eof)
                     .collect()
             },
         )
