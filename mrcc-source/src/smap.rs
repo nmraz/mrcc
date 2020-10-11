@@ -394,6 +394,9 @@ impl SourceMap {
     }
 
     /// Retrieves the source code snippet indicated by `range`.
+    ///
+    /// See also [`mrcc_lex::get_cleaned_spelling`](../../mrcc_lex/fn.get_cleaned_spelling.html),
+    /// which properly handles escaped newlines in the retrieved snippet.
     pub fn get_spelling(&self, range: SourceRange) -> &str {
         let (id, pos) = self.get_spelling_chain(range.start()).last().unwrap();
         let source = self.get_source(id);

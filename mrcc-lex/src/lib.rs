@@ -2,6 +2,8 @@
 
 #![warn(rust_2018_idioms)]
 
+use std::borrow::Cow;
+
 use mrcc_source::{DResult, DiagManager, DiagReporter, SourceMap, SourcePos, SourceRange};
 
 pub use punct::PunctKind;
@@ -114,5 +116,18 @@ impl<'a, 'h> LexCtx<'a, 'h> {
         };
 
         Ok(ConvertedToken { data: kind, range })
+    }
+}
+
+/// Retrieves the source code snippet indicated by `range` from `smap`, cleaning out any escaped
+/// newlines.
+///
+/// This is optimized for the common case where there are no escaped newlines.
+pub fn get_cleaned_spelling(smap: &SourceMap, range: SourceRange) -> Cow<'_, str> {
+    let spelling = smap.get_spelling(range);
+    if spelling.contains("\\\n") {
+        Cow::Owned(raw::clean(spelling))
+    } else {
+        Cow::Borrowed(spelling)
     }
 }

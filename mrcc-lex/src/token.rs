@@ -2,7 +2,7 @@ use std::fmt;
 
 use mrcc_source::SourceRange;
 
-use super::{raw, LexCtx, PunctKind, Symbol};
+use super::{get_cleaned_spelling, LexCtx, PunctKind, Symbol};
 
 /// Enum representing token types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -82,11 +82,9 @@ impl fmt::Display for Display<'_, '_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.tok.data {
             TokenKind::Eof => Ok(()),
-            TokenKind::Unknown => write!(
-                f,
-                "{}",
-                raw::clean(self.ctx.smap.get_spelling(self.tok.range))
-            ),
+            TokenKind::Unknown => {
+                write!(f, "{}", get_cleaned_spelling(self.ctx.smap, self.tok.range))
+            }
             TokenKind::Punct(kind) => write!(f, "{}", kind),
             TokenKind::Ident(sym)
             | TokenKind::Number(sym)
