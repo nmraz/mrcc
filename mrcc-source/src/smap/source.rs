@@ -168,7 +168,7 @@ impl FileSourceInfo {
 
 /// The different kinds of expansions that can be tracked by an expansion source.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExpansionType {
+pub enum ExpansionKind {
     /// An ordinary macro expansion.
     Macro,
     /// The expansion of a macro argument into its owning macro.
@@ -185,8 +185,8 @@ pub struct ExpansionSourceInfo {
     pub spelling_range: SourceRange,
     /// The range into which the expansion was performed.
     pub replacement_range: SourceRange,
-    /// The type of expansion recoreded here.
-    pub expansion_type: ExpansionType,
+    /// The kind of expansion recoreded here.
+    pub kind: ExpansionKind,
 }
 
 impl ExpansionSourceInfo {
@@ -194,12 +194,12 @@ impl ExpansionSourceInfo {
     pub fn new(
         spelling_range: SourceRange,
         replacement_range: SourceRange,
-        expansion_type: ExpansionType,
+        kind: ExpansionKind,
     ) -> Self {
         ExpansionSourceInfo {
             spelling_range,
             replacement_range,
-            expansion_type,
+            kind,
         }
     }
 
@@ -228,8 +228,8 @@ impl ExpansionSourceInfo {
     /// For macro arguments, the caller is where the argument was spelled, while for other types of
     /// expansions it is the replacement range.
     pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
-        match self.expansion_type {
-            ExpansionType::MacroArg => self.spelling_range(range),
+        match self.kind {
+            ExpansionKind::MacroArg => self.spelling_range(range),
             _ => self.replacement_range,
         }
     }

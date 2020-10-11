@@ -36,7 +36,7 @@ fn create_expansion() {
         .create_expansion(
             file_range.subrange(10, 1),
             file_range.subrange(12, 1),
-            ExpansionType::Macro,
+            ExpansionKind::Macro,
         )
         .unwrap();
 
@@ -44,7 +44,7 @@ fn create_expansion() {
     let exp = exp_source.as_expansion().unwrap();
 
     assert_eq!(exp.spelling_range, file_range.subrange(10, 1));
-    assert_eq!(exp.expansion_type, ExpansionType::Macro);
+    assert_eq!(exp.kind, ExpansionKind::Macro);
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn include_pos_non_file() {
         .create_expansion(
             file_range.subrange(10, 1),
             file_range.subrange(12, 1),
-            ExpansionType::Macro,
+            ExpansionKind::Macro,
         )
         .unwrap();
 
@@ -154,7 +154,7 @@ fn populate_sm(sm: &mut SourceMap) -> (SourceRange, SourceRange, SourceRange, So
         .create_expansion(
             file_range.subrange(31, 8),
             file_range.subrange(48, 1),
-            ExpansionType::Macro,
+            ExpansionKind::Macro,
         )
         .unwrap();
     let exp_a_range = sm.get_source(exp_a_id).range;
@@ -163,7 +163,7 @@ fn populate_sm(sm: &mut SourceMap) -> (SourceRange, SourceRange, SourceRange, So
         .create_expansion(
             file_range.subrange(13, 7),
             exp_a_range.subrange(0, 1),
-            ExpansionType::Macro,
+            ExpansionKind::Macro,
         )
         .unwrap();
     let exp_b_range = sm.get_source(exp_b_id).range;
@@ -172,7 +172,7 @@ fn populate_sm(sm: &mut SourceMap) -> (SourceRange, SourceRange, SourceRange, So
         .create_expansion(
             exp_a_range.subrange(2, 5),
             exp_b_range.subrange(1, 1),
-            ExpansionType::MacroArg,
+            ExpansionKind::MacroArg,
         )
         .unwrap();
     let exp_b_x_range = sm.get_source(exp_b_x_id).range;

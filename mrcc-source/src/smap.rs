@@ -60,7 +60,7 @@ use itertools::Itertools;
 
 use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
-    ExpansionSourceInfo, ExpansionType, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
+    ExpansionKind, ExpansionSourceInfo, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
 
 mod source;
@@ -272,7 +272,7 @@ impl SourceMap {
         &mut self,
         spelling_range: SourceRange,
         replacement_range: SourceRange,
-        expansion_type: ExpansionType,
+        kind: ExpansionKind,
     ) -> Result<SourceId, SourcesTooLargeError> {
         assert!(!spelling_range.is_empty());
         assert!(!replacement_range.is_empty());
@@ -289,7 +289,7 @@ impl SourceMap {
                 SourceInfo::Expansion(ExpansionSourceInfo::new(
                     spelling_range,
                     replacement_range,
-                    expansion_type,
+                    kind,
                 ))
             },
             spelling_range.len(),

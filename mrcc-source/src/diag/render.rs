@@ -5,7 +5,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHasher;
 
-use crate::smap::{ExpansionType, SourceId};
+use crate::smap::{ExpansionKind, SourceId};
 use crate::SourceMap;
 use crate::SourceRange;
 
@@ -27,7 +27,7 @@ fn trace_expansions(
 
         // Shift macro arguments to their use in the macro
         if let Some(exp) = source.as_expansion() {
-            if exp.expansion_type == ExpansionType::MacroArg {
+            if exp.kind == ExpansionKind::MacroArg {
                 let use_range = exp.replacement_range;
                 return (smap.lookup_source_id(use_range.start()), use_range);
             }

@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
 use mrcc_source::{diag::RawSubDiagnostic, DResult};
-use mrcc_source::{smap::ExpansionType, SourceId, SourceRange};
+use mrcc_source::{smap::ExpansionKind, SourceId, SourceRange};
 
 use crate::PpToken;
 
@@ -339,7 +339,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
                 mem::replace(&mut first, false),
                 run,
                 spelling_range,
-                ExpansionType::MacroArg,
+                ExpansionKind::MacroArg,
             )?);
         }
 
@@ -361,7 +361,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             true,
             replacement_list.tokens().iter().copied().map(Into::into),
             spelling_range,
-            ExpansionType::Macro,
+            ExpansionKind::Macro,
         )
         .map(Some)
     }
@@ -372,7 +372,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         first: bool,
         tokens: impl IntoIterator<Item = ReplacementToken> + 'c,
         spelling_range: SourceRange,
-        expansion_type: ExpansionType,
+        expansion_kind: ExpansionKind,
     ) -> DResult<impl Iterator<Item = ReplacementToken> + 'c> {
         fn move_subrange(
             subrange: SourceRange,
@@ -389,7 +389,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         let exp_id = ctx
             .smap
-            .create_expansion(spelling_range, name_tok.range(), expansion_type)
+            .create_expansion(spelling_range, name_tok.range(), expansion_kind)
             .map_err(|_| {
                 ctx.reporter()
                     .fatal(
