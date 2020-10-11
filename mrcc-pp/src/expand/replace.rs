@@ -114,7 +114,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         name_tok: PpToken<Symbol>,
         replacement_list: &ReplacementList,
     ) -> DResult<()> {
-        let tokens = match self.map_replacement_tokens(name_tok, replacement_list)? {
+        let tokens = match self.map_replacement_tokens(name_tok.map(|_| ()), replacement_list)? {
             Some(iter) => iter.collect(),
             None => return Ok(()),
         };
@@ -268,10 +268,11 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             }
         }
 
-        let body_tokens = match self.map_replacement_tokens(name_tok, replacement_list)? {
-            Some(iter) => iter,
-            None => return Ok(()),
-        };
+        let body_tokens =
+            match self.map_replacement_tokens(name_tok.map(|_| ()), replacement_list)? {
+                Some(iter) => iter,
+                None => return Ok(()),
+            };
 
         let mut args: Vec<_> = args.into_iter().map(ArgState::Raw).collect();
         let mut tokens = VecDeque::new();
@@ -280,7 +281,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             if let TokenKind::Ident(ident) = tok.ppt.data() {
                 if let Some(idx) = params.iter().position(|&name| name == ident) {
                     let preexp = get_pre_expanded_arg(self, &mut args[idx])?;
-                    tokens.extend(self.map_arg_tokens(tok.ppt.map(|_| ident), preexp)?);
+                    tokens.extend(self.map_arg_tokens(tok.ppt.map(|_| ()), preexp)?);
                     continue;
                 }
             }
@@ -309,7 +310,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
     fn map_arg_tokens(
         &mut self,
-        name_tok: PpToken<Symbol>,
+        replacement_tok: PpToken<()>,
         tokens: impl Iterator<Item = ReplacementToken>,
     ) -> DResult<Vec<ReplacementToken>> {
         fn lookup_tok_source(
@@ -335,7 +336,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             let spelling_range = SourceRange::new(begin, end.offset_from(begin));
 
             ret.extend(self.map_tokens(
-                name_tok,
+                replacement_tok,
                 mem::replace(&mut first, false),
                 run,
                 spelling_range,
@@ -348,7 +349,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
     fn map_replacement_tokens<'c>(
         &mut self,
-        name_tok: PpToken<Symbol>,
+        replacement_tok: PpToken<()>,
         replacement_list: &'c ReplacementList,
     ) -> DResult<Option<impl Iterator<Item = ReplacementToken> + 'c>> {
         let spelling_range = match replacement_list.spelling_range() {
@@ -357,7 +358,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         };
 
         self.map_tokens(
-            name_tok,
+            replacement_tok,
             true,
             replacement_list.tokens().iter().copied().map(Into::into),
             spelling_range,
@@ -368,7 +369,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
     fn map_tokens<'c>(
         &mut self,
-        name_tok: PpToken<Symbol>,
+        replacement_tok: PpToken<()>,
         first: bool,
         tokens: impl IntoIterator<Item = ReplacementToken> + 'c,
         spelling_range: SourceRange,
@@ -389,11 +390,11 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         let exp_id = ctx
             .smap
-            .create_expansion(spelling_range, name_tok.range(), expansion_kind)
+            .create_expansion(spelling_range, replacement_tok.range(), expansion_kind)
             .map_err(|_| {
                 ctx.reporter()
                     .fatal(
-                        name_tok.range(),
+                        replacement_tok.range(),
                         "translation unit too large for macro expansion",
                     )
                     .emit()
@@ -407,8 +408,8 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             if first && idx == 0 {
                 // The first replacement token inherits `line_start` and `leading_trivia`
                 // from the replaced token.
-                ppt.line_start = name_tok.line_start;
-                ppt.leading_trivia = name_tok.leading_trivia;
+                ppt.line_start = replacement_tok.line_start;
+                ppt.leading_trivia = replacement_tok.leading_trivia;
             } else {
                 ppt.line_start = false;
             }
