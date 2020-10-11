@@ -517,9 +517,9 @@ impl<'a> Tokenizer<'a> {
             }
             '!' => {
                 if self.reader.eat('=') {
-                    self.punct(ExclEq)
+                    self.punct(BangEq)
                 } else {
-                    self.punct(Excl)
+                    self.punct(Bang)
                 }
             }
             '<' => {
