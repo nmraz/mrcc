@@ -62,7 +62,7 @@ fn run(diags: &mut DiagManager<'_>) -> DResult<()> {
             // Preserve indentation by advancing to the start column first.
             let col = ctx
                 .smap
-                .get_interpreted_range(ctx.smap.get_expansion_range(ppt.range()))
+                .get_interpreted_range(ctx.smap.get_replacement_range(ppt.range()))
                 .start_linecol()
                 .col;
 

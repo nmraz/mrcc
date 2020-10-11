@@ -184,7 +184,7 @@ pub struct ExpansionSourceInfo {
     /// enclosing source.
     pub spelling_range: SourceRange,
     /// The range into which the expansion was performed.
-    pub expansion_range: SourceRange,
+    pub replacement_range: SourceRange,
     /// The type of expansion recoreded here.
     pub expansion_type: ExpansionType,
 }
@@ -193,12 +193,12 @@ impl ExpansionSourceInfo {
     /// Creates a new `ExpansionSourceInfo`.
     pub fn new(
         spelling_range: SourceRange,
-        expansion_range: SourceRange,
+        replacement_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> Self {
         ExpansionSourceInfo {
             spelling_range,
-            expansion_range,
+            replacement_range,
             expansion_type,
         }
     }
@@ -226,11 +226,11 @@ impl ExpansionSourceInfo {
     /// the expansion.
     ///
     /// For macro arguments, the caller is where the argument was spelled, while for other types of
-    /// expansions it is the expansion range.
+    /// expansions it is the replacement range.
     pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
         match self.expansion_type {
             ExpansionType::MacroArg => self.spelling_range(range),
-            _ => self.expansion_range,
+            _ => self.replacement_range,
         }
     }
 }

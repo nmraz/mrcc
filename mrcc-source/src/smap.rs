@@ -19,11 +19,11 @@
 //!
 //! [Expansion sources](struct.ExpansionSourceInfo.html) are how the `SourceMap` tracks macro
 //! expansions. Instead of containing actual source code, the expansion source merely points to two
-//! ranges, the _spelling range_ and the _expansion range_. The spelling range indicates where the
-//! expanded code came from, while the expansion range indicates where the code was expanded (in the
-//! case of function-like macros, it points solely to the macro name and not the entire invocation).
-//! Both the spelling and expansion ranges may themselves point into another expansion source,
-//! forming a DAG of spellings and expansions.
+//! ranges, the _spelling range_ and the _replacement range_. The spelling range indicates where the
+//! expanded code came from, while the replacement range indicates where the code was expanded (in
+//! the case of function-like macros, it points solely to the macro name and not the entire
+//! invocation). Both the spelling and replacement ranges may themselves point into another
+//! expansion source, forming a DAG of spellings and replacements.
 //!
 //! ## Expansion Examples
 //!
@@ -35,9 +35,9 @@
 //! ```
 //!
 //! The expansion of `A` on line 2 has a spelling range corresponding to the `(2 + 3)` on line 1 and
-//! an expansion range covering the `A` on line 2.
+//! a replacement range covering the `A` on line 2.
 //!
-//! Nesting macros can cause expansion ranges to point into other expansions. In the following
+//! Nesting macros can cause replacement ranges to point into other expansions. In the following
 //! example, there is an expansion of `B` on line 3, spelled at line 2. There is then an expansion
 //! of `A` into the expansion of `B` spelled at line 1:
 //!
@@ -266,29 +266,29 @@ impl SourceMap {
     ///
     /// # Panics
     ///
-    /// This function may panic if one of `spelling_range` or `expansion_range` is invalid, or if
+    /// This function may panic if one of `spelling_range` or `replacement_range` is invalid, or if
     /// either is empty.
     pub fn create_expansion(
         &mut self,
         spelling_range: SourceRange,
-        expansion_range: SourceRange,
+        replacement_range: SourceRange,
         expansion_type: ExpansionType,
     ) -> Result<SourceId, SourcesTooLargeError> {
         assert!(!spelling_range.is_empty());
-        assert!(!expansion_range.is_empty());
+        assert!(!replacement_range.is_empty());
 
         if cfg!(debug_assertions) {
             // Verify that the ranges are valid. Each of these checks incurs an extra search through
             // the list of sources, so avoid them in release builds.
             self.lookup_source_range(spelling_range);
-            self.lookup_source_range(expansion_range);
+            self.lookup_source_range(replacement_range);
         }
 
         self.add_source(
             || {
                 SourceInfo::Expansion(ExpansionSourceInfo::new(
                     spelling_range,
-                    expansion_range,
+                    replacement_range,
                     expansion_type,
                 ))
             },
@@ -406,23 +406,23 @@ impl SourceMap {
         file.contents.get_snippet(off..off + range.len())
     }
 
-    /// If `range` points into an expansion, returns the recoreded expansion range.
+    /// If `range` points into an expansion, returns the recoreded replacement range.
     ///
     /// If `range` points into a file, returns `None`.
     ///
-    /// Note that this function will not retrieve the outermost expansion range, but merely the
+    /// Note that this function will not retrieve the outermost replacement range, but merely the
     /// one indicated by the expansion source.
-    pub fn get_immediate_expansion_range(&self, range: SourceRange) -> Option<SourceRange> {
+    pub fn get_immediate_replacement_range(&self, range: SourceRange) -> Option<SourceRange> {
         let (source, _) = self.lookup_source_range(range);
-        source.as_expansion().map(|exp| exp.expansion_range)
+        source.as_expansion().map(|exp| exp.replacement_range)
     }
 
-    /// Creates an iterator listing the chain of expansion ranges corresponding to `range`, from
+    /// Creates an iterator listing the chain of replacement ranges corresponding to `range`, from
     /// innermost to outermost.
     ///
     /// The first item of this iterator is always `range` itself, and the last item always points
     /// into a file.
-    pub fn get_expansion_chain(
+    pub fn get_replacement_chain(
         &self,
         range: SourceRange,
     ) -> impl Iterator<Item = (SourceId, SourceRange)> + '_ {
@@ -432,17 +432,17 @@ impl SourceMap {
             move |id, _| {
                 self.get_source(id)
                     .as_expansion()
-                    .map(|exp| exp.expansion_range)
+                    .map(|exp| exp.replacement_range)
             },
         )
     }
 
-    /// Gets the outermost expansion range corresponding to `range`.
+    /// Gets the outermost replacement range corresponding to `range`.
     ///
     /// This is always guaranteed to be a file position. If `range` already points into a file, it
-    /// is the expansion range.
-    pub fn get_expansion_range(&self, range: SourceRange) -> SourceRange {
-        self.get_expansion_chain(range).last().unwrap().1
+    /// is the replacement range.
+    pub fn get_replacement_range(&self, range: SourceRange) -> SourceRange {
+        self.get_replacement_chain(range).last().unwrap().1
     }
 
     /// If `range` points into an expansion, returns the matching
@@ -497,7 +497,7 @@ impl SourceMap {
     ///
     /// Panics if `range` does not point into a file. Consider using
     /// [`get_spelling_pos()`](#method.get_spelling_pos) or
-    /// [`get_expansion_range()`](#method.get_expansion_range) first, as appropriate.
+    /// [`get_replacement_range()`](#method.get_replacement_range) first, as appropriate.
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
         let (source, local_range) = self.lookup_source_range(range);
 
@@ -510,7 +510,7 @@ impl SourceMap {
         }
     }
 
-    fn get_expansion_pos_chain<'a, F>(
+    fn get_replacement_pos_chain<'a, F>(
         &'a self,
         pos: SourcePos,
         extract_pos: F,
@@ -518,7 +518,7 @@ impl SourceMap {
     where
         F: Fn(SourceRange) -> SourcePos + 'a,
     {
-        self.get_expansion_chain(pos.into())
+        self.get_replacement_chain(pos.into())
             .map(move |(id, range)| (id, extract_pos(range)))
     }
 
@@ -541,11 +541,11 @@ impl SourceMap {
     /// on line 2.
     pub fn get_unfragmented_range(&self, range: FragmentedSourceRange) -> Option<SourceRange> {
         let start_sources: Vec<_> = self
-            .get_expansion_pos_chain(range.start, SourceRange::start)
+            .get_replacement_pos_chain(range.start, SourceRange::start)
             .collect();
 
         let end_sources: Vec<_> = self
-            .get_expansion_pos_chain(range.end, SourceRange::end)
+            .get_replacement_pos_chain(range.end, SourceRange::end)
             .collect();
 
         // Compute the LCA by walking down from the root to the farthest common file.

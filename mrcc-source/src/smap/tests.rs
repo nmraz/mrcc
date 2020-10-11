@@ -237,50 +237,50 @@ fn get_spelling() {
 }
 
 #[test]
-fn immediate_expansion_range() {
+fn immediate_replacement_range() {
     let mut sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&mut sm);
 
     let in_file = file_range.subrange(5, 2);
-    assert_eq!(sm.get_immediate_expansion_range(in_file), None);
+    assert_eq!(sm.get_immediate_replacement_range(in_file), None);
 
     let in_a = exp_a_range.subrange(3, 3);
     assert_eq!(
-        sm.get_immediate_expansion_range(in_a),
+        sm.get_immediate_replacement_range(in_a),
         Some(file_range.subrange(48, 1))
     );
 
     let in_b = exp_b_range.subrange(2, 1);
     assert_eq!(
-        sm.get_immediate_expansion_range(in_b),
+        sm.get_immediate_replacement_range(in_b),
         Some(exp_a_range.subrange(0, 1))
     );
 
     let in_b_x = exp_b_x_range.subrange(2, 2);
     assert_eq!(
-        sm.get_immediate_expansion_range(in_b_x),
+        sm.get_immediate_replacement_range(in_b_x),
         Some(exp_b_range.subrange(1, 1))
     );
 }
 
 #[test]
-fn expansion_range() {
+fn replacement_range() {
     let mut sm = SourceMap::new();
     let (file_range, exp_a_range, exp_b_range, exp_b_x_range) = populate_sm(&mut sm);
 
     let exp_range = file_range.subrange(48, 1);
 
     let in_file = file_range.subrange(5, 2);
-    assert_eq!(sm.get_expansion_range(in_file), in_file);
+    assert_eq!(sm.get_replacement_range(in_file), in_file);
 
     let in_a = exp_a_range.subrange(3, 3);
-    assert_eq!(sm.get_expansion_range(in_a), exp_range);
+    assert_eq!(sm.get_replacement_range(in_a), exp_range);
 
     let in_b = exp_b_range.subrange(2, 1);
-    assert_eq!(sm.get_expansion_range(in_b), exp_range);
+    assert_eq!(sm.get_replacement_range(in_b), exp_range);
 
     let in_b_x = exp_b_x_range.subrange(2, 2);
-    assert_eq!(sm.get_expansion_range(in_b_x), exp_range);
+    assert_eq!(sm.get_replacement_range(in_b_x), exp_range);
 }
 
 #[test]

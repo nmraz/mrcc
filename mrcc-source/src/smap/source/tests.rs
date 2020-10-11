@@ -100,9 +100,9 @@ fn source_file() {
 #[test]
 fn source_expansion() {
     let spelling_range = SourceRange::new(SourcePos::from_raw(5), 3);
-    let expansion_range = SourceRange::new(SourcePos::from_raw(27), 6);
+    let replacement_range = SourceRange::new(SourcePos::from_raw(27), 6);
 
-    let exp = ExpansionSourceInfo::new(spelling_range, expansion_range, ExpansionType::Macro);
+    let exp = ExpansionSourceInfo::new(spelling_range, replacement_range, ExpansionType::Macro);
     let source = Source {
         info: Box::new(SourceInfo::Expansion(exp)),
         range: SourceRange::new(SourcePos::from_raw(40), 5),
@@ -113,6 +113,6 @@ fn source_expansion() {
 
     let unwrapped = source.as_expansion().unwrap();
     assert_eq!(unwrapped.spelling_range, spelling_range);
-    assert_eq!(unwrapped.expansion_range, expansion_range);
+    assert_eq!(unwrapped.replacement_range, replacement_range);
     assert_eq!(unwrapped.expansion_type, ExpansionType::Macro);
 }

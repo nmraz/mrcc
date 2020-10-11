@@ -28,7 +28,7 @@ fn trace_expansions(
         // Shift macro arguments to their use in the macro
         if let Some(exp) = source.as_expansion() {
             if exp.expansion_type == ExpansionType::MacroArg {
-                let use_range = exp.expansion_range;
+                let use_range = exp.replacement_range;
                 return (smap.lookup_source_id(use_range.start()), use_range);
             }
         }
