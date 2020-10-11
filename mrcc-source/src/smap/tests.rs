@@ -162,7 +162,7 @@ fn populate_sm(sm: &mut SourceMap) -> (SourceRange, SourceRange, SourceRange, So
     let exp_b_id = sm
         .create_expansion(
             file_range.subrange(13, 7),
-            exp_a_range.subrange(0, 1),
+            exp_a_range,
             ExpansionKind::Macro,
         )
         .unwrap();
@@ -251,10 +251,7 @@ fn immediate_replacement_range() {
     );
 
     let in_b = exp_b_range.subrange(2, 1);
-    assert_eq!(
-        sm.get_immediate_replacement_range(in_b),
-        Some(exp_a_range.subrange(0, 1))
-    );
+    assert_eq!(sm.get_immediate_replacement_range(in_b), Some(exp_a_range));
 
     let in_b_x = exp_b_x_range.subrange(2, 2);
     assert_eq!(
@@ -298,10 +295,7 @@ fn immediate_caller_range() {
     );
 
     let in_b = exp_b_range.subrange(2, 1);
-    assert_eq!(
-        sm.get_immediate_caller_range(in_b),
-        Some(exp_a_range.subrange(0, 1))
-    );
+    assert_eq!(sm.get_immediate_caller_range(in_b), Some(exp_a_range));
 
     let in_b_x = exp_b_x_range.subrange(2, 2);
     assert_eq!(
@@ -434,10 +428,7 @@ fn unfragmented_range() {
     );
 
     let cross_a_b = FragmentedSourceRange::new(exp_a_range.start(), exp_b_range.subpos(3));
-    assert_eq!(
-        sm.get_unfragmented_range(cross_a_b),
-        Some(exp_a_range.subrange(0, 1))
-    );
+    assert_eq!(sm.get_unfragmented_range(cross_a_b), Some(exp_a_range));
 
     let cross_b_file = FragmentedSourceRange::new(file_range.subpos(40), exp_b_range.subpos(4));
     assert_eq!(

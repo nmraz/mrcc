@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
 use mrcc_source::{diag::RawSubDiagnostic, DResult};
-use mrcc_source::{smap::ExpansionKind, SourceId, SourceRange};
+use mrcc_source::{smap::ExpansionKind, FragmentedSourceRange, SourceId, SourceRange};
 
 use crate::PpToken;
 
@@ -268,11 +268,13 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             }
         }
 
-        let body_tokens =
-            match self.map_replacement_tokens(name_tok.map(|_| ()), replacement_list)? {
-                Some(iter) => iter,
-                None => return Ok(()),
-            };
+        let mut replacement_tok = name_tok.map(|_| ());
+        replacement_tok.tok.range = self.get_function_replacement_range(name_tok, &args);
+
+        let body_tokens = match self.map_replacement_tokens(replacement_tok, replacement_list)? {
+            Some(iter) => iter,
+            None => return Ok(()),
+        };
 
         let mut args: Vec<_> = args.into_iter().map(ArgState::Raw).collect();
         let mut tokens = VecDeque::new();
@@ -291,6 +293,22 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
 
         self.replacements.push(Some(name_tok.data()), tokens);
         Ok(())
+    }
+
+    fn get_function_replacement_range(
+        &self,
+        name_tok: PpToken<Symbol>,
+        args: &[VecDeque<ReplacementToken>],
+    ) -> SourceRange {
+        let last_tok = args.last().unwrap().back().unwrap().ppt;
+
+        self.ctx
+            .smap
+            .get_unfragmented_range(FragmentedSourceRange::new(
+                name_tok.range().start(),
+                last_tok.range().end(),
+            ))
+            .expect("macro invocation spans multiple files")
     }
 
     fn pre_expand_macro_arg(

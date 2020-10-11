@@ -20,10 +20,9 @@
 //! [Expansion sources](struct.ExpansionSourceInfo.html) are how the `SourceMap` tracks macro
 //! expansions. Instead of containing actual source code, the expansion source merely points to two
 //! ranges, the _spelling range_ and the _replacement range_. The spelling range indicates where the
-//! expanded code came from, while the replacement range indicates where the code was expanded (in
-//! the case of function-like macros, it points solely to the macro name and not the entire
-//! invocation). Both the spelling and replacement ranges may themselves point into another
-//! expansion source, forming a DAG of spellings and replacements.
+//! expanded code came from, while the replacement range indicates where the code was expanded. Both
+//! the spelling and replacement ranges may themselves point into another expansion source, forming
+//! a DAG of spellings and replacements.
 //!
 //! ## Expansion Examples
 //!
