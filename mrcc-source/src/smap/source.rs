@@ -180,8 +180,8 @@ pub enum ExpansionKind {
 /// Holds information about an expansion [source](index.html#sources).
 #[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
-    /// The expansion's spelling range. The length of this range always matches that of the
-    /// enclosing source.
+    /// The expansion's spelling range. The length of this range is always one less than that of the
+    /// enclosing source (it does not contain a sentinel position).
     pub spelling_range: SourceRange,
     /// The range into which the expansion was performed.
     pub replacement_range: SourceRange,
@@ -247,7 +247,9 @@ pub enum SourceInfo {
 pub struct Source {
     /// The attached (file or expansion) information.
     pub info: Box<SourceInfo>,
-    /// The range spanned by this source.
+    /// The range spanned by this source. This is one byte longer than the source's true "range",
+    /// for disambiguation purposes. This range should thus almost never be used directly - take
+    /// subranges as appropriate.
     pub range: SourceRange,
 }
 

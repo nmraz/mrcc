@@ -200,11 +200,17 @@ impl SourceMap {
     /// If there is enough room in the map, `ctor` is invoked to create the info and the ID of the
     /// new source is returned. If there is no room for a source of the specified length, a
     /// `SourcesTooLargeError` is returned instead.
+    ///
+    /// The created source will have an additional past-the-end sentinel position, useful for
+    /// representing EOF positions and ensuring that sources unambiguously contain their own "end"
+    /// position.
     fn add_source(
         &mut self,
         ctor: impl FnOnce() -> SourceInfo,
         len: u32,
     ) -> Result<SourceId, SourcesTooLargeError> {
+        let len = len.checked_add(1).ok_or(SourcesTooLargeError)?;
+
         let off = self.next_offset;
         self.next_offset = off.checked_add(len).ok_or(SourcesTooLargeError)?;
 
@@ -247,10 +253,7 @@ impl SourceMap {
             assert!(self.lookup_source_off(pos).0.is_file());
         }
 
-        let len = u32::try_from(contents.src.len())
-            .map_err(|_| SourcesTooLargeError)?
-            .checked_add(1) // Sentinel byte
-            .ok_or(SourcesTooLargeError)?;
+        let len = u32::try_from(contents.src.len()).map_err(|_| SourcesTooLargeError)?;
 
         self.add_source(
             || SourceInfo::File(FileSourceInfo::new(filename, contents, include_pos)),
@@ -262,6 +265,9 @@ impl SourceMap {
     ///
     /// If there is enough room in the map, returns the ID of the newly-created expansion source.
     /// Otherwise, returns a `SourcesTooLargeError`.
+    ///
+    /// The created expansion source will have an additional past-the-end sentinel position, to
+    /// ensure that the end of the expansion range can be unambiguously attributed to it.
     ///
     /// # Panics
     ///
