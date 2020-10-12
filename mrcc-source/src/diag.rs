@@ -220,23 +220,20 @@ impl<R> SubDiagnostic<R> {
 /// This contains a main subdiagnostic and any number of note subdiagnostics.
 /// See [`RawDiagnostic`](type.RawDiagnostic.html) and
 /// [`RenderedDiagnostic`](struct.RenderedDiagnostic.html) for concrete types.
-#[derive(Clone)]
-pub struct Diagnostic<'s, D> {
+#[derive(Debug, Clone)]
+pub struct Diagnostic<D> {
     /// The severity of this diagnostic.
     pub level: Level,
     /// The main subdiagnostic of this diagnostic.
     pub main: D,
     /// The notes attached to this diagnostic.
     pub notes: Vec<D>,
-    /// The source map attached to this diagnostic, if any. If the diagnostic contains location
-    /// information, the source map should be provided to allow rendering with location information.
-    pub smap: Option<&'s SourceMap>,
 }
 
 /// Raw subdiagnostic, with fragmented ranges and no expansion traces.
 pub type RawSubDiagnostic = SubDiagnostic<FragmentedSourceRange>;
 /// Raw diagnostic, with fragmented ranges and no expansion or include traces.
-pub type RawDiagnostic<'s> = Diagnostic<'s, RawSubDiagnostic>;
+pub type RawDiagnostic = Diagnostic<RawSubDiagnostic>;
 
 /// A rendered subdiagnostic, with contiguous ranges and an expansion trace.
 #[derive(Debug, Clone)]
@@ -266,14 +263,15 @@ impl RenderedSubDiagnostic {
 
 /// A rendered diagnostic, with expansion traces for every subdiagnostic and a top-level include
 /// trace.
-pub struct RenderedDiagnostic<'s> {
+#[derive(Debug, Clone)]
+pub struct RenderedDiagnostic {
     /// The contained diagnostic information.
-    pub inner: Diagnostic<'s, RenderedSubDiagnostic>,
+    pub inner: Diagnostic<RenderedSubDiagnostic>,
     /// The include trace leading to this diagnostic's file, from outermost to innermost.
     pub includes: Vec<SourcePos>,
 }
 
-impl<'s> RenderedDiagnostic<'s> {
+impl RenderedDiagnostic {
     /// Returns the severity of this diagnostic.
     pub fn level(&self) -> Level {
         self.inner.level
@@ -288,11 +286,6 @@ impl<'s> RenderedDiagnostic<'s> {
     pub fn notes(&self) -> &[RenderedSubDiagnostic] {
         &self.inner.notes
     }
-
-    /// Returns the source map attached to this diagnostic.
-    pub fn smap(&self) -> Option<&'s SourceMap> {
-        self.inner.smap
-    }
 }
 
 /// A helper structure for constructing and emitting diagnostics.
@@ -303,7 +296,8 @@ impl<'s> RenderedDiagnostic<'s> {
 /// Once the diagnostic is built, be sure to call [`emit()`](#method.emit) to actually emit it.
 #[must_use = "diagnostics should be emitted with `.emit()`"]
 pub struct DiagnosticBuilder<'a, 'h> {
-    diag: Box<RawDiagnostic<'a>>,
+    diag: Box<RawDiagnostic>,
+    smap: Option<&'a SourceMap>,
     manager: &'a mut Manager<'h>,
 }
 
@@ -324,10 +318,13 @@ impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
             level,
             main: main_diag,
             notes: Vec::new(),
-            smap: primary_range.map(|(_, smap)| smap),
         });
 
-        DiagnosticBuilder { diag, manager }
+        DiagnosticBuilder {
+            diag,
+            smap: primary_range.map(|(_, smap)| smap),
+            manager,
+        }
     }
 
     /// Adds a labeled subrange to the diagnostic being built.
@@ -370,20 +367,24 @@ impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
     /// If this diagnostic caused a fatal error to be emitted, either directly or indirectly (e.g.
     /// through the error limit), returns `Err(FatalErrorEmitted)`. Otherwise, returns `Ok(())`.
     pub fn emit(self) -> Result<()> {
-        self.manager.emit(&self.diag)
+        self.manager.emit(&self.diag, self.smap)
     }
 }
 
 /// Handler trait for receiving raw diagnostics.
 pub trait RawHandler {
     /// Handles a raw diagnostic.
-    fn handle(&mut self, diag: &RawDiagnostic<'_>);
+    ///
+    /// If the diagnostic was reported with location information, `smap` will be provided as well.
+    fn handle(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>);
 }
 
 /// Handler trait for receiving rendered diagnostics.
 pub trait RenderedHandler {
     /// Handles a rendered diagnostic.
-    fn handle(&mut self, diag: &RenderedDiagnostic<'_>);
+    ///
+    /// If the diagnostic was reported with location information, `smap` will be provided as well.
+    fn handle(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>);
 }
 
 /// Adaptor that bridges between rendered diagnostic handlers and raw diagnostic handlers.
@@ -392,8 +393,8 @@ struct RenderingHandlerAdaptor<H> {
 }
 
 impl<H: RenderedHandler> RawHandler for RenderingHandlerAdaptor<H> {
-    fn handle(&mut self, diag: &RawDiagnostic<'_>) {
-        self.rendered_handler.handle(&render(diag));
+    fn handle(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>) {
+        self.rendered_handler.handle(&render(diag, smap), smap);
     }
 }
 
@@ -464,8 +465,8 @@ impl<'h> Manager<'h> {
     /// Emits the specified diagnostic.
     ///
     /// Statistics are updated, and a fatal diagnostic is emitted if the error limit is reached.
-    fn emit(&mut self, diag: &RawDiagnostic<'_>) -> Result<()> {
-        self.handler.handle(diag);
+    fn emit(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>) -> Result<()> {
+        self.handler.handle(diag, smap);
 
         match diag.level {
             Level::Warning => self.warning_count += 1,

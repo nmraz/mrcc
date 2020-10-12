@@ -14,10 +14,10 @@ use super::{
 pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
-    fn handle(&mut self, diag: &RenderedDiagnostic<'_>) {
+    fn handle(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>) {
         let subdiags = main_diag_chain(diag).chain(diag.notes().iter().flat_map(note_diag_chain));
 
-        match diag.smap() {
+        match smap {
             Some(smap) => subdiags.for_each(|subdiag| print_subdiag(&subdiag, smap)),
             None => subdiags.for_each(|subdiag| print_anon_subdiag(&subdiag)),
         }
@@ -27,7 +27,7 @@ impl RenderedHandler for AnnotatingHandler {
 }
 
 fn main_diag_chain<'a>(
-    diag: &'a RenderedDiagnostic<'_>,
+    diag: &'a RenderedDiagnostic,
 ) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
     chain_expansions(
         DisplayableSubDiagnostic::from_subdiag(diag.level(), diag.main(), &diag.includes),

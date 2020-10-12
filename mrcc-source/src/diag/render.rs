@@ -176,29 +176,28 @@ fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagno
 }
 
 /// Renders `raw` by invoking `f` on each of its subdiagnostics to obtain a rendered subdiagnostic.
-fn render_with<'s>(
-    raw: &RawDiagnostic<'s>,
+fn render_with(
+    raw: &RawDiagnostic,
     mut f: impl FnMut(&RawSubDiagnostic) -> RenderedSubDiagnostic,
-) -> Diagnostic<'s, RenderedSubDiagnostic> {
+) -> Diagnostic<RenderedSubDiagnostic> {
     Diagnostic {
         level: raw.level,
         main: f(&raw.main),
         notes: raw.notes.iter().map(f).collect(),
-        smap: raw.smap,
     }
 }
 
-/// Renders the provided raw diagnostic, using the contained location information and source map to
-/// resolve expansions and include traces.
+/// Renders the provided raw diagnostic, using the contained location information and the source map
+/// to resolve expansions and include traces.
 ///
-/// If the diagnostic has no source map, the rendered diagnostic will have no location information
+/// If no source map is provided, the rendered diagnostic will have no location information
 /// attached, even if the original did.
 ///
 /// # Panics
 ///
 /// This function may panic if any of the ranges in `raw` is invalid or malformed.
-pub fn render<'s>(raw: &RawDiagnostic<'s>) -> RenderedDiagnostic<'s> {
-    match raw.smap {
+pub fn render(raw: &RawDiagnostic, smap: Option<&SourceMap>) -> RenderedDiagnostic {
+    match smap {
         Some(smap) => {
             let inner = render_with(raw, |subdiag| render_subdiag(subdiag, smap));
             let mut includes: Vec<_> = inner
