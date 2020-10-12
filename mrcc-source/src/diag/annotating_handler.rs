@@ -26,9 +26,9 @@ impl RenderedHandler for AnnotatingHandler {
     }
 }
 
-fn main_diag_chain<'a>(
-    diag: &'a RenderedDiagnostic,
-) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
+fn main_diag_chain(
+    diag: &RenderedDiagnostic,
+) -> impl Iterator<Item = DisplayableSubDiagnostic<'_>> {
     chain_expansions(
         DisplayableSubDiagnostic::from_subdiag(diag.level(), diag.main(), &diag.includes),
         diag.main(),
