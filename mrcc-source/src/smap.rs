@@ -50,12 +50,11 @@
 
 use std::cmp;
 use std::convert::TryFrom;
+use std::iter;
 use std::ops::Range;
 use std::option::Option;
 use std::rc::Rc;
 use std::vec::Vec;
-
-use itertools::Itertools;
 
 use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
 pub use source::{
@@ -582,8 +581,7 @@ where
     L: Fn(T) -> SourceId,
     N: Fn(SourceId, T) -> Option<T>,
 {
-    itertools::iterate(Some((lookup_id(init), init)), move |cur| {
-        cur.and_then(|(id, val)| next(id, val).map(|next_val| (lookup_id(next_val), next_val)))
+    iter::successors(Some((lookup_id(init), init)), move |&(id, val)| {
+        next(id, val).map(|next_val| (lookup_id(next_val), next_val))
     })
-    .while_some()
 }
