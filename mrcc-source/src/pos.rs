@@ -1,3 +1,5 @@
+pub use text_size::{TextRange as LocalRange, TextSize as LocalOff};
+
 /// An opaque type representing a position in the source code managed by a
 /// [`SourceMap`](smap/struct.SourceMap.html).
 ///
@@ -22,8 +24,8 @@ impl SourcePos {
     /// The position returned can be meaningless if the [source](smap/index.html#sources)
     /// containing `self` does not contain at least `offset` more bytes.
     #[inline]
-    pub fn offset(self, offset: u32) -> Self {
-        SourcePos(self.0 + offset)
+    pub fn offset(self, offset: LocalOff) -> Self {
+        SourcePos(self.0 + u32::from(offset))
     }
 
     /// Returns the distance in bytes between `self` and `rhs`, assuming that `rhs` lies before
@@ -33,9 +35,9 @@ impl SourcePos {
     ///
     /// Panics if `rhs` lies after `self`.
     #[inline]
-    pub fn offset_from(self, rhs: SourcePos) -> u32 {
+    pub fn offset_from(self, rhs: SourcePos) -> LocalOff {
         assert!(rhs <= self);
-        self.to_raw() - rhs.to_raw()
+        (self.to_raw() - rhs.to_raw()).into()
     }
 }
 
@@ -50,12 +52,12 @@ impl SourcePos {
 /// `SourceRange` is also useful when displaying diagnostics, where one wants to indicate actual
 /// ranges in the source code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct SourceRange(SourcePos, u32);
+pub struct SourceRange(SourcePos, LocalOff);
 
 impl SourceRange {
     /// Creates a new range starting at `begin` and covering `len` bytes.
     #[inline]
-    pub fn new(begin: SourcePos, len: u32) -> Self {
+    pub fn new(begin: SourcePos, len: LocalOff) -> Self {
         SourceRange(begin, len)
     }
 
@@ -67,14 +69,14 @@ impl SourceRange {
 
     /// Returns the length of the range.
     #[inline]
-    pub fn len(self) -> u32 {
-        self.1
+    pub fn len(self) -> LocalOff {
+        self.1.into()
     }
 
     /// Returns `true` if `self` covers 0 bytes.
     #[inline]
     pub fn is_empty(self) -> bool {
-        self.1 == 0
+        self.1 == 0.into()
     }
 
     /// Returns a position just past the end of the range.
@@ -91,33 +93,45 @@ impl SourceRange {
     ///
     /// Panics if the range would not contain the returned position.
     #[inline]
-    pub fn subpos(self, off: u32) -> SourcePos {
+    pub fn subpos(self, off: LocalOff) -> SourcePos {
         assert!(off < self.len());
         self.start().offset(off)
     }
 
-    /// Returns a subrange starting `off` (zero-based) bytes in and having length `len`.
+    /// Returns a subrange corresponding to `local_range`.
     ///
     /// # Panics
     ///
     /// Panics if the range would not contain the returned subrange.
     #[inline]
-    pub fn subrange(self, off: u32, len: u32) -> SourceRange {
-        assert!(off + len <= self.len());
-        SourceRange::new(self.start().offset(off), len)
+    pub fn subrange(self, local_range: LocalRange) -> SourceRange {
+        assert!(local_range.end() <= self.len());
+        SourceRange::new(self.start().offset(local_range.start()), local_range.len())
     }
 
-    /// Checks whether `self` contains `pos`, that is `pos` lies in `[self.start(), self.end())`.
+    /// Returns the local offset that `pos` occupies within this range, or `None` if it does not lie
+    /// within it.
     #[inline]
-    pub fn contains(self, pos: SourcePos) -> bool {
-        self.start() <= pos && pos < self.end()
+    pub fn local_off(self, pos: SourcePos) -> Option<LocalOff> {
+        if !(self.start() <= pos && pos < self.end()) {
+            return None;
+        }
+
+        Some(pos.offset_from(self.0))
     }
 
-    /// Checks whether `self` contains `other`, that is `[other.start(), other.end())` is a subset
-    /// of `[self.start(), self.end())`.
+    /// Returns the local range that `other` occupies within this range, or `None` if it does not
+    /// lie within it.
     #[inline]
-    pub fn contains_range(self, other: SourceRange) -> bool {
-        self.start() <= other.start() && other.end() <= self.end()
+    pub fn local_range(self, other: SourceRange) -> Option<LocalRange> {
+        if !(self.start() <= other.start() && other.end() <= self.end()) {
+            return None;
+        }
+
+        Some(LocalRange::at(
+            other.start().offset_from(self.start()),
+            other.len(),
+        ))
     }
 }
 
@@ -125,7 +139,7 @@ impl SourceRange {
 impl From<SourcePos> for SourceRange {
     #[inline]
     fn from(pos: SourcePos) -> Self {
-        Self::new(pos, 0)
+        Self::new(pos, 0.into())
     }
 }
 
@@ -195,18 +209,25 @@ mod tests {
     #[test]
     fn source_range_half_open() {
         let start = SourcePos::from_raw(0);
-        let range = SourceRange::new(start, 5);
-        assert!(range.contains(start));
-        assert!(range.contains(start.offset(4)));
-        assert!(!range.contains(start.offset(5)));
+        let range = SourceRange::new(start, 5.into());
+        assert!(range.local_off(start) == Some(0.into()));
+        assert!(range.local_off(start.offset(4.into())) == Some(4.into()));
+        assert!(range.local_off(start.offset(5.into())).is_none());
     }
+
     #[test]
     fn source_range_contains_range() {
         let start = SourcePos::from_raw(16);
-        let range = SourceRange::new(start.offset(1), 20);
-        assert!(range.contains_range(range));
-        assert!(range.contains_range(range.subrange(5, 7)));
-        assert!(!range.contains_range(SourceRange::new(start, 5)));
-        assert!(!range.contains_range(SourceRange::new(start.offset(6), 20)));
+        let range = SourceRange::new(start.offset(1.into()), 20.into());
+        assert!(range.local_range(range) == Some(LocalRange::up_to(20.into())));
+
+        let local_range = LocalRange::at(5.into(), 7.into());
+        assert!(range.local_range(range.subrange(local_range)) == Some(local_range));
+        assert!(range
+            .local_range(SourceRange::new(start, 5.into()))
+            .is_none());
+        assert!(range
+            .local_range(SourceRange::new(start.offset(6.into()), 20.into()))
+            .is_none());
     }
 }

@@ -4,7 +4,9 @@
 
 use std::borrow::Cow;
 
-use mrcc_source::{DResult, DiagManager, DiagReporter, SourceMap, SourcePos, SourceRange};
+use mrcc_source::{
+    DResult, DiagManager, DiagReporter, LocalOff, SourceMap, SourcePos, SourceRange,
+};
 
 pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};
@@ -111,7 +113,7 @@ pub fn convert_raw(
         // as that would make it end on the next line.
         pos.into()
     } else {
-        SourceRange::new(pos, raw.content.str.len() as u32)
+        SourceRange::new(pos, LocalOff::of(raw.content.str))
     };
 
     Ok(ConvertedToken { data: kind, range })

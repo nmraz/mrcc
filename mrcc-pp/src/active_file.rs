@@ -2,7 +2,10 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use mrcc_lex::LexCtx;
-use mrcc_source::smap::{FileName, SourcesTooLargeError};
+use mrcc_source::{
+    smap::{FileName, SourcesTooLargeError},
+    LocalOff,
+};
 use mrcc_source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
 
 use super::file::{File, IncludeKind};
@@ -31,7 +34,7 @@ pub struct ActiveFile {
     file: Rc<File>,
     state: FileState,
     start_pos: SourcePos,
-    off: u32,
+    off: LocalOff,
 }
 
 impl ActiveFile {
@@ -40,7 +43,7 @@ impl ActiveFile {
             file,
             state: FileState::default(),
             start_pos,
-            off: 0,
+            off: 0.into(),
         }
     }
 
@@ -56,7 +59,7 @@ impl ActiveFile {
         let off = self.off;
         let mut processor = Processor::new(
             &mut self.state,
-            &self.file.contents.src[off as usize..],
+            &self.file.contents.src[off.into()..],
             self.start_pos.offset(off),
         );
         let ret = f(&mut processor);

@@ -51,12 +51,11 @@
 use std::cmp;
 use std::convert::TryFrom;
 use std::iter;
-use std::ops::Range;
 use std::option::Option;
 use std::rc::Rc;
 use std::vec::Vec;
 
-use crate::{FragmentedSourceRange, LineCol, SourcePos, SourceRange};
+use crate::{FragmentedSourceRange, LineCol, LocalOff, LocalRange, SourcePos, SourceRange};
 pub use source::{
     ExpansionKind, ExpansionSourceInfo, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
@@ -77,37 +76,21 @@ pub struct LineSnippet<'f> {
     pub line: &'f str,
     /// The (zero-based) line number.
     pub line_num: u32,
-    /// The starting offset of the range within the line.
-    pub off: u32,
-    /// The length of the range.
-    pub len: u32,
-}
-
-impl LineSnippet<'_> {
-    /// Returns the highlighted range within the line.
-    pub fn local_range(&self) -> Range<u32> {
-        self.off..self.off + self.len
-    }
+    /// The highlighted range within the line.
+    pub range: LocalRange,
 }
 
 /// Represents an interpreted range within a file, with easy access to filename, line and column
 /// numbers.
 #[derive(Clone, Copy)]
 pub struct InterpretedFileRange<'f> {
-    /// The file into which the range points.
+    /// The file into which the interpreted range points.
     pub file: &'f FileSourceInfo,
-    /// The starting offset of the range within the file.
-    pub off: u32,
-    /// The length of the range.
-    pub len: u32,
+    /// The range within the file.
+    pub range: LocalRange,
 }
 
 impl<'f> InterpretedFileRange<'f> {
-    /// Returns the range within the file that `self` occupies.
-    pub fn local_range(&self) -> Range<u32> {
-        self.off..self.off + self.len
-    }
-
     /// Returns the name of the interpreted range's file.
     pub fn filename(&self) -> &FileName {
         &self.file.filename
@@ -125,12 +108,12 @@ impl<'f> InterpretedFileRange<'f> {
 
     /// Returns the line-column pair within the file at which the range starts.
     pub fn start_linecol(&self) -> LineCol {
-        self.contents().get_linecol(self.off)
+        self.contents().get_linecol(self.range.start())
     }
 
     /// Returns the line-column pair within the file at which the range ends.
     pub fn end_linecol(&self) -> LineCol {
-        self.contents().get_linecol(self.local_range().end)
+        self.contents().get_linecol(self.range.end())
     }
 
     /// Returns an iterator yielding the lines covered by this range, along with the appropriate
@@ -156,8 +139,7 @@ impl<'f> InterpretedFileRange<'f> {
                 LineSnippet {
                     line,
                     line_num: start_linecol.line + idx,
-                    off: start,
-                    len: end - start,
+                    range: LocalRange::new(start.into(), end.into()),
                 }
             })
     }
@@ -213,7 +195,7 @@ impl SourceMap {
         let off = self.next_offset;
         self.next_offset = off.checked_add(len).ok_or(SourcesTooLargeError)?;
 
-        let range = SourceRange::new(SourcePos::from_raw(off), len);
+        let range = SourceRange::new(SourcePos::from_raw(off), len.into());
 
         let id = SourceId(self.sources.len());
         self.sources.push(Source {
@@ -296,7 +278,7 @@ impl SourceMap {
                     kind,
                 ))
             },
-            spelling_range.len(),
+            spelling_range.len().into(),
         )
     }
 
@@ -324,14 +306,14 @@ impl SourceMap {
     }
 
     /// Looks up the source containing `pos` and the offset at which `pos` lies within it.
-    pub fn lookup_source_off(&self, pos: SourcePos) -> (&Source, u32) {
+    pub fn lookup_source_off(&self, pos: SourcePos) -> (&Source, LocalOff) {
         let source = self.get_source(self.lookup_source_id(pos));
         let off = source.local_off(pos);
         (source, off)
     }
 
     /// Looks up the source containing `range` and local range that `range` occupies within it.
-    pub fn lookup_source_range(&self, range: SourceRange) -> (&Source, Range<u32>) {
+    pub fn lookup_source_range(&self, range: SourceRange) -> (&Source, LocalRange) {
         let source = self.get_source(self.lookup_source_id(range.start()));
         let local_range = source.local_range(range);
         (source, local_range)
@@ -404,10 +386,12 @@ impl SourceMap {
     /// which properly handles escaped newlines in the retrieved snippet.
     pub fn get_spelling(&self, range: SourceRange) -> &str {
         let (id, pos) = self.get_spelling_chain(range.start()).last().unwrap();
+
         let source = self.get_source(id);
-        let file = source.as_file().unwrap();
         let off = source.local_off(pos);
-        file.contents.get_snippet(off..off + range.len())
+        let file = source.as_file().unwrap();
+
+        file.contents.get_snippet(LocalRange::at(off, range.len()))
     }
 
     /// If `range` points into an expansion, returns the recoreded replacement range.
@@ -509,8 +493,7 @@ impl SourceMap {
             file: source
                 .as_file()
                 .expect("`get_interpreted_range` requires a file range"),
-            off: local_range.start,
-            len: range.len(),
+            range: local_range,
         }
     }
 

@@ -1,32 +1,33 @@
+use std::convert::TryFrom;
 use std::vec::Vec;
 
-use crate::LineCol;
+use crate::{LineCol, LocalOff};
 
 pub struct LineTable {
     /// Holds the starting offsets of lines in the source
-    line_offsets: Vec<u32>,
+    line_offsets: Vec<LocalOff>,
 }
 
 impl LineTable {
     pub fn new_for_src(src: &str) -> Self {
-        let mut line_offsets = vec![0];
+        let mut line_offsets = vec![0.into()];
 
         for (off, &c) in src.as_bytes().iter().enumerate() {
             if c == b'\n' {
-                line_offsets.push((off + 1) as u32);
+                line_offsets.push(LocalOff::try_from(off + 1).unwrap());
             }
         }
 
         LineTable { line_offsets }
     }
 
-    pub fn get_linecol(&self, off: u32) -> LineCol {
+    pub fn get_linecol(&self, off: LocalOff) -> LineCol {
         let line = self
             .line_offsets
             .binary_search(&off)
             .unwrap_or_else(|i| i - 1);
 
-        let col = off - self.line_offsets[line];
+        let col = (off - self.line_offsets[line]).into();
 
         LineCol {
             line: line as u32,
@@ -38,7 +39,7 @@ impl LineTable {
         self.line_offsets.len() as u32
     }
 
-    pub fn get_line_start(&self, line: u32) -> u32 {
+    pub fn get_line_start(&self, line: u32) -> LocalOff {
         self.line_offsets[line as usize]
     }
 }
@@ -55,11 +56,11 @@ mod tests {
     #[test]
     fn lookup() {
         let table = create_line_table();
-        assert_eq!(table.get_linecol(0), LineCol { line: 0, col: 0 });
-        assert_eq!(table.get_linecol(2), LineCol { line: 0, col: 2 });
-        assert_eq!(table.get_linecol(8), LineCol { line: 1, col: 3 });
-        assert_eq!(table.get_linecol(10), LineCol { line: 2, col: 0 });
-        assert_eq!(table.get_linecol(16), LineCol { line: 3, col: 5 });
+        assert_eq!(table.get_linecol(0.into()), LineCol { line: 0, col: 0 });
+        assert_eq!(table.get_linecol(2.into()), LineCol { line: 0, col: 2 });
+        assert_eq!(table.get_linecol(8.into()), LineCol { line: 1, col: 3 });
+        assert_eq!(table.get_linecol(10.into()), LineCol { line: 2, col: 0 });
+        assert_eq!(table.get_linecol(16.into()), LineCol { line: 3, col: 5 });
     }
 
     #[test]
@@ -71,8 +72,8 @@ mod tests {
     #[test]
     fn line_start() {
         let table = create_line_table();
-        assert_eq!(table.get_line_start(0), 0);
-        assert_eq!(table.get_line_start(1), 5);
+        assert_eq!(table.get_line_start(0), 0.into());
+        assert_eq!(table.get_line_start(1), 5.into());
     }
 
     #[test]

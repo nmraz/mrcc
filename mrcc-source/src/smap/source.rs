@@ -1,9 +1,8 @@
 use std::fmt;
-use std::ops::Range;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use crate::{LineCol, SourcePos, SourceRange};
+use crate::{LineCol, LocalOff, LocalRange, SourcePos, SourceRange};
 use line_table::LineTable;
 
 mod line_table;
@@ -73,8 +72,8 @@ impl FileContents {
     /// # Panics
     ///
     /// Panics if the range does not lie within the source.
-    pub fn get_snippet(&self, range: Range<u32>) -> &str {
-        &self.src[range.start as usize..range.end as usize]
+    pub fn get_snippet(&self, range: LocalRange) -> &str {
+        &self.src[range]
     }
 
     /// Returns the number of lines in the source.
@@ -87,8 +86,8 @@ impl FileContents {
     /// # Panics
     ///
     /// Panics if the offset is longer than the source.
-    pub fn get_linecol(&self, off: u32) -> LineCol {
-        assert!((off as usize) <= self.src.len());
+    pub fn get_linecol(&self, off: LocalOff) -> LineCol {
+        assert!(off <= LocalOff::of(&self.src));
         self.line_table.get_linecol(off)
     }
 
@@ -97,7 +96,7 @@ impl FileContents {
     /// # Panics
     ///
     /// Panics if the line number is out of range.
-    pub fn get_line_start(&self, line: u32) -> u32 {
+    pub fn get_line_start(&self, line: u32) -> LocalOff {
         self.line_table.get_line_start(line)
     }
 
@@ -106,13 +105,13 @@ impl FileContents {
     /// # Panics
     ///
     /// Panics if the line number is out of range.
-    pub fn get_line_end(&self, line: u32) -> u32 {
+    pub fn get_line_end(&self, line: u32) -> LocalOff {
         assert!(line < self.line_count());
 
         if line == self.line_count() - 1 {
-            self.src.len() as u32
+            LocalOff::of(&self.src)
         } else {
-            self.line_table.get_line_start(line + 1) - 1
+            self.line_table.get_line_start(line + 1) - LocalOff::from(1)
         }
     }
 
@@ -125,7 +124,7 @@ impl FileContents {
     pub fn get_lines(&self, first: u32, last: u32) -> &str {
         let start = self.get_line_start(first);
         let end = self.get_line_end(last);
-        self.get_snippet(start..end)
+        self.get_snippet(LocalRange::new(start, end))
     }
 
     /// Returns a reference to the specified line of source code, including newline character (if
@@ -208,7 +207,7 @@ impl ExpansionSourceInfo {
     /// # Panics
     ///
     /// Panics if `off` lies beyond the bounds of the spelling range.
-    pub fn spelling_pos(&self, off: u32) -> SourcePos {
+    pub fn spelling_pos(&self, off: LocalOff) -> SourcePos {
         self.spelling_range.subpos(off)
     }
 
@@ -217,9 +216,8 @@ impl ExpansionSourceInfo {
     /// # Panics
     ///
     /// Panics if `range` does not fit in the spelling range.
-    pub fn spelling_range(&self, range: Range<u32>) -> SourceRange {
-        self.spelling_range
-            .subrange(range.start, range.len() as u32)
+    pub fn spelling_range(&self, range: LocalRange) -> SourceRange {
+        self.spelling_range.subrange(range)
     }
 
     /// Returns the source range within the macro caller corresponding to the specified range within
@@ -227,7 +225,7 @@ impl ExpansionSourceInfo {
     ///
     /// For macro arguments, the caller is where the argument was spelled, while for other types of
     /// expansions it is the replacement range.
-    pub fn caller_range(&self, range: Range<u32>) -> SourceRange {
+    pub fn caller_range(&self, range: LocalRange) -> SourceRange {
         match self.kind {
             ExpansionKind::MacroArg => self.spelling_range(range),
             _ => self.replacement_range,
@@ -259,9 +257,10 @@ impl Source {
     /// # Panics
     ///
     /// Panics if `self.range` does not contain `pos`.
-    pub fn local_off(&self, pos: SourcePos) -> u32 {
-        assert!(self.range.contains(pos));
-        pos.offset_from(self.range.start())
+    pub fn local_off(&self, pos: SourcePos) -> LocalOff {
+        self.range
+            .local_off(pos)
+            .expect("position does not lie within this source")
     }
 
     /// Computes the local range within this source, given a `SourceRange`.
@@ -269,10 +268,10 @@ impl Source {
     /// # Panics
     ///
     /// Panics if `self.range` does not contain `range`.
-    pub fn local_range(&self, range: SourceRange) -> Range<u32> {
-        assert!(self.range.contains_range(range));
-        let off = self.local_off(range.start());
-        off..off + range.len()
+    pub fn local_range(&self, range: SourceRange) -> LocalRange {
+        self.range
+            .local_range(range)
+            .expect("range does not lie within this source")
     }
 
     /// If this source contains a file, returns a reference to the contained file information.

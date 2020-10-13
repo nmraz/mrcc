@@ -398,10 +398,11 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
             old_range: SourceRange,
             new_range: SourceRange,
         ) -> SourceRange {
-            let off = subrange.start().offset_from(old_range.start());
-            let len = subrange.len();
-
-            new_range.subrange(off, len)
+            new_range.subrange(
+                old_range
+                    .local_range(subrange)
+                    .expect("range not in spelling range"),
+            )
         }
 
         let ctx = &mut self.ctx;

@@ -151,9 +151,9 @@ fn print_annotation<'a>(
         print_gutter("", line_num_width);
         eprintln!(
             "{pad:off$}{}",
-            "^".repeat(cmp::max(snippet.len, 1) as usize),
+            "^".repeat(cmp::max(snippet.range.len().into(), 1)),
             pad = "",
-            off = snippet.off as usize,
+            off = snippet.range.start().into(),
         );
 
         if let Some((text, linecol)) = suggestion {

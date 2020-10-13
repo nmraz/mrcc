@@ -31,15 +31,15 @@ fn file_contents_normalized() {
 fn file_contents_linecol() {
     let src = "line 1\nline 2\nline 3";
     let contents = FileContents::new(src);
-    assert_eq!(contents.get_linecol(6), LineCol { line: 0, col: 6 });
-    assert_eq!(contents.get_linecol(17), LineCol { line: 2, col: 3 });
+    assert_eq!(contents.get_linecol(6.into()), LineCol { line: 0, col: 6 });
+    assert_eq!(contents.get_linecol(17.into()), LineCol { line: 2, col: 3 });
 }
 
 #[test]
 fn file_contents_linecol_at_end() {
     let src = "line 1\nline 2\nline 3";
     let contents = FileContents::new(src);
-    assert_eq!(contents.get_linecol(20), LineCol { line: 2, col: 6 });
+    assert_eq!(contents.get_linecol(20.into()), LineCol { line: 2, col: 6 });
 }
 
 #[test]
@@ -47,7 +47,7 @@ fn file_contents_linecol_at_end() {
 fn file_contents_linecol_past_end() {
     let src = "line\nline\n";
     let contents = FileContents::new(src);
-    contents.get_linecol(12);
+    contents.get_linecol(12.into());
 }
 
 #[test]
@@ -72,11 +72,11 @@ fn file_contents_line() {
 fn file_contents_line_ranges() {
     let src = "line\r\nline 2\n\nline";
     let contents = FileContents::new(src);
-    assert_eq!(contents.get_line_start(0), 0);
-    assert_eq!(contents.get_line_end(0), 4);
-    assert_eq!(contents.get_line_start(2), 12);
-    assert_eq!(contents.get_line_end(2), 12);
-    assert_eq!(contents.get_line_end(3), 17);
+    assert_eq!(contents.get_line_start(0), 0.into());
+    assert_eq!(contents.get_line_end(0), 4.into());
+    assert_eq!(contents.get_line_start(2), 12.into());
+    assert_eq!(contents.get_line_end(2), 12.into());
+    assert_eq!(contents.get_line_end(3), 17.into());
 }
 
 #[test]
@@ -86,7 +86,7 @@ fn source_file() {
     let file = FileSourceInfo::new(filename.clone(), contents, None);
     let source = Source {
         info: Box::new(SourceInfo::File(file)),
-        range: SourceRange::new(SourcePos::from_raw(0), 5),
+        range: SourceRange::new(SourcePos::from_raw(0), 5.into()),
     };
 
     assert!(source.is_file());
@@ -99,13 +99,13 @@ fn source_file() {
 
 #[test]
 fn source_expansion() {
-    let spelling_range = SourceRange::new(SourcePos::from_raw(5), 3);
-    let replacement_range = SourceRange::new(SourcePos::from_raw(27), 6);
+    let spelling_range = SourceRange::new(SourcePos::from_raw(5), 3.into());
+    let replacement_range = SourceRange::new(SourcePos::from_raw(27), 6.into());
 
     let exp = ExpansionSourceInfo::new(spelling_range, replacement_range, ExpansionKind::Macro);
     let source = Source {
         info: Box::new(SourceInfo::Expansion(exp)),
-        range: SourceRange::new(SourcePos::from_raw(40), 5),
+        range: SourceRange::new(SourcePos::from_raw(40), 5.into()),
     };
 
     assert!(source.is_expansion());

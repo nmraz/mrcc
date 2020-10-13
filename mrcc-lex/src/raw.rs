@@ -6,6 +6,9 @@
 //! [`convert_raw()`](../fn.convert_raw.html).
 
 use std::borrow::Cow;
+use std::convert::TryFrom;
+
+use mrcc_source::{LocalOff, LocalRange};
 
 use super::PunctKind;
 
@@ -43,21 +46,12 @@ pub enum RawTokenKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawContent<'a> {
     /// The offset within the string at which the slice starts.
-    pub off: u32,
+    pub off: LocalOff,
     /// The relevant slice of the source string.
     pub str: &'a str,
     /// Indicates whether the slice contains escaped newlines that should be deleted before use,
     /// as per translation phase 2.
     pub tainted: bool,
-}
-
-/// Represents a raw token lexed from a string.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct RawToken<'a> {
-    /// The type of token.
-    pub kind: RawTokenKind,
-    /// The source contents of the token.
-    pub content: RawContent<'a>,
 }
 
 impl<'a> RawContent<'a> {
@@ -69,6 +63,15 @@ impl<'a> RawContent<'a> {
             Cow::Borrowed(self.str)
         }
     }
+}
+
+/// Represents a raw token lexed from a string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RawToken<'a> {
+    /// The type of token.
+    pub kind: RawTokenKind,
+    /// The source contents of the token.
+    pub content: RawContent<'a>,
 }
 
 /// Deletes escaped newlines (`\` immediately followed by a newline) from `tok`, as specified in
@@ -98,7 +101,7 @@ fn is_ident_continue(c: char) -> bool {
 #[derive(Clone)]
 struct SkipEscapedNewlines<'a> {
     input: &'a str,
-    off: u32,
+    off: LocalOff,
     tainted: bool,
 }
 
@@ -107,7 +110,7 @@ impl<'a> SkipEscapedNewlines<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             input,
-            off: 0,
+            off: 0.into(),
             tainted: false,
         }
     }
@@ -119,11 +122,11 @@ impl<'a> SkipEscapedNewlines<'a> {
 
     /// Returns the portion of the input not yet iterated through.
     pub fn remaining(&self) -> &'a str {
-        &self.input[self.off as usize..]
+        &self.input[self.off.into()..]
     }
 
     /// Returns the current offset within the input string.
-    pub fn off(&self) -> u32 {
+    pub fn off(&self) -> LocalOff {
         self.off
     }
 
@@ -146,12 +149,12 @@ impl Iterator for SkipEscapedNewlines<'_> {
     fn next(&mut self) -> Option<char> {
         while self.remaining().starts_with("\\\n") {
             self.tainted = true;
-            self.off += 2;
+            self.off += LocalOff::from(2);
         }
 
         let next = self.remaining().chars().next();
         if let Some(c) = next {
-            self.off += c.len_utf8() as u32;
+            self.off += LocalOff::try_from(c.len_utf8()).unwrap();
         }
         next
     }
@@ -166,7 +169,7 @@ pub struct Reader<'a> {
     /// The underlying character iterator.
     iter: SkipEscapedNewlines<'a>,
     /// The start of the current token being read.
-    start: u32,
+    start: LocalOff,
 }
 
 impl<'a> Reader<'a> {
@@ -175,13 +178,13 @@ impl<'a> Reader<'a> {
     pub fn new(input: &'a str) -> Self {
         Self {
             iter: SkipEscapedNewlines::new(input),
-            start: 0,
+            start: 0.into(),
         }
     }
 
     /// Returns the current offset of this reader within the source.
     #[inline]
-    pub fn off(&self) -> u32 {
+    pub fn off(&self) -> LocalOff {
         self.iter.off()
     }
 
@@ -192,8 +195,8 @@ impl<'a> Reader<'a> {
     #[inline]
     pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
-            off: self.start as u32,
-            str: &self.iter.input()[self.start as usize..self.off() as usize],
+            off: self.start,
+            str: &self.iter.input()[LocalRange::new(self.start, self.off())],
             tainted: self.iter.tainted(),
         }
     }

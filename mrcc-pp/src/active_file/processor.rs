@@ -2,7 +2,7 @@ use std::mem;
 
 use mrcc_lex::raw::{Reader, Tokenizer};
 use mrcc_lex::{ConvertedTokenKind, LexCtx, TokenKind};
-use mrcc_source::{DResult, SourcePos};
+use mrcc_source::{DResult, LocalOff, SourcePos};
 
 use super::FileState;
 use crate::PpToken;
@@ -119,7 +119,7 @@ impl<'a> Processor<'a> {
         &mut self.tokenizer_mut().reader
     }
 
-    pub fn off(&self) -> u32 {
+    pub fn off(&self) -> LocalOff {
         self.tokenizer.reader.off()
     }
 
