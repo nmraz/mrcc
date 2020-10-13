@@ -70,7 +70,7 @@ impl SourceRange {
     /// Returns the length of the range.
     #[inline]
     pub fn len(self) -> LocalOff {
-        self.1.into()
+        self.1
     }
 
     /// Returns `true` if `self` covers 0 bytes.
