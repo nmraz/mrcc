@@ -15,45 +15,50 @@ pub struct AnnotatingHandler;
 
 impl RenderedHandler for AnnotatingHandler {
     fn handle(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>) {
-        let subdiags = main_diag_chain(diag).chain(diag.notes().iter().flat_map(note_diag_chain));
+        let subdiags = iter::once(WrappedSubDiagnostic::from_main(diag))
+            .chain(diag.notes().iter().map(WrappedSubDiagnostic::from_note));
 
         match smap {
-            Some(smap) => subdiags.for_each(|subdiag| print_subdiag(&subdiag, smap)),
-            None => subdiags.for_each(|subdiag| print_anon_subdiag(&subdiag)),
+            Some(smap) => subdiags.for_each(|subdiag| print_wrapped_subdiag(&subdiag, smap)),
+            None => subdiags.for_each(|subdiag| print_diag_msg(subdiag.level, subdiag.diag.msg())),
         }
 
         eprintln!();
     }
 }
 
-fn main_diag_chain(
-    diag: &RenderedDiagnostic,
-) -> impl Iterator<Item = DisplayableSubDiagnostic<'_>> {
-    chain_expansions(
-        DisplayableSubDiagnostic::from_subdiag(diag.level(), diag.main(), &diag.includes),
-        diag.main(),
-    )
+fn print_diag_msg(level: Level, msg: &str) {
+    eprintln!("{}: {}", level, msg);
 }
 
-fn note_diag_chain(
-    note: &RenderedSubDiagnostic,
-) -> impl Iterator<Item = DisplayableSubDiagnostic<'_>> {
-    chain_expansions(
-        DisplayableSubDiagnostic::from_subdiag(Level::Note, note, &[]),
-        note,
-    )
+fn print_wrapped_subdiag(subdiag: &WrappedSubDiagnostic<'_>, smap: &SourceMap) {
+    for note in get_expansion_chain(subdiag) {
+        print_annotated_subdiag(&note, smap);
+    }
 }
 
-fn chain_expansions<'a>(
-    primary: DisplayableSubDiagnostic<'a>,
-    expansion_subdiag: &'a RenderedSubDiagnostic,
-) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
-    iter::once(primary).chain(
-        expansion_subdiag
-            .expansions
-            .iter()
-            .map(|ranges| DisplayableSubDiagnostic::from_expansion(ranges)),
-    )
+struct WrappedSubDiagnostic<'a> {
+    level: Level,
+    includes: &'a [SourcePos],
+    diag: &'a RenderedSubDiagnostic,
+}
+
+impl<'a> WrappedSubDiagnostic<'a> {
+    fn from_main(diag: &'a RenderedDiagnostic) -> Self {
+        Self {
+            level: diag.level(),
+            includes: &diag.includes,
+            diag: diag.main(),
+        }
+    }
+
+    fn from_note(note: &'a RenderedSubDiagnostic) -> Self {
+        Self {
+            level: Level::Note,
+            includes: &[],
+            diag: note,
+        }
+    }
 }
 
 struct DisplayableSubDiagnostic<'a> {
@@ -65,17 +70,13 @@ struct DisplayableSubDiagnostic<'a> {
 }
 
 impl<'a> DisplayableSubDiagnostic<'a> {
-    fn from_subdiag(
-        level: Level,
-        subdiag: &'a RenderedSubDiagnostic,
-        includes: &'a [SourcePos],
-    ) -> Self {
+    fn from_subdiag(subdiag: &WrappedSubDiagnostic<'a>) -> Self {
         Self {
-            level,
-            msg: subdiag.msg(),
-            ranges: subdiag.ranges(),
-            suggestion: subdiag.suggestion(),
-            includes,
+            level: subdiag.level,
+            msg: subdiag.diag.msg(),
+            ranges: subdiag.diag.ranges(),
+            suggestion: subdiag.diag.suggestion(),
+            includes: subdiag.includes,
         }
     }
 
@@ -90,12 +91,20 @@ impl<'a> DisplayableSubDiagnostic<'a> {
     }
 }
 
-fn print_anon_subdiag(subdiag: &DisplayableSubDiagnostic<'_>) {
-    eprintln!("{}: {}", subdiag.level, subdiag.msg);
+fn get_expansion_chain<'a>(
+    subdiag: &WrappedSubDiagnostic<'a>,
+) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
+    iter::once(DisplayableSubDiagnostic::from_subdiag(subdiag)).chain(
+        subdiag
+            .diag
+            .expansions
+            .iter()
+            .map(DisplayableSubDiagnostic::from_expansion),
+    )
 }
 
-fn print_subdiag(subdiag: &DisplayableSubDiagnostic<'_>, smap: &SourceMap) {
-    print_anon_subdiag(subdiag);
+fn print_annotated_subdiag(subdiag: &DisplayableSubDiagnostic<'_>, smap: &SourceMap) {
+    print_diag_msg(subdiag.level, subdiag.msg);
 
     if let Some(&Ranges { primary_range, .. }) = subdiag.ranges {
         let interp = smap.get_interpreted_range(primary_range);
