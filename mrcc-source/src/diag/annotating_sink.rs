@@ -6,15 +6,15 @@ use crate::smap::InterpretedFileRange;
 use crate::{LineCol, SourceMap, SourcePos};
 
 use super::{
-    Level, Ranges, RenderedDiagnostic, RenderedHandler, RenderedRanges, RenderedSubDiagnostic,
+    Level, Ranges, RenderedDiagnostic, RenderedRanges, RenderedSink, RenderedSubDiagnostic,
     RenderedSuggestion,
 };
 
-/// A rendered diagnostic handler that emits messages and annotated code snippets to `stderr`.
-pub struct AnnotatingHandler;
+/// A rendered diagnostic sink that emits messages and annotated code snippets to `stderr`.
+pub struct AnnotatingSink;
 
-impl RenderedHandler for AnnotatingHandler {
-    fn handle(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>) {
+impl RenderedSink for AnnotatingSink {
+    fn report(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>) {
         let subdiags = iter::once(WrappedSubDiagnostic::from_main(diag))
             .chain(diag.notes().iter().map(WrappedSubDiagnostic::from_note));
 

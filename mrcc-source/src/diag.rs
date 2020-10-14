@@ -11,12 +11,12 @@
 //! ranges and handling macro expansions themselves.
 //!
 //! However, raw diagnostics can be problematic to use when displaying the diagnostics later. There,
-//! the handler wants contiguous ranges to mark up in the source code, preferably with expansions
-//! and include stacks mapped out.
+//! the handler of the diagnostic wants contiguous ranges to mark up in the source code, preferably
+//! with expansions and include stacks mapped out.
 //!
 //! Rendered diagnostics are more amenable to display - they contain only contiguous ranges and
 //! come with the appropriate expansion and include traces. Rendered diagnostics are passed to
-//! handlers registered with [`Manager::new()`](struct.Manager.html#method.new). They can also be
+//! sinks registered with [`Manager::new()`](struct.Manager.html#method.new). They can also be
 //! created manually from raw diagnostics using [`render()`](fn.render.html).
 
 use std::fmt;
@@ -24,10 +24,10 @@ use std::fmt;
 use crate::SourceMap;
 use crate::{FragmentedSourceRange, SourcePos, SourceRange};
 
-pub use annotating_handler::AnnotatingHandler;
+pub use annotating_sink::AnnotatingSink;
 pub use render::render;
 
-mod annotating_handler;
+mod annotating_sink;
 mod render;
 
 /// Diagnostic severity level.
@@ -371,68 +371,68 @@ impl<'a, 'h> DiagnosticBuilder<'a, 'h> {
     }
 }
 
-/// Handler trait for receiving raw diagnostics.
-pub trait RawHandler {
+/// A sink for receiving raw diagnostics.
+pub trait RawSink {
     /// Handles a raw diagnostic.
     ///
     /// If the diagnostic was reported with location information, `smap` will be provided as well.
-    fn handle(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>);
+    fn report(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>);
 }
 
-/// Handler trait for receiving rendered diagnostics.
-pub trait RenderedHandler {
+/// A sink for receiving rendered diagnostics.
+pub trait RenderedSink {
     /// Handles a rendered diagnostic.
     ///
     /// If the diagnostic was reported with location information, `smap` will be provided as well.
-    fn handle(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>);
+    fn report(&mut self, diag: &RenderedDiagnostic, smap: Option<&SourceMap>);
 }
 
-/// Adaptor that bridges between rendered diagnostic handlers and raw diagnostic handlers.
-struct RenderingHandlerAdaptor<H> {
-    rendered_handler: H,
+/// Adaptor that bridges between rendered diagnostic sinks and raw diagnostic sinks.
+struct RenderingSinkAdaptor<H> {
+    rendered_sink: H,
 }
 
-impl<H: RenderedHandler> RawHandler for RenderingHandlerAdaptor<H> {
-    fn handle(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>) {
-        self.rendered_handler.handle(&render(diag, smap), smap);
+impl<H: RenderedSink> RawSink for RenderingSinkAdaptor<H> {
+    fn report(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>) {
+        self.rendered_sink.report(&render(diag, smap), smap);
     }
 }
 
 /// A top-level diagnostics engine.
 ///
-/// This structure is responsible for forwarding diagnostics to a handler, enforcing error limits
+/// This structure is responsible for forwarding diagnostics to a sink, enforcing error limits
 /// and tracking statistics about emitted diagnostics.
 pub struct Manager<'h> {
-    handler: Box<dyn RawHandler + 'h>,
+    sink: Box<dyn RawSink + 'h>,
     error_limit: Option<u32>,
     warning_count: u32,
     error_count: u32,
 }
 
 impl<'h> Manager<'h> {
-    /// Creates a new `Manager` with the specified handler and error limit.
+    /// Creates a new `Manager` with the specified sink and error limit.
     ///
     /// If `error_limit` is provided, the manager will emit a fatal diagnostic once the specified
     /// number of errors has been emitted.
-    pub fn new(handler: impl RenderedHandler + 'h, error_limit: Option<u32>) -> Self {
-        Self::with_raw_handler(
-            Box::new(RenderingHandlerAdaptor {
-                rendered_handler: handler,
+    pub fn new(sink: impl RenderedSink + 'h, error_limit: Option<u32>) -> Self {
+        Self::with_raw_sink(
+            Box::new(RenderingSinkAdaptor {
+                rendered_sink: sink,
             }),
             error_limit,
         )
     }
 
-    /// Creates a new `Manager` with an [annotating handler](struct.AnnotatingHandler.html) and
+    /// Creates a new `Manager` with an [annotating sink](struct.AnnotatingSink.html) and
     /// the specified error limit.
     pub fn new_annotating(error_limit: Option<u32>) -> Manager<'static> {
-        Manager::new(AnnotatingHandler, error_limit)
+        Manager::new(AnnotatingSink, error_limit)
     }
 
-    /// Creates a new `Manager` with the specified raw diagnostic handler and error limit.
-    pub fn with_raw_handler(handler: Box<dyn RawHandler + 'h>, error_limit: Option<u32>) -> Self {
+    /// Creates a new `Manager` with the specified raw diagnostic sink and error limit.
+    pub fn with_raw_sink(sink: Box<dyn RawSink + 'h>, error_limit: Option<u32>) -> Self {
         Manager {
-            handler,
+            sink,
             error_limit,
             warning_count: 0,
             error_count: 0,
@@ -466,7 +466,7 @@ impl<'h> Manager<'h> {
     ///
     /// Statistics are updated, and a fatal diagnostic is emitted if the error limit is reached.
     fn emit(&mut self, diag: &RawDiagnostic, smap: Option<&SourceMap>) -> Result<()> {
-        self.handler.handle(diag, smap);
+        self.sink.report(diag, smap);
 
         match diag.level {
             Level::Warning => self.warning_count += 1,
