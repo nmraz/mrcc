@@ -421,7 +421,6 @@ impl<'a> Tokenizer<'a> {
 
     /// Handles a suspected punctuator character `c`, and returns either the appropriate punctuator
     /// or an `Unknown` token.
-    #[allow(clippy::cognitive_complexity)]
     fn handle_punct(&mut self, c: char) -> RawToken<'a> {
         use PunctKind::*;
 
