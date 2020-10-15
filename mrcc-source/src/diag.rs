@@ -15,9 +15,9 @@
 //! with expansions and include stacks mapped out.
 //!
 //! Rendered diagnostics are more amenable to display - they contain only contiguous ranges and
-//! come with the appropriate expansion and include traces. Rendered diagnostics are passed to
-//! sinks registered with [`Manager::new()`](struct.Manager.html#method.new). They can also be
-//! created manually from raw diagnostics using [`render()`](fn.render.html).
+//! come with the appropriate expansion subdiagnostics and include traces. Rendered diagnostics are
+//! passed to sinks registered with [`Manager::new()`](struct.Manager.html#method.new). They can
+//! also be created manually from raw diagnostics using [`render()`](fn.render.html).
 
 use std::fmt;
 
@@ -235,31 +235,8 @@ pub type RawSubDiagnostic = SubDiagnostic<FragmentedSourceRange>;
 /// Raw diagnostic, with fragmented ranges and no expansion or include traces.
 pub type RawDiagnostic = Diagnostic<RawSubDiagnostic>;
 
-/// A rendered subdiagnostic, with contiguous ranges and an expansion trace.
-#[derive(Debug, Clone)]
-pub struct RenderedSubDiagnostic {
-    /// The contained subdiagnostic information.
-    pub inner: SubDiagnostic<SourceRange>,
-    /// An expansion trace of this subdiagnostic's ranges, from outermost to innermost.
-    pub expansions: Vec<RenderedRanges>,
-}
-
-impl RenderedSubDiagnostic {
-    /// Returns this subdiagnostic's message.
-    pub fn msg(&self) -> &str {
-        &self.inner.msg
-    }
-
-    /// Returns this subdiagnostic's attached ranges, if any.
-    pub fn ranges(&self) -> Option<&Ranges<SourceRange>> {
-        self.inner.ranges.as_ref()
-    }
-
-    /// Returns this subdiagnostic's suggestion, if any.
-    pub fn suggestion(&self) -> Option<&RenderedSuggestion> {
-        self.inner.suggestion.as_ref()
-    }
-}
+/// A rendered subdiagnostic, with contiguous ranges.
+pub type RenderedSubDiagnostic = SubDiagnostic<SourceRange>;
 
 /// A rendered diagnostic, with expansion traces for every subdiagnostic and a top-level include
 /// trace.

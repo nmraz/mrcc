@@ -5,10 +5,7 @@ use std::iter;
 use crate::smap::InterpretedFileRange;
 use crate::{LineCol, SourceMap, SourcePos};
 
-use super::{
-    Level, Ranges, RenderedDiagnostic, RenderedRanges, RenderedSink, RenderedSubDiagnostic,
-    RenderedSuggestion,
-};
+use super::{Level, Ranges, RenderedDiagnostic, RenderedSink, RenderedSubDiagnostic};
 
 /// A rendered diagnostic sink that emits messages and annotated code snippets to `stderr`.
 pub struct AnnotatingSink;
@@ -19,21 +16,11 @@ impl RenderedSink for AnnotatingSink {
             .chain(diag.notes().iter().map(WrappedSubDiagnostic::from_note));
 
         match smap {
-            Some(smap) => subdiags.for_each(|subdiag| print_wrapped_subdiag(&subdiag, smap)),
-            None => subdiags.for_each(|subdiag| print_diag_msg(subdiag.level, subdiag.diag.msg())),
+            Some(smap) => subdiags.for_each(|subdiag| print_annotated_subdiag(&subdiag, smap)),
+            None => subdiags.for_each(|subdiag| print_subdiag_msg(&subdiag)),
         }
 
         eprintln!();
-    }
-}
-
-fn print_diag_msg(level: Level, msg: &str) {
-    eprintln!("{}: {}", level, msg);
-}
-
-fn print_wrapped_subdiag(subdiag: &WrappedSubDiagnostic<'_>, smap: &SourceMap) {
-    for note in get_expansion_chain(subdiag) {
-        print_annotated_subdiag(&note, smap);
     }
 }
 
@@ -61,54 +48,16 @@ impl<'a> WrappedSubDiagnostic<'a> {
     }
 }
 
-struct DisplayableSubDiagnostic<'a> {
-    level: Level,
-    msg: &'a str,
-    ranges: Option<&'a RenderedRanges>,
-    suggestion: Option<&'a RenderedSuggestion>,
-    includes: &'a [SourcePos],
+fn print_subdiag_msg(subdiag: &WrappedSubDiagnostic<'_>) {
+    eprintln!("{}: {}", subdiag.level, subdiag.diag.msg);
 }
 
-impl<'a> DisplayableSubDiagnostic<'a> {
-    fn from_subdiag(subdiag: &WrappedSubDiagnostic<'a>) -> Self {
-        Self {
-            level: subdiag.level,
-            msg: subdiag.diag.msg(),
-            ranges: subdiag.diag.ranges(),
-            suggestion: subdiag.diag.suggestion(),
-            includes: subdiag.includes,
-        }
-    }
+fn print_annotated_subdiag(subdiag: &WrappedSubDiagnostic<'_>, smap: &SourceMap) {
+    print_subdiag_msg(subdiag);
 
-    fn from_expansion(ranges: &'a RenderedRanges) -> Self {
-        Self {
-            level: Level::Note,
-            msg: "expanded from here",
-            ranges: Some(ranges),
-            suggestion: None,
-            includes: &[],
-        }
-    }
-}
-
-fn get_expansion_chain<'a>(
-    subdiag: &WrappedSubDiagnostic<'a>,
-) -> impl Iterator<Item = DisplayableSubDiagnostic<'a>> {
-    iter::once(DisplayableSubDiagnostic::from_subdiag(subdiag)).chain(
-        subdiag
-            .diag
-            .expansions
-            .iter()
-            .map(DisplayableSubDiagnostic::from_expansion),
-    )
-}
-
-fn print_annotated_subdiag(subdiag: &DisplayableSubDiagnostic<'_>, smap: &SourceMap) {
-    print_diag_msg(subdiag.level, subdiag.msg);
-
-    if let Some(&Ranges { primary_range, .. }) = subdiag.ranges {
+    if let Some(&Ranges { primary_range, .. }) = subdiag.diag.ranges.as_ref() {
         let interp = smap.get_interpreted_range(primary_range);
-        let suggestion = subdiag.suggestion.map(|sugg| {
+        let suggestion = subdiag.diag.suggestion.as_ref().map(|sugg| {
             (
                 sugg.insert_text.as_str(),
                 smap.get_interpreted_range(sugg.replacement_range)

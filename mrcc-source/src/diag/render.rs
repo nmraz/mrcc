@@ -1,5 +1,5 @@
-use std::cmp;
 use std::hash::BuildHasherDefault;
+use std::{cmp, iter};
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -11,7 +11,7 @@ use crate::SourceRange;
 
 use super::{Diagnostic, RawDiagnostic, RenderedDiagnostic};
 use super::{Ranges, RawRanges, RenderedRanges};
-use super::{RawSubDiagnostic, RenderedSubDiagnostic, SubDiagnostic};
+use super::{RawSubDiagnostic, RenderedSubDiagnostic};
 use super::{RawSuggestion, RenderedSuggestion};
 
 /// Returns an iterator tracing through the expansions of `range`.
@@ -143,19 +143,35 @@ fn render_suggestion(suggestion: &RawSuggestion, smap: &SourceMap) -> Option<Ren
 /// Renders a subdiagnostic with no location information.
 fn render_anon_subdiag(raw: &RawSubDiagnostic) -> RenderedSubDiagnostic {
     RenderedSubDiagnostic {
-        inner: SubDiagnostic {
-            msg: raw.msg.clone(),
-            ranges: None,
-            suggestion: None,
-        },
-        expansions: Vec::new(),
+        msg: raw.msg.clone(),
+        ranges: None,
+        suggestion: None,
     }
 }
 
-/// Renders the provided subdiagnostic using the source map.
-fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagnostic {
-    match &raw.ranges {
-        None => render_anon_subdiag(raw),
+/// Renders a diagnostic with no location information.
+fn render_anon_diag(raw: &RawDiagnostic) -> RenderedDiagnostic {
+    RenderedDiagnostic {
+        inner: Diagnostic {
+            level: raw.level,
+            main: render_anon_subdiag(&raw.main),
+            notes: raw.notes.iter().map(render_anon_subdiag).collect(),
+        },
+        includes: vec![],
+    }
+}
+
+/// Renders the provided subdiagnostic using the source map, returning the rendered primary
+/// subdiagnostic and any expansion subdiagnostics that may have been created.
+fn render_subdiag(
+    raw: &RawSubDiagnostic,
+    smap: &SourceMap,
+) -> (
+    RenderedSubDiagnostic,
+    impl Iterator<Item = RenderedSubDiagnostic>,
+) {
+    let (main_subdiag, expansion_subdiags) = match &raw.ranges {
+        None => (render_anon_subdiag(raw), None),
         Some(ranges) => {
             let (primary_ranges, expansion_ranges) = render_ranges(ranges, smap);
             let rendered_suggestion = raw
@@ -163,27 +179,60 @@ fn render_subdiag(raw: &RawSubDiagnostic, smap: &SourceMap) -> RenderedSubDiagno
                 .as_ref()
                 .and_then(|sugg| render_suggestion(sugg, smap));
 
-            RenderedSubDiagnostic {
-                inner: SubDiagnostic {
-                    msg: raw.msg.clone(),
-                    ranges: Some(primary_ranges),
-                    suggestion: rendered_suggestion,
-                },
-                expansions: expansion_ranges,
-            }
+            let main_subdiag = RenderedSubDiagnostic {
+                msg: raw.msg.clone(),
+                ranges: Some(primary_ranges),
+                suggestion: rendered_suggestion,
+            };
+
+            let expansion_subdiags =
+                expansion_ranges
+                    .into_iter()
+                    .map(|ranges| RenderedSubDiagnostic {
+                        msg: "expanded from here".into(),
+                        ranges: Some(ranges),
+                        suggestion: None,
+                    });
+
+            (main_subdiag, Some(expansion_subdiags))
         }
-    }
+    };
+
+    (main_subdiag, expansion_subdiags.into_iter().flatten())
 }
 
-/// Renders `raw` by invoking `f` on each of its subdiagnostics to obtain a rendered subdiagnostic.
-fn render_with(
-    raw: &RawDiagnostic,
-    mut f: impl FnMut(&RawSubDiagnostic) -> RenderedSubDiagnostic,
-) -> Diagnostic<RenderedSubDiagnostic> {
-    Diagnostic {
-        level: raw.level,
-        main: f(&raw.main),
-        notes: raw.notes.iter().map(f).collect(),
+/// Renders a diagnostic with location information.
+fn render_diag(raw: &RawDiagnostic, smap: &SourceMap) -> RenderedDiagnostic {
+    let (rendered_main, main_expansions) = render_subdiag(&raw.main, smap);
+
+    let mut includes: Vec<_> = rendered_main
+        .ranges
+        .as_ref()
+        .map(|ranges| {
+            smap.get_includer_chain(ranges.primary_range.start())
+                .dropping(1) // First listing is the file itself
+                .map(|(_, pos)| pos)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Once again, we have includes from innermost to outermost.
+    includes.reverse();
+
+    let notes = main_expansions
+        .chain(raw.notes.iter().flat_map(|note| {
+            let (rendered_note, note_expansions) = render_subdiag(note, smap);
+            iter::once(rendered_note).chain(note_expansions)
+        }))
+        .collect();
+
+    RenderedDiagnostic {
+        inner: Diagnostic {
+            level: raw.level,
+            main: rendered_main,
+            notes,
+        },
+        includes,
     }
 }
 
@@ -197,28 +246,5 @@ fn render_with(
 ///
 /// This function may panic if any of the ranges in `raw` is invalid or malformed.
 pub fn render(raw: &RawDiagnostic, smap: Option<&SourceMap>) -> RenderedDiagnostic {
-    match smap {
-        Some(smap) => {
-            let inner = render_with(raw, |subdiag| render_subdiag(subdiag, smap));
-            let mut includes: Vec<_> = inner
-                .main
-                .ranges()
-                .map(|ranges| {
-                    smap.get_includer_chain(ranges.primary_range.start())
-                        .dropping(1) // First listing is the file itself
-                        .map(|(_, pos)| pos)
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            // Once again, we have includes from innermost to outermost.
-            includes.reverse();
-
-            RenderedDiagnostic { inner, includes }
-        }
-        None => RenderedDiagnostic {
-            inner: render_with(raw, render_anon_subdiag),
-            includes: Vec::new(),
-        },
-    }
+    smap.map_or_else(|| render_anon_diag(raw), |smap| render_diag(raw, smap))
 }
