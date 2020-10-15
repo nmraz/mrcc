@@ -1,11 +1,15 @@
 use std::cmp;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::iter;
 
-use crate::smap::InterpretedFileRange;
-use crate::{LineCol, SourceMap, SourcePos};
+use crate::smap::{InterpretedFileRange, LineSnippet};
+use crate::{LocalRange, SourceMap, SourcePos};
 
-use super::{Level, Ranges, RenderedDiagnostic, RenderedSink, RenderedSubDiagnostic};
+use super::{
+    Level, RenderedDiagnostic, RenderedRanges, RenderedSink, RenderedSubDiagnostic,
+    RenderedSuggestion,
+};
 
 /// A rendered diagnostic sink that emits messages and annotated code snippets to `stderr`.
 pub struct AnnotatingSink;
@@ -48,6 +52,26 @@ impl<'a> WrappedSubDiagnostic<'a> {
     }
 }
 
+struct AnnotatedLine<'a> {
+    line: &'a str,
+    line_num: u32,
+    primary_range: Option<LocalRange>,
+    subranges: Vec<LocalRange>,
+    suggestion: Option<(&'a str, u32)>,
+}
+
+impl<'a> AnnotatedLine<'a> {
+    fn new(line: &'a str, line_num: u32) -> Self {
+        Self {
+            line,
+            line_num,
+            primary_range: None,
+            subranges: Vec::new(),
+            suggestion: None,
+        }
+    }
+}
+
 fn print_subdiag_msg(subdiag: &WrappedSubDiagnostic<'_>) {
     eprintln!("{}: {}", subdiag.level, subdiag.diag.msg);
 }
@@ -55,63 +79,79 @@ fn print_subdiag_msg(subdiag: &WrappedSubDiagnostic<'_>) {
 fn print_annotated_subdiag(subdiag: &WrappedSubDiagnostic<'_>, smap: &SourceMap) {
     print_subdiag_msg(subdiag);
 
-    if let Some(&Ranges { primary_range, .. }) = subdiag.diag.ranges.as_ref() {
-        let interp = smap.get_interpreted_range(primary_range);
-        let suggestion = subdiag.diag.suggestion.as_ref().map(|sugg| {
-            (
-                sugg.insert_text.as_str(),
-                smap.get_interpreted_range(sugg.replacement_range)
-                    .start_linecol(),
-            )
-        });
+    if let Some(ranges) = subdiag.diag.ranges.as_ref() {
+        let annotations = build_annotations(ranges, subdiag.diag.suggestion.as_ref(), smap);
 
-        print_annotation(
-            &interp,
-            suggestion,
-            subdiag
-                .includes
-                .iter()
-                .map(|&pos| smap.get_interpreted_range(pos.into())),
+        let gutter_width = match annotations.last() {
+            Some(last) => count_digits(last.line_num + 1),
+            None => return,
+        };
+
+        for &include in subdiag.includes {
+            print_file_loc(
+                &smap.get_interpreted_range(include.into()),
+                Some("includer"),
+                gutter_width,
+            );
+        }
+
+        print_file_loc(
+            &smap.get_interpreted_range(ranges.primary_range),
+            None,
+            gutter_width,
         );
+
+        for annotation in &annotations {
+            print_annotation(annotation, gutter_width);
+        }
     }
 }
 
-fn print_annotation<'a>(
-    interp: &InterpretedFileRange<'_>,
-    suggestion: Option<(&str, LineCol)>,
-    includes: impl Iterator<Item = InterpretedFileRange<'a>>,
-) {
-    let line_snippets: Vec<_> = interp.line_snippets().collect();
-    let line_num_width = match line_snippets.last() {
-        Some(last) => count_digits(last.line_num + 1),
-        None => return,
-    };
-
-    for include in includes {
-        print_file_loc(&include, Some("includer"), line_num_width);
+fn build_annotations<'a>(
+    ranges: &RenderedRanges,
+    suggestion: Option<&'a RenderedSuggestion>,
+    smap: &'a SourceMap,
+) -> Vec<AnnotatedLine<'a>> {
+    fn get_line<'a, 'b>(
+        line_map: &'a mut BTreeMap<u32, AnnotatedLine<'b>>,
+        snippet: &LineSnippet<'b>,
+    ) -> &'a mut AnnotatedLine<'b> {
+        line_map
+            .entry(snippet.line_num)
+            .or_insert_with(|| AnnotatedLine::new(snippet.line, snippet.line_num))
     }
 
-    print_file_loc(interp, None, line_num_width);
+    let mut line_map = BTreeMap::new();
 
-    for snippet in &line_snippets {
-        print_gutter(snippet.line_num + 1, line_num_width);
-        eprintln!("{}", snippet.line);
+    for snippet in smap
+        .get_interpreted_range(ranges.primary_range)
+        .line_snippets()
+    {
+        get_line(&mut line_map, &snippet).primary_range = Some(snippet.range);
+    }
 
-        print_gutter("", line_num_width);
-        eprintln!(
-            "{pad:off$}{}",
-            "^".repeat(cmp::max(snippet.range.len().into(), 1)),
-            pad = "",
-            off = snippet.range.start().into(),
-        );
-
-        if let Some((text, linecol)) = suggestion {
-            if linecol.line == snippet.line_num {
-                print_gutter("", line_num_width);
-                eprintln!("{pad:off$}{}", text, pad = "", off = linecol.col as usize);
-            }
+    for &(subrange, _) in &ranges.subranges {
+        for snippet in smap.get_interpreted_range(subrange).line_snippets() {
+            get_line(&mut line_map, &snippet)
+                .subranges
+                .push(snippet.range);
         }
     }
+
+    if let Some(suggestion) = suggestion {
+        let linecol = smap
+            .get_interpreted_range(suggestion.replacement_range)
+            .start_linecol();
+
+        // To avoid confusion, only display the suggestion if it's on a line we're highlighting
+        // anyway.
+        // TODO: find a better way to surface this.
+        if let Some(annotated_line) = line_map.get_mut(&linecol.line) {
+            annotated_line.suggestion = Some((&suggestion.insert_text, linecol.col));
+        }
+    }
+
+    line_map.into_iter().map(|(_, line)| line).collect()
 }
 
 fn print_file_loc(interp: &InterpretedFileRange<'_>, note: Option<&str>, gutter_width: usize) {
@@ -127,6 +167,42 @@ fn print_file_loc(interp: &InterpretedFileRange<'_>, note: Option<&str>, gutter_
         pad = "",
         width = gutter_width
     );
+}
+
+fn print_annotation(annotation: &AnnotatedLine<'_>, gutter_width: usize) {
+    let highlight_line = build_highlight_line(annotation);
+
+    print_gutter(annotation.line_num + 1, gutter_width);
+    eprintln!("{}", annotation.line);
+
+    print_gutter("", gutter_width);
+    eprintln!("{}", highlight_line);
+
+    if let Some((text, off)) = annotation.suggestion {
+        print_gutter("", gutter_width);
+        eprintln!("{pad:off$}{}", text, pad = "", off = off as usize);
+    }
+}
+
+fn build_highlight_line(annotation: &AnnotatedLine<'_>) -> String {
+    let mut highlight_line = " ".repeat(annotation.line.len() + 1);
+
+    for &subrange in &annotation.subranges {
+        add_highlight(&mut highlight_line, subrange, "-");
+    }
+
+    if let Some(primary_range) = annotation.primary_range {
+        add_highlight(&mut highlight_line, primary_range, "^");
+    }
+
+    highlight_line
+}
+
+fn add_highlight(highlight_line: &mut String, range: LocalRange, marker: &str) {
+    let start: usize = range.start().into();
+    let len = cmp::max(range.len().into(), 1);
+
+    highlight_line.replace_range(start..start + len, &marker.repeat(len));
 }
 
 fn print_gutter(obj: impl fmt::Display, width: usize) {
@@ -146,6 +222,77 @@ fn count_digits(mut val: u32) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn highlight_line() {
+        let annotation = AnnotatedLine {
+            line: "int x = 1 + 2;",
+            line_num: 0,
+            primary_range: Some(LocalRange::at(10.into(), 1.into())),
+            subranges: vec![
+                LocalRange::at(8.into(), 1.into()),
+                LocalRange::at(12.into(), 1.into()),
+            ],
+            suggestion: None,
+        };
+
+        assert_eq!(build_highlight_line(&annotation), "        - ^ -  ");
+    }
+
+    #[test]
+    fn highlight_line_zero_width() {
+        let annotation = AnnotatedLine {
+            line: "int x = 1 + 2;",
+            line_num: 0,
+            primary_range: Some(LocalRange::at(10.into(), 0.into())),
+            subranges: Vec::new(),
+            suggestion: None,
+        };
+
+        assert_eq!(build_highlight_line(&annotation), "          ^    ");
+    }
+
+    #[test]
+    fn highlight_line_at_end() {
+        let annotation = AnnotatedLine {
+            line: "#include \"test.h",
+            line_num: 0,
+            primary_range: Some(LocalRange::at(16.into(), 0.into())),
+            subranges: Vec::new(),
+            suggestion: None,
+        };
+
+        assert_eq!(build_highlight_line(&annotation), "                ^")
+    }
+
+    #[test]
+    fn highlight_line_no_primary() {
+        let annotation = AnnotatedLine {
+            line: "int x = 1 + 2;",
+            line_num: 0,
+            primary_range: None,
+            subranges: vec![
+                LocalRange::at(8.into(), 1.into()),
+                LocalRange::at(12.into(), 1.into()),
+            ],
+            suggestion: None,
+        };
+
+        assert_eq!(build_highlight_line(&annotation), "        -   -  ");
+    }
+
+    #[test]
+    fn highlight_line_overlap() {
+        let annotation = AnnotatedLine {
+            line: "int x = A(1, ++);",
+            line_num: 0,
+            primary_range: Some(LocalRange::at(13.into(), 2.into())),
+            subranges: vec![LocalRange::at(8.into(), 8.into())],
+            suggestion: None,
+        };
+
+        assert_eq!(build_highlight_line(&annotation), "        -----^^-  ");
+    }
 
     #[test]
     fn digit_count() {
