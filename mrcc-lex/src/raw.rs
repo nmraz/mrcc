@@ -393,8 +393,8 @@ impl<'a> Tokenizer<'a> {
         self.handle_str_like('\'', |terminated| RawTokenKind::Char { terminated })
     }
 
-    /// Consumes characters until after `delim` or the nearest newline, using `f` create a token
-    /// type based on whether the token was terminated.
+    /// Consumes characters until just after `delim` or the nearest newline is encountered, using `f`
+    /// to create a token type based on whether the token was terminated.
     ///
     /// This function correctly handles escaping of `delim`.
     ///
@@ -412,7 +412,7 @@ impl<'a> Tokenizer<'a> {
             match c {
                 '\\' => escaped = !escaped,
                 c if c == delim && !escaped => return self.tok(f(true)),
-                _ => {}
+                _ => escaped = false,
             }
         }
 
