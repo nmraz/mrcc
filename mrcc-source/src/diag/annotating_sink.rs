@@ -101,10 +101,23 @@ fn print_annotated_subdiag(subdiag: &WrappedSubDiagnostic<'_>, smap: &SourceMap)
             gutter_width,
         );
 
-        for annotation in &annotations {
-            print_annotation(annotation, gutter_width);
-        }
+        print_annotations(&annotations, gutter_width);
     }
+}
+
+fn print_file_loc(interp: &InterpretedFileRange<'_>, note: Option<&str>, gutter_width: usize) {
+    let note = note.map(|note| format!(" ({})", note)).unwrap_or_default();
+    let linecol = interp.start_linecol();
+
+    eprintln!(
+        "{pad:width$}--> {}:{}:{}{}",
+        interp.filename(),
+        linecol.line + 1,
+        linecol.col + 1,
+        note,
+        pad = "",
+        width = gutter_width
+    );
 }
 
 fn build_annotations<'a>(
@@ -154,19 +167,21 @@ fn build_annotations<'a>(
     line_map.into_iter().map(|(_, line)| line).collect()
 }
 
-fn print_file_loc(interp: &InterpretedFileRange<'_>, note: Option<&str>, gutter_width: usize) {
-    let note = note.map(|note| format!(" ({})", note)).unwrap_or_default();
-    let linecol = interp.start_linecol();
+fn print_annotations(annotations: &[AnnotatedLine<'_>], gutter_width: usize) {
+    let mut last_line_num = None;
 
-    eprintln!(
-        "{pad:width$}--> {}:{}:{}{}",
-        interp.filename(),
-        linecol.line + 1,
-        linecol.col + 1,
-        note,
-        pad = "",
-        width = gutter_width
-    );
+    for annotation in annotations {
+        if last_line_num
+            .filter(|line_num| line_num + 1 < annotation.line_num)
+            .is_some()
+        {
+            // Indicate skipped lines in the snippet.
+            eprintln!("...");
+        }
+
+        last_line_num = Some(annotation.line_num);
+        print_annotation(annotation, gutter_width);
+    }
 }
 
 fn print_annotation(annotation: &AnnotatedLine<'_>, gutter_width: usize) {
