@@ -12,6 +12,9 @@ use mrcc_source::{LocalOff, LocalRange};
 
 use super::PunctKind;
 
+#[cfg(test)]
+mod tests;
+
 /// Enum representing raw token types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RawTokenKind {
