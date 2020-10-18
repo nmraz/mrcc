@@ -102,3 +102,63 @@ fn simple_punct() {
     check('>', PunctKind::Greater);
     check('=', PunctKind::Eq);
 }
+
+#[test]
+fn double_punct() {
+    fn check(punct: &str, kind: PunctKind) {
+        let input = format!("{}xxx", punct);
+        check_first_token(&input, punct, RawTokenKind::Punct(kind));
+    }
+
+    check("##", PunctKind::HashHash);
+    check("->", PunctKind::Arrow);
+    check("++", PunctKind::PlusPlus);
+    check("--", PunctKind::MinusMinus);
+    check("&&", PunctKind::AmpAmp);
+    check("||", PunctKind::PipePipe);
+    check("<<", PunctKind::LessLess);
+    check("<=", PunctKind::LessEq);
+    check(">>", PunctKind::GreaterGreater);
+    check(">=", PunctKind::GreaterEq);
+    check("==", PunctKind::EqEq);
+    check("!=", PunctKind::BangEq);
+    check("+=", PunctKind::PlusEq);
+    check("-=", PunctKind::MinusEq);
+    check("*=", PunctKind::StarEq);
+    check("/=", PunctKind::SlashEq);
+    check("%=", PunctKind::PercEq);
+    check("&=", PunctKind::AmpEq);
+    check("|=", PunctKind::PipeEq);
+    check("^=", PunctKind::CaretEq);
+}
+
+#[test]
+fn triple_punct() {
+    fn check(punct: &str, kind: PunctKind) {
+        check_single_token_kind(punct, RawTokenKind::Punct(kind));
+    }
+
+    check("...", PunctKind::Ellipsis);
+    // `...` is special in that its prefix `..` is not a complete punctuator itself.
+    check_first_token("..", ".", RawTokenKind::Punct(PunctKind::Dot));
+
+    check("<<=", PunctKind::LessLessEq);
+    check(">>=", PunctKind::GreaterGreaterEq);
+}
+
+#[test]
+fn digraphs() {
+    fn check(digraph: &str, kind: PunctKind) {
+        for &suffix in &["", "<", ":", "%"] {
+            let input = format!("{}{}", digraph, suffix);
+            check_first_token(&input, digraph, RawTokenKind::Punct(kind));
+        }
+    }
+
+    check("<:", PunctKind::LSquare);
+    check(":>", PunctKind::RSquare);
+    check("<%", PunctKind::LCurly);
+    check("%>", PunctKind::RCurly);
+    check("%:", PunctKind::Hash);
+    check("%:%:", PunctKind::HashHash);
+}
