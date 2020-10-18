@@ -435,6 +435,8 @@ impl<'a> Tokenizer<'a> {
             ']' => self.punct(RSquare),
             '(' => self.punct(LParen),
             ')' => self.punct(RParen),
+            '{' => self.punct(LCurly),
+            '}' => self.punct(RCurly),
             '~' => self.punct(Tilde),
             '?' => self.punct(Question),
             '#' => {
