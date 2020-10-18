@@ -108,6 +108,9 @@ fn double_punct() {
     fn check(punct: &str, kind: PunctKind) {
         let input = format!("{}xxx", punct);
         check_first_token(&input, punct, RawTokenKind::Punct(kind));
+
+        let input = punct.repeat(2);
+        check_first_token(&input, punct, RawTokenKind::Punct(kind));
     }
 
     check("##", PunctKind::HashHash);
