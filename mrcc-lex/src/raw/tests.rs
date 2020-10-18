@@ -21,48 +21,48 @@ fn check_first_token(input: &str, tok_str: &str, kind: RawTokenKind) {
     assert_eq!(tok.content.str, tok_str);
 }
 
-fn check_single_token_kind(input: &str, kind: RawTokenKind) {
+fn check_single_token(input: &str, kind: RawTokenKind) {
     check_first_token(input, input, kind);
 }
 
 #[test]
 fn eof() {
-    check_single_token_kind("", RawTokenKind::Eof);
+    check_single_token("", RawTokenKind::Eof);
 }
 
 #[test]
 fn newline() {
-    check_single_token_kind("\n", RawTokenKind::Newline);
+    check_single_token("\n", RawTokenKind::Newline);
 }
 
 #[test]
 fn whitespace() {
-    check_single_token_kind(" \x0c \t \x0b", RawTokenKind::Ws);
+    check_single_token(" \x0c \t \x0b", RawTokenKind::Ws);
     check_first_token(" \x0c \t \x0b\n ", " \x0c \t \x0b", RawTokenKind::Ws);
 }
 
 #[test]
 fn line_comment() {
-    check_single_token_kind("// comment text", RawTokenKind::LineComment);
-    check_single_token_kind("// comment\\\n text", RawTokenKind::LineComment);
+    check_single_token("// comment text", RawTokenKind::LineComment);
+    check_single_token("// comment\\\n text", RawTokenKind::LineComment);
     check_first_token("// comment\n text", "// comment", RawTokenKind::LineComment);
 }
 
 #[test]
 fn block_comment() {
-    check_single_token_kind(
+    check_single_token(
         "/* comment text */",
         RawTokenKind::BlockComment { terminated: true },
     );
-    check_single_token_kind(
+    check_single_token(
         "/* comment /* text */",
         RawTokenKind::BlockComment { terminated: true },
     );
-    check_single_token_kind(
+    check_single_token(
         "/* comment\n text */",
         RawTokenKind::BlockComment { terminated: true },
     );
-    check_single_token_kind(
+    check_single_token(
         "/* comment text",
         RawTokenKind::BlockComment { terminated: false },
     );
@@ -138,7 +138,7 @@ fn double_punct() {
 #[test]
 fn triple_punct() {
     fn check(punct: &str, kind: PunctKind) {
-        check_single_token_kind(punct, RawTokenKind::Punct(kind));
+        check_single_token(punct, RawTokenKind::Punct(kind));
     }
 
     check("...", PunctKind::Ellipsis);
