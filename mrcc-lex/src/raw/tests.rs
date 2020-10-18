@@ -15,14 +15,14 @@ fn skip_escaped_newlines() {
     assert!(escaped.tainted());
 }
 
-fn first_token(input: &str) -> RawToken<'_> {
-    Tokenizer::new(input).next_token()
+fn check_first_token(input: &str, tok_str: &str, kind: RawTokenKind) {
+    let tok = Tokenizer::new(input).next_token();
+    assert_eq!(tok.kind, kind);
+    assert_eq!(tok.content.str, tok_str);
 }
 
 fn check_single_token_kind(input: &str, kind: RawTokenKind) {
-    let tok = first_token(input);
-    assert_eq!(tok.kind, kind);
-    assert_eq!(tok.content.str, input);
+    check_first_token(input, input, kind);
 }
 
 #[test]
@@ -38,20 +38,14 @@ fn newline() {
 #[test]
 fn whitespace() {
     check_single_token_kind(" \x0c \t \x0b", RawTokenKind::Ws);
-
-    let tok = first_token(" \x0c \t \x0b\n ");
-    assert_eq!(tok.kind, RawTokenKind::Ws);
-    assert_eq!(tok.content.str, " \x0c \t \x0b");
+    check_first_token(" \x0c \t \x0b\n ", " \x0c \t \x0b", RawTokenKind::Ws);
 }
 
 #[test]
 fn line_comment() {
     check_single_token_kind("// comment text", RawTokenKind::LineComment);
     check_single_token_kind("// comment\\\n text", RawTokenKind::LineComment);
-
-    let tok = first_token("// comment\n text");
-    assert_eq!(tok.kind, RawTokenKind::LineComment);
-    assert_eq!(tok.content.str, "// comment");
+    check_first_token("// comment\n text", "// comment", RawTokenKind::LineComment);
 }
 
 #[test]
