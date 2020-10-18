@@ -67,3 +67,38 @@ fn block_comment() {
         RawTokenKind::BlockComment { terminated: false },
     );
 }
+
+#[test]
+fn simple_punct() {
+    fn check(punct: char, kind: PunctKind) {
+        // Add some trailing characters to make sure we don't consume lookahead when trying to match
+        // a compound punctuator.
+        let input = format!("{}xxx", punct);
+        check_first_token(&input, &input[..1], RawTokenKind::Punct(kind));
+    }
+
+    check('#', PunctKind::Hash);
+    check(',', PunctKind::Comma);
+    check(';', PunctKind::Semi);
+    check('[', PunctKind::LSquare);
+    check(']', PunctKind::RSquare);
+    check('(', PunctKind::LParen);
+    check(')', PunctKind::RParen);
+    check('{', PunctKind::LCurly);
+    check('}', PunctKind::RCurly);
+    check('.', PunctKind::Dot);
+    check('+', PunctKind::Plus);
+    check('-', PunctKind::Minus);
+    check('*', PunctKind::Star);
+    check('/', PunctKind::Slash);
+    check('%', PunctKind::Perc);
+    check('&', PunctKind::Amp);
+    check('|', PunctKind::Pipe);
+    check('^', PunctKind::Caret);
+    check('~', PunctKind::Tilde);
+    check('!', PunctKind::Bang);
+    check('?', PunctKind::Question);
+    check('<', PunctKind::Less);
+    check('>', PunctKind::Greater);
+    check('=', PunctKind::Eq);
+}
