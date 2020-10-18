@@ -429,7 +429,6 @@ impl<'a> Tokenizer<'a> {
 
         match c {
             ',' => self.punct(Comma),
-            ':' => self.punct(Colon),
             ';' => self.punct(Semi),
             '[' => self.punct(LSquare),
             ']' => self.punct(RSquare),
@@ -444,6 +443,13 @@ impl<'a> Tokenizer<'a> {
                     self.punct(HashHash)
                 } else {
                     self.punct(Hash)
+                }
+            }
+            ':' => {
+                if self.reader.eat('>') {
+                    self.punct(RSquare)
+                } else {
+                    self.punct(Colon)
                 }
             }
             '+' => {
@@ -491,6 +497,8 @@ impl<'a> Tokenizer<'a> {
                     } else {
                         self.punct(Hash)
                     }
+                } else if self.reader.eat('>') {
+                    self.punct(RCurly)
                 } else if self.reader.eat('=') {
                     self.punct(PercEq)
                 } else {
