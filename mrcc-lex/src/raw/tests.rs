@@ -69,6 +69,15 @@ fn block_comment() {
 }
 
 #[test]
+fn ident() {
+    check_single_token("ident", RawTokenKind::Ident);
+    check_single_token("id1en3t", RawTokenKind::Ident);
+    check_single_token("my_ident", RawTokenKind::Ident);
+    check_single_token("__LINE__", RawTokenKind::Ident);
+    check_single_token("_1", RawTokenKind::Ident);
+}
+
+#[test]
 fn number() {
     check_single_token("123", RawTokenKind::Number);
     check_single_token("12.34", RawTokenKind::Number);
