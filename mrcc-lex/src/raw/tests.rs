@@ -69,6 +69,23 @@ fn block_comment() {
 }
 
 #[test]
+fn number() {
+    check_single_token("123", RawTokenKind::Number);
+    check_single_token("12.34", RawTokenKind::Number);
+    check_single_token("0755", RawTokenKind::Number);
+    check_single_token("0x76aa4f", RawTokenKind::Number);
+    check_single_token("0x76aa..4f", RawTokenKind::Number);
+    check_single_token("1_2_3_4", RawTokenKind::Number);
+    check_single_token("2abcxyz", RawTokenKind::Number);
+    check_single_token("1.2.3", RawTokenKind::Number);
+    check_single_token("1.754e+233", RawTokenKind::Number);
+    check_single_token("1.754E+233", RawTokenKind::Number);
+    check_single_token("1.754p+233", RawTokenKind::Number);
+    check_single_token("1.754P+233", RawTokenKind::Number);
+    check_first_token("1.754g+233", "1.754g", RawTokenKind::Number);
+}
+
+#[test]
 fn simple_punct() {
     fn check(punct: char, kind: PunctKind) {
         // Add some trailing characters to make sure we don't consume lookahead when trying to match
