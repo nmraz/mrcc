@@ -95,6 +95,30 @@ fn number() {
 }
 
 #[test]
+fn str_like() {
+    check_single_token(r#""string""#, RawTokenKind::Str { terminated: true });
+    check_single_token(r#""string"#, RawTokenKind::Str { terminated: false });
+    check_first_token(
+        "\"string\n",
+        r#""string"#,
+        RawTokenKind::Str { terminated: false },
+    );
+    check_single_token(r#""string\""#, RawTokenKind::Str { terminated: false });
+    check_single_token(r#""string\\""#, RawTokenKind::Str { terminated: true });
+    check_single_token(r#""string\t""#, RawTokenKind::Str { terminated: true });
+    check_single_token(r#""string\t\""#, RawTokenKind::Str { terminated: false });
+
+    check_single_token("'c'", RawTokenKind::Char { terminated: true });
+    check_single_token("'char'", RawTokenKind::Char { terminated: true });
+    check_single_token("'char", RawTokenKind::Char { terminated: false });
+    check_first_token("'char\n", "'char", RawTokenKind::Char { terminated: false });
+    check_single_token(r#"'\'"#, RawTokenKind::Char { terminated: false });
+    check_single_token(r#"'\\'"#, RawTokenKind::Char { terminated: true });
+    check_single_token(r#"'\t'"#, RawTokenKind::Char { terminated: true });
+    check_single_token(r#"'\t\'"#, RawTokenKind::Char { terminated: false });
+}
+
+#[test]
 fn simple_punct() {
     fn check(punct: char, kind: PunctKind) {
         // Add some trailing characters to make sure we don't consume lookahead when trying to match
