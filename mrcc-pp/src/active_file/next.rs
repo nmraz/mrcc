@@ -8,8 +8,7 @@ use mrcc_source::{
     DResult,
 };
 
-use crate::expand::{MacroDef, MacroDefKind, ReplacementList};
-use crate::state::State;
+use crate::expand::{MacroDef, MacroDefKind, MacroState, ReplacementList};
 
 use super::lexer::MacroArgLexer;
 use super::processor::{FileToken, Processor};
@@ -17,19 +16,19 @@ use super::{Action, IncludeKind, PpToken};
 
 pub struct NextActionCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
-    state: &'a mut State,
+    macro_state: &'a mut MacroState,
     processor: &'a mut Processor<'s>,
 }
 
 impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     pub fn new(
         ctx: &'a mut LexCtx<'b, 'h>,
-        state: &'a mut State,
+        macro_state: &'a mut MacroState,
         processor: &'a mut Processor<'s>,
     ) -> Self {
         Self {
             ctx,
-            state,
+            macro_state,
             processor,
         }
     }
@@ -53,17 +52,13 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
     }
 
     fn next_expanded_token(&mut self) -> DResult<Option<PpToken>> {
-        self.state
-            .macro_state
+        self.macro_state
             .next_expanded_token(self.ctx, &mut MacroArgLexer::new(self.processor))
     }
 
     fn begin_expansion(&mut self, ppt: PpToken) -> DResult<bool> {
-        self.state.macro_state.begin_expansion(
-            self.ctx,
-            ppt,
-            &mut MacroArgLexer::new(self.processor),
-        )
+        self.macro_state
+            .begin_expansion(self.ctx, ppt, &mut MacroArgLexer::new(self.processor))
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Action>> {
@@ -79,22 +74,24 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         };
         self.processor.reader().eat_line_ws();
 
-        let known_idents = &self.state.known_idents;
-
-        if ident == known_idents.dir_define {
-            self.handle_define_directive()?;
-            Ok(None)
-        } else if ident == known_idents.dir_undef {
-            self.handle_undef_directive()?;
-            Ok(None)
-        } else if ident == known_idents.dir_include {
-            self.handle_include_directive()
-        } else if ident == known_idents.dir_error {
-            self.handle_error_directive(ppt.range())?;
-            Ok(None)
-        } else {
-            self.invalid_directive(ppt)?;
-            Ok(None)
+        match &self.ctx.interner[ident] {
+            "define" => {
+                self.handle_define_directive()?;
+                Ok(None)
+            }
+            "undef" => {
+                self.handle_undef_directive()?;
+                Ok(None)
+            }
+            "include" => self.handle_include_directive(),
+            "error" => {
+                self.handle_error_directive(ppt.range())?;
+                Ok(None)
+            }
+            _ => {
+                self.invalid_directive(ppt)?;
+                Ok(None)
+            }
         }
     }
 
@@ -113,7 +110,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             _ => return Ok(()),
         };
 
-        if let Some(prev) = self.state.macro_state.define(def) {
+        if let Some(prev) = self.macro_state.define(def) {
             let prev_range = prev.name_tok.range;
             let msg = format!(
                 "redefinition of macro '{}'",
@@ -229,7 +226,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
         .data;
 
-        self.state.macro_state.undef(name);
+        self.macro_state.undef(name);
         self.finish_directive()
     }
 

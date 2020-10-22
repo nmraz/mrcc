@@ -7,15 +7,14 @@ use mrcc_lex::{LexCtx, Lexer, Token, TokenKind};
 use mrcc_source::{DResult, SourceId, SourceRange};
 
 use active_file::{Action, ActiveFiles};
+use expand::MacroState;
 use file::{IncludeError, IncludeKind, IncludeLoader};
-use state::State;
 
 pub use token::PpToken;
 
 mod active_file;
 mod expand;
 mod file;
-mod state;
 mod token;
 
 pub struct PreprocessorBuilder<'a, 'b, 'h> {
@@ -49,7 +48,7 @@ impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
         Preprocessor {
             active_files: ActiveFiles::new(&self.ctx.smap, self.main_id, self.parent_dir.take()),
             include_loader: IncludeLoader::new(mem::take(&mut self.include_dirs)),
-            state: State::new(self.ctx),
+            macro_state: MacroState::new(),
         }
     }
 }
@@ -57,7 +56,7 @@ impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
 pub struct Preprocessor {
     active_files: ActiveFiles,
     include_loader: IncludeLoader,
-    state: State,
+    macro_state: MacroState,
 }
 
 impl Preprocessor {
@@ -84,7 +83,9 @@ impl Preprocessor {
     }
 
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
-        self.active_files.top().next_action(ctx, &mut self.state)
+        self.active_files
+            .top()
+            .next_action(ctx, &mut self.macro_state)
     }
 
     fn handle_include(

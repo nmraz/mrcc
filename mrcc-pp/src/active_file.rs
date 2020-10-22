@@ -8,9 +8,9 @@ use mrcc_source::{
 };
 use mrcc_source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
 
-use super::file::{File, IncludeKind};
-use super::state::State;
-use super::PpToken;
+use crate::expand::MacroState;
+use crate::file::{File, IncludeKind};
+use crate::PpToken;
 
 use next::NextActionCtx;
 use processor::Processor;
@@ -51,8 +51,14 @@ impl ActiveFile {
         &self.file
     }
 
-    pub fn next_action(&mut self, ctx: &mut LexCtx<'_, '_>, state: &mut State) -> DResult<Action> {
-        self.with_processor(|processor| NextActionCtx::new(ctx, state, processor).next_action())
+    pub fn next_action(
+        &mut self,
+        ctx: &mut LexCtx<'_, '_>,
+        macro_state: &mut MacroState,
+    ) -> DResult<Action> {
+        self.with_processor(|processor| {
+            NextActionCtx::new(ctx, macro_state, processor).next_action()
+        })
     }
 
     fn with_processor<R, F: FnOnce(&mut Processor<'_>) -> R>(&mut self, f: F) -> R {
