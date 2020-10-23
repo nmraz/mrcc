@@ -35,7 +35,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
     pub fn next_action(&mut self) -> DResult<Action> {
         loop {
-            if let Some(ppt) = self.next_expanded_token()? {
+            if let Some(ppt) = self.next_expansion_token()? {
                 break Ok(Action::Tok(ppt));
             }
 
@@ -51,9 +51,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
     }
 
-    fn next_expanded_token(&mut self) -> DResult<Option<PpToken>> {
+    fn next_expansion_token(&mut self) -> DResult<Option<PpToken>> {
         self.macro_state
-            .next_expanded_token(self.ctx, &mut MacroArgLexer::new(self.processor))
+            .next_expansion_token(self.ctx, &mut MacroArgLexer::new(self.processor))
     }
 
     fn begin_expansion(&mut self, ppt: PpToken) -> DResult<bool> {

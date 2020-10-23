@@ -54,7 +54,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         }
     }
 
-    pub fn next_expanded_token(&mut self) -> DResult<Option<ReplacementToken>> {
+    pub fn next_expansion_token(&mut self) -> DResult<Option<ReplacementToken>> {
         while let Some(mut tok) = self.replacements.next_token() {
             if !self.begin_expansion(&mut tok)? {
                 return Ok(Some(tok));
@@ -318,7 +318,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         self.replacements.push(None, arg);
 
         itertools::process_results(
-            iter::from_fn(|| self.next_expanded_token().transpose()),
+            iter::from_fn(|| self.next_expansion_token().transpose()),
             |iter| {
                 iter.take_while(|tok| tok.ppt.data() != TokenKind::Eof)
                     .collect()

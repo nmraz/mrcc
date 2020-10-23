@@ -33,13 +33,13 @@ impl MacroState {
         self.defs.undef(name)
     }
 
-    pub fn next_expanded_token(
+    pub fn next_expansion_token(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         lexer: &mut dyn ReplacementLexer,
     ) -> DResult<Option<PpToken>> {
         ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, lexer)
-            .next_expanded_token()
+            .next_expansion_token()
             .map(|res| res.map(|tok| tok.ppt))
     }
 
