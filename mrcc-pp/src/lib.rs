@@ -1,3 +1,5 @@
+//! Preprocessor implementation.
+
 #![warn(rust_2018_idioms)]
 
 use std::mem;
@@ -17,6 +19,8 @@ mod expand;
 mod file;
 mod token;
 
+/// Helper structure implementing the builder pattern for constructing a new
+/// [`Preprocessor`](struct.Preprocessor.html).
 pub struct PreprocessorBuilder<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     main_id: SourceId,
@@ -25,6 +29,10 @@ pub struct PreprocessorBuilder<'a, 'b, 'h> {
 }
 
 impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
+    /// Creates a new builder for preprocessing the source file specified by `main_id` in
+    /// `ctx.smap`.
+    ///
+    /// `main_id` should point into a file source, not an expansion.
     pub fn new(ctx: &'a mut LexCtx<'b, 'h>, main_id: SourceId) -> Self {
         Self {
             ctx,
@@ -34,16 +42,25 @@ impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
         }
     }
 
+    /// Sets the presumed parent directory of the main source file, for use in `#include "filename"`
+    /// resolution.
     pub fn parent_dir(&mut self, dir: PathBuf) -> &mut Self {
         self.parent_dir = Some(dir);
         self
     }
 
+    /// Sets the include directories for use in `#include <filename>` resolution. These directories
+    /// will be scanned from first to last.
     pub fn include_dirs(&mut self, dirs: Vec<PathBuf>) -> &mut Self {
         self.include_dirs = dirs;
         self
     }
 
+    /// Constructs a new preprocessor using the options set on this builder.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the provided `main_id` does not point into a file source.
     pub fn build(&mut self) -> Preprocessor {
         Preprocessor {
             active_files: ActiveFiles::new(&self.ctx.smap, self.main_id, self.parent_dir.take()),
@@ -53,6 +70,10 @@ impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
     }
 }
 
+/// A lexer that transparently preprocesses its input source code (up through translation phase 4)
+/// and exposes the resulting token stream.
+///
+/// Use [`PreprocessorBuilder`](struct.PreprocessorBuilder.html) to construct a new `Preprocessor`.
 pub struct Preprocessor {
     active_files: ActiveFiles,
     include_loader: IncludeLoader,
@@ -60,6 +81,12 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Lexes the next preprocessing token from the input, interpreting any preprocessing directives
+    /// encountered.
+    ///
+    /// This method returns tokens with leading whitespace/newline information, which may be
+    /// relevant to certain clients. If this auxiliary information is not needed, consider using
+    /// `next()` instead.
     pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         let ppt = loop {
             match self.top_file_action(ctx)? {
