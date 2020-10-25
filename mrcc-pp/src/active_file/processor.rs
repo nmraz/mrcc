@@ -33,19 +33,19 @@ impl FileTokenKind {
 pub type FileToken = PpToken<FileTokenKind>;
 
 impl FileToken {
-    pub fn real(&self) -> Option<PpToken> {
+    pub(super) fn real(&self) -> Option<PpToken> {
         self.maybe_map(|kind| kind.real())
     }
 
-    pub fn non_eod(&self) -> Option<PpToken> {
+    pub(super) fn non_eod(&self) -> Option<PpToken> {
         self.maybe_map(|kind| kind.non_eod())
     }
 
-    pub fn as_directive_token(&self) -> PpToken {
+    pub(super) fn as_directive_token(&self) -> PpToken {
         self.map(|kind| kind.non_eod().unwrap_or(TokenKind::Eof))
     }
 
-    pub fn is_eod(&self) -> bool {
+    pub(super) fn is_eod(&self) -> bool {
         self.data().is_eod()
     }
 }

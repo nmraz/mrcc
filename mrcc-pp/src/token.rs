@@ -51,7 +51,7 @@ impl PpToken {
         Display { ppt: self, ctx }
     }
 
-    pub(super) fn is_directive_start(&self) -> bool {
+    pub(crate) fn is_directive_start(&self) -> bool {
         self.line_start && self.data() == TokenKind::Punct(PunctKind::Hash)
     }
 }
