@@ -10,7 +10,7 @@ use mrcc_source::{
 
 use crate::expand::{MacroDef, MacroDefKind, MacroState, ReplacementList};
 
-use super::lexer::MacroArgLexer;
+use super::lexer::{DirectiveLexer, MacroArgLexer};
 use super::processor::{FileToken, Processor};
 use super::{Action, IncludeKind, PpToken};
 
@@ -251,10 +251,10 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         } else if reader.eat('"') {
             (self.consume_include_name('"')?, IncludeKind::Str)
         } else {
-            let pos = self.processor.pos();
-            self.reporter().error(pos, "expected a file name").emit()?;
-            self.advance_to_eod()?;
-            return Ok(None);
+            match self.consume_token_include_name()? {
+                Some(filename_kind) => filename_kind,
+                None => return Ok(None),
+            }
         };
 
         let len = self.processor.pos().offset_from(start);
@@ -282,6 +282,57 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         Ok(filename)
     }
 
+    fn consume_token_include_name(&mut self) -> DResult<Option<(PathBuf, IncludeKind)>> {
+        let Token {
+            range,
+            data: content,
+        } = self.consume_expanded_directive_string()?;
+
+        let (kind, term) = if content.starts_with('"') {
+            (IncludeKind::Str, '"')
+        } else if content.starts_with('<') {
+            (IncludeKind::Angle, '>')
+        } else {
+            self.reporter()
+                .error(range, r#"expected "filename" or <filename>"#)
+                .emit()?;
+            return Ok(None);
+        };
+
+        let content = &content[1..];
+
+        let name = match content.find(term) {
+            Some(end) => &content[..end],
+            None => {
+                self.reporter()
+                    .error_expected_delim(range.end(), term)
+                    .emit()?;
+                content
+            }
+        };
+
+        Ok(Some((name.into(), kind)))
+    }
+
+    fn consume_expanded_directive_string(&mut self) -> DResult<Token<String>> {
+        let mut contents = String::new();
+
+        let start_pos = self.processor.pos();
+        let end_pos = loop {
+            let ppt = self.next_expanded_directive_token()?;
+            if ppt.data() == TokenKind::Eof {
+                break ppt.range().start();
+            }
+
+            write!(contents, "{}", ppt.display(self.ctx)).unwrap();
+        };
+
+        Ok(Token::new(
+            contents,
+            SourceRange::new(start_pos, end_pos.offset_from(start_pos)),
+        ))
+    }
+
     fn handle_error_directive(&mut self, id_range: SourceRange) -> DResult<()> {
         let mut msg = String::new();
         while let Some(ppt) = self.next_token()?.non_eod() {
@@ -301,6 +352,27 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
 
         Ok(())
+    }
+
+    fn next_expanded_directive_token(&mut self) -> DResult<PpToken> {
+        loop {
+            if let Some(ppt) = self
+                .macro_state
+                .next_expansion_token(self.ctx, &mut DirectiveLexer::new(self.processor))?
+            {
+                break Ok(ppt);
+            }
+
+            let ppt = self.next_directive_token()?;
+
+            if !self.macro_state.begin_expansion(
+                self.ctx,
+                ppt,
+                &mut DirectiveLexer::new(self.processor),
+            )? {
+                break Ok(ppt);
+            }
+        }
     }
 
     fn report_and_advance(&mut self, ppt: PpToken, msg: impl Into<String>) -> DResult<()> {
