@@ -9,18 +9,25 @@ use rustc_hash::FxHashMap;
 
 use mrcc_source::smap::FileContents;
 
+/// Represents the two kinds of `#include` directives.
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum IncludeKind {
+    /// `#include "filename"`
     Str,
+    /// `#include <filename>`
     Angle,
 }
 
+/// Represents a source file loaded by the preprocessor.
 pub struct File {
+    /// The contents of the file.
     pub contents: Rc<FileContents>,
+    /// The parent directory of the file, for use when resolving quoted `#include` directives.
     pub parent_dir: Option<PathBuf>,
 }
 
 impl File {
+    /// Creates a new file with the specified data.
     pub fn new(contents: Rc<FileContents>, parent_dir: Option<PathBuf>) -> Rc<Self> {
         Rc::new(File {
             contents,
@@ -29,17 +36,22 @@ impl File {
     }
 }
 
+/// A path-based cache of loaded files.
 struct FileCache {
     files: FxHashMap<PathBuf, Rc<File>>,
 }
 
 impl FileCache {
+    /// Creates a new, empty cache.
     pub fn new() -> Self {
         Self {
             files: FxHashMap::default(),
         }
     }
 
+    /// Loads the file at `path` into the cache and returns it.
+    ///
+    /// Subsequent loads of `path` will return the existing cached file.
     pub fn load(&mut self, path: &Path) -> io::Result<Rc<File>> {
         let path = weakly_normalize(path);
         match self.files.entry(path) {
@@ -63,20 +75,27 @@ fn weakly_normalize(path: &Path) -> PathBuf {
         .collect()
 }
 
+/// Represents the errors that can occur when including a file.
 pub enum IncludeError {
+    /// The file was not found after searching all include paths.
     NotFound,
+    /// An IO error occurred when reading the file.
     Io {
         full_path: PathBuf,
         error: io::Error,
     },
 }
 
+/// A structure responsible for finding and caching included files.
 pub struct IncludeLoader {
     cache: FileCache,
     include_dirs: Vec<PathBuf>,
 }
 
 impl IncludeLoader {
+    /// Creates a new include loader with the specified include directories.
+    ///
+    /// These will be searched in order when attempting to load an included file.
     pub fn new(include_dirs: Vec<PathBuf>) -> Self {
         Self {
             cache: FileCache::new(),
@@ -84,6 +103,10 @@ impl IncludeLoader {
         }
     }
 
+    /// Attempts to load the requested file, searching all include directories in order.
+    ///
+    /// If the include is a quoted include (`IncludeKind::Str`), the includer's parent
+    /// directory is searched as well.
     pub fn load(
         &mut self,
         filename: &Path,
@@ -107,6 +130,7 @@ impl IncludeLoader {
         };
 
         if filename.is_absolute() {
+            // Avoid repeatedly looking up the same file.
             return do_load(&mut self.cache, filename);
         }
 

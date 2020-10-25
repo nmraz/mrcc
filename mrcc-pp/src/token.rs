@@ -51,6 +51,7 @@ impl PpToken {
         Display { ppt: self, ctx }
     }
 
+    /// Returns whether this is a directive-start marker (a `#` at the start of a line).
     pub(crate) fn is_directive_start(&self) -> bool {
         self.line_start && self.data() == TokenKind::Punct(PunctKind::Hash)
     }

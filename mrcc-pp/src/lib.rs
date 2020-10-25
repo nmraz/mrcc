@@ -109,12 +109,15 @@ impl Preprocessor {
         Ok(ppt)
     }
 
+    /// Returns the next action to be taken (either a new token or a new include) from the top of
+    /// the active include stack.
     fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
         self.active_files
             .top()
             .next_action(ctx, &mut self.macro_state)
     }
 
+    /// Handles the loading and activation of an included file, reporting any errors encountered.
     fn handle_include(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
