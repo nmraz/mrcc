@@ -13,9 +13,9 @@ use mrcc_source::smap::FileContents;
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub enum IncludeKind {
     /// `#include "filename"`
-    Str,
+    Quoted,
     /// `#include <filename>`
-    Angle,
+    Angled,
 }
 
 /// Represents a source file loaded by the preprocessor.
@@ -105,8 +105,7 @@ impl IncludeLoader {
 
     /// Attempts to load the requested file, searching all include directories in order.
     ///
-    /// If the include is a quoted include (`IncludeKind::Str`), the includer's parent
-    /// directory is searched as well.
+    /// If the include is a quoted include, the includer's parent directory is searched as well.
     pub fn load(
         &mut self,
         filename: &Path,
@@ -137,7 +136,7 @@ impl IncludeLoader {
         let initial_dir = includer
             .parent_dir
             .as_ref()
-            .filter(|_| kind == IncludeKind::Str);
+            .filter(|_| kind == IncludeKind::Quoted);
 
         let dirs = initial_dir.into_iter().chain(self.include_dirs.iter());
 

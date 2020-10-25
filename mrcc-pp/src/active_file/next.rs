@@ -247,9 +247,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         let reader = self.processor.reader();
 
         let (filename, kind) = if reader.eat('<') {
-            (self.consume_include_name('>')?, IncludeKind::Angle)
+            (self.consume_include_name('>')?, IncludeKind::Angled)
         } else if reader.eat('"') {
-            (self.consume_include_name('"')?, IncludeKind::Str)
+            (self.consume_include_name('"')?, IncludeKind::Quoted)
         } else {
             match self.consume_token_include_name()? {
                 Some(filename_kind) => filename_kind,
@@ -289,9 +289,9 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         } = self.consume_expanded_directive_string()?;
 
         let (kind, term) = if content.starts_with('"') {
-            (IncludeKind::Str, '"')
+            (IncludeKind::Quoted, '"')
         } else if content.starts_with('<') {
-            (IncludeKind::Angle, '>')
+            (IncludeKind::Angled, '>')
         } else {
             self.reporter()
                 .error(range, r#"expected "filename" or <filename>"#)
