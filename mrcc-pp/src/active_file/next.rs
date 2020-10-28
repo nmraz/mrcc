@@ -12,15 +12,15 @@ use crate::expand::{MacroDef, MacroDefKind, MacroState, ReplacementList};
 
 use super::lexer::{DirectiveLexer, MacroArgLexer};
 use super::processor::{FileToken, Processor};
-use super::{Action, IncludeKind, PpToken};
+use super::{Event, IncludeKind, PpToken};
 
-pub struct NextActionCtx<'a, 'b, 's, 'h> {
+pub struct NextEventCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     macro_state: &'a mut MacroState,
     processor: &'a mut Processor<'s>,
 }
 
-impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
+impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
     pub fn new(
         ctx: &'a mut LexCtx<'b, 'h>,
         macro_state: &'a mut MacroState,
@@ -33,20 +33,20 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
     }
 
-    pub fn next_action(&mut self) -> DResult<Action> {
+    pub fn next_event(&mut self) -> DResult<Event> {
         loop {
             if let Some(ppt) = self.next_expansion_token()? {
-                break Ok(Action::Tok(ppt));
+                break Ok(Event::Tok(ppt));
             }
 
             let ppt = self.next_real_token()?;
 
             if ppt.is_directive_start() {
-                if let Some(action) = self.handle_directive()? {
-                    break Ok(action);
+                if let Some(event) = self.handle_directive()? {
+                    break Ok(event);
                 }
             } else if !self.begin_expansion(ppt)? {
-                break Ok(Action::Tok(ppt));
+                break Ok(Event::Tok(ppt));
             }
         }
     }
@@ -61,7 +61,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
             .begin_expansion(self.ctx, ppt, &mut MacroArgLexer::new(self.processor))
     }
 
-    fn handle_directive(&mut self) -> DResult<Option<Action>> {
+    fn handle_directive(&mut self) -> DResult<Option<Event>> {
         let ppt = self.next_directive_token()?;
 
         let ident = match ppt.data() {
@@ -242,7 +242,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
         }
     }
 
-    fn handle_include_directive(&mut self) -> DResult<Option<Action>> {
+    fn handle_include_directive(&mut self) -> DResult<Option<Event>> {
         let start = self.processor.pos();
         let reader = self.processor.reader();
 
@@ -259,7 +259,7 @@ impl<'a, 'b, 's, 'h> NextActionCtx<'a, 'b, 's, 'h> {
 
         let len = self.processor.pos().offset_from(start);
 
-        Ok(Some(Action::Include {
+        Ok(Some(Event::Include {
             filename,
             kind,
             range: SourceRange::new(start, len),

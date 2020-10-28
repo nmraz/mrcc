@@ -12,7 +12,7 @@ use crate::expand::MacroState;
 use crate::file::{File, IncludeKind};
 use crate::PpToken;
 
-use next::NextActionCtx;
+use next::NextEventCtx;
 use processor::Processor;
 use state::FileState;
 
@@ -21,7 +21,7 @@ mod next;
 mod processor;
 mod state;
 
-pub enum Action {
+pub enum Event {
     Tok(PpToken),
     Include {
         filename: PathBuf,
@@ -51,14 +51,12 @@ impl ActiveFile {
         &self.file
     }
 
-    pub fn next_action(
+    pub fn next_event(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         macro_state: &mut MacroState,
-    ) -> DResult<Action> {
-        self.with_processor(|processor| {
-            NextActionCtx::new(ctx, macro_state, processor).next_action()
-        })
+    ) -> DResult<Event> {
+        self.with_processor(|processor| NextEventCtx::new(ctx, macro_state, processor).next_event())
     }
 
     fn with_processor<R, F: FnOnce(&mut Processor<'_>) -> R>(&mut self, f: F) -> R {

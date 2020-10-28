@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use mrcc_lex::{LexCtx, Lexer, Token, TokenKind};
 use mrcc_source::{DResult, SourceId, SourceRange};
 
-use active_file::{Action, ActiveFiles};
+use active_file::{ActiveFiles, Event};
 use expand::MacroState;
 use file::{IncludeError, IncludeKind, IncludeLoader};
 
@@ -89,8 +89,8 @@ impl Preprocessor {
     /// `next()` instead.
     pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         let ppt = loop {
-            match self.top_file_action(ctx)? {
-                Action::Tok(ppt) => {
+            match self.top_file_event(ctx)? {
+                Event::Tok(ppt) => {
                     if ppt.data() == TokenKind::Eof && self.active_files.have_includes() {
                         self.active_files.pop_include();
                     } else {
@@ -98,7 +98,7 @@ impl Preprocessor {
                     }
                 }
 
-                Action::Include {
+                Event::Include {
                     filename,
                     kind,
                     range,
@@ -109,12 +109,12 @@ impl Preprocessor {
         Ok(ppt)
     }
 
-    /// Returns the next action to be taken (either a new token or a new include) from the top of
-    /// the active include stack.
-    fn top_file_action(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Action> {
+    /// Returns the next interesting event (either a new token or a new include) from the top of the
+    /// active include stack.
+    fn top_file_event(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Event> {
         self.active_files
             .top()
-            .next_action(ctx, &mut self.macro_state)
+            .next_event(ctx, &mut self.macro_state)
     }
 
     /// Handles the loading and activation of an included file, reporting any errors encountered.
