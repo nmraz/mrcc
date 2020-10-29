@@ -17,14 +17,14 @@ use super::{Event, IncludeKind, PpToken};
 pub struct NextEventCtx<'a, 'b, 's, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     macro_state: &'a mut MacroState,
-    processor: &'a mut Processor<'s>,
+    processor: Processor<'s>,
 }
 
 impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
     pub fn new(
         ctx: &'a mut LexCtx<'b, 'h>,
         macro_state: &'a mut MacroState,
-        processor: &'a mut Processor<'s>,
+        processor: Processor<'s>,
     ) -> Self {
         Self {
             ctx,
@@ -53,12 +53,15 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
 
     fn next_expansion_token(&mut self) -> DResult<Option<PpToken>> {
         self.macro_state
-            .next_expansion_token(self.ctx, &mut MacroArgLexer::new(self.processor))
+            .next_expansion_token(self.ctx, &mut MacroArgLexer::new(&mut self.processor))
     }
 
     fn begin_expansion(&mut self, ppt: PpToken) -> DResult<bool> {
-        self.macro_state
-            .begin_expansion(self.ctx, ppt, &mut MacroArgLexer::new(self.processor))
+        self.macro_state.begin_expansion(
+            self.ctx,
+            ppt,
+            &mut MacroArgLexer::new(&mut self.processor),
+        )
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Event>> {
@@ -358,7 +361,7 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
         loop {
             if let Some(ppt) = self
                 .macro_state
-                .next_expansion_token(self.ctx, &mut DirectiveLexer::new(self.processor))?
+                .next_expansion_token(self.ctx, &mut DirectiveLexer::new(&mut self.processor))?
             {
                 break Ok(ppt);
             }
@@ -368,7 +371,7 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
             if !self.macro_state.begin_expansion(
                 self.ctx,
                 ppt,
-                &mut DirectiveLexer::new(self.processor),
+                &mut DirectiveLexer::new(&mut self.processor),
             )? {
                 break Ok(ppt);
             }

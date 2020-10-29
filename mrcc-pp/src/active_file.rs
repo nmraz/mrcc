@@ -2,10 +2,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 
 use mrcc_lex::LexCtx;
-use mrcc_source::{
-    smap::{FileName, SourcesTooLargeError},
-    LocalOff,
-};
+use mrcc_source::smap::{FileName, SourcesTooLargeError};
 use mrcc_source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
 
 use crate::expand::MacroState;
@@ -13,13 +10,11 @@ use crate::file::{File, IncludeKind};
 use crate::PpToken;
 
 use next::NextEventCtx;
-use processor::Processor;
-use state::FileState;
+use processor::{Processor, ProcessorState};
 
 mod lexer;
 mod next;
 mod processor;
-mod state;
 
 /// A point of interest that can be encountered when preprocessing a source file.
 ///
@@ -43,9 +38,8 @@ pub enum Event {
 /// In addition to the file itself, this tracks the current offset and conditional state.
 pub struct ActiveFile {
     file: Rc<File>,
-    state: FileState,
     start_pos: SourcePos,
-    off: LocalOff,
+    processor_state: ProcessorState,
 }
 
 impl ActiveFile {
@@ -53,9 +47,8 @@ impl ActiveFile {
     fn new(file: Rc<File>, start_pos: SourcePos) -> ActiveFile {
         ActiveFile {
             file,
-            state: FileState::default(),
             start_pos,
-            off: 0.into(),
+            processor_state: ProcessorState::new(),
         }
     }
 
@@ -70,20 +63,16 @@ impl ActiveFile {
         ctx: &mut LexCtx<'_, '_>,
         macro_state: &mut MacroState,
     ) -> DResult<Event> {
-        self.with_processor(|processor| NextEventCtx::new(ctx, macro_state, processor).next_event())
+        NextEventCtx::new(ctx, macro_state, self.processor()).next_event()
     }
 
-    /// Provides access to a processor for reading tokens and text from the file.
-    fn with_processor<R, F: FnOnce(&mut Processor<'_>) -> R>(&mut self, f: F) -> R {
-        let off = self.off;
-        let mut processor = Processor::new(
-            &mut self.state,
-            &self.file.contents.src[off.into()..],
-            self.start_pos.offset(off),
-        );
-        let ret = f(&mut processor);
-        self.off += processor.off();
-        ret
+    /// Returns a processor for reading tokens and text from the file.
+    fn processor(&mut self) -> Processor<'_> {
+        Processor::new(
+            &mut self.processor_state,
+            &self.file.contents.src,
+            self.start_pos,
+        )
     }
 }
 

@@ -4,7 +4,6 @@ use mrcc_lex::raw::{Reader, Tokenizer};
 use mrcc_lex::{ConvertedTokenKind, LexCtx, TokenKind};
 use mrcc_source::{DResult, LocalOff, SourcePos};
 
-use super::FileState;
 use crate::PpToken;
 
 #[derive(Debug, Copy, Clone)]
@@ -50,17 +49,42 @@ impl FileToken {
     }
 }
 
+pub struct ProcessorState {
+    off: LocalOff,
+    line_start: bool,
+    lookahead: Option<FileToken>,
+}
+
+impl ProcessorState {
+    pub fn new() -> Self {
+        Self {
+            off: 0.into(),
+            line_start: true,
+            lookahead: None,
+        }
+    }
+}
+
 pub struct Processor<'a> {
-    state: &'a mut FileState,
+    state: &'a mut ProcessorState,
     tokenizer: Tokenizer<'a>,
     base_pos: SourcePos,
 }
 
+impl Drop for Processor<'_> {
+    fn drop(&mut self) {
+        self.state.off += self.off();
+    }
+}
+
 impl<'a> Processor<'a> {
-    pub fn new(state: &'a mut FileState, remaining_src: &'a str, base_pos: SourcePos) -> Self {
+    pub fn new(state: &'a mut ProcessorState, src: &'a str, start_pos: SourcePos) -> Self {
+        let tokenizer = Tokenizer::new(&src[state.off.into()..]);
+        let base_pos = start_pos.offset(state.off);
+
         Self {
             state,
-            tokenizer: Tokenizer::new(remaining_src),
+            tokenizer,
             base_pos,
         }
     }
@@ -119,10 +143,6 @@ impl<'a> Processor<'a> {
         &mut self.tokenizer_mut().reader
     }
 
-    pub fn off(&self) -> LocalOff {
-        self.tokenizer.reader.off()
-    }
-
     pub fn pos(&self) -> SourcePos {
         self.check_lookahead();
         self.base_pos.offset(self.off())
@@ -154,6 +174,10 @@ impl<'a> Processor<'a> {
             line_start: mem::replace(&mut self.state.line_start, new_line_start),
             leading_trivia,
         })
+    }
+
+    fn off(&self) -> LocalOff {
+        self.tokenizer.reader.off()
     }
 
     fn tokenizer_mut(&mut self) -> &mut Tokenizer<'a> {
