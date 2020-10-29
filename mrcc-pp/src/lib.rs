@@ -91,7 +91,7 @@ impl Preprocessor {
         let ppt = loop {
             match self.top_file_event(ctx)? {
                 Event::Tok(ppt) => {
-                    if ppt.data() == TokenKind::Eof && self.active_files.have_includes() {
+                    if ppt.data() == TokenKind::Eof && self.active_files.has_includes() {
                         self.active_files.pop_include();
                     } else {
                         break ppt;
