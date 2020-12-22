@@ -113,7 +113,7 @@ impl ActiveFiles {
 
     /// Checks whether there are any includes on the stack beyond the main source file.
     pub fn has_includes(&self) -> bool {
-        !self.includes.is_empty()
+        self.includes.len() > 0
     }
 
     /// Pushes a new file onto the include stack, creating an entry for it in the source map.
