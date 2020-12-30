@@ -52,9 +52,9 @@ impl MacroState {
     pub fn next_expansion_token(
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
-        lexer: &mut dyn ReplacementLexer,
+        mut lexer: impl ReplacementLexer,
     ) -> DResult<Option<PpToken>> {
-        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, lexer)
+        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, &mut lexer)
             .next_expansion_token()
             .map(|res| res.map(|tok| tok.ppt))
     }
@@ -71,9 +71,9 @@ impl MacroState {
         &mut self,
         ctx: &mut LexCtx<'_, '_>,
         ppt: PpToken,
-        lexer: &mut dyn ReplacementLexer,
+        mut lexer: impl ReplacementLexer,
     ) -> DResult<bool> {
-        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, lexer)
+        ReplacementCtx::new(ctx, &self.defs, &mut self.replacements, &mut lexer)
             .begin_expansion(&mut ppt.into())
     }
 }

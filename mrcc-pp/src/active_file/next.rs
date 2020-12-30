@@ -53,15 +53,12 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
 
     fn next_expansion_token(&mut self) -> DResult<Option<PpToken>> {
         self.macro_state
-            .next_expansion_token(self.ctx, &mut MacroArgLexer::new(&mut self.processor))
+            .next_expansion_token(self.ctx, MacroArgLexer::new(&mut self.processor))
     }
 
     fn begin_expansion(&mut self, ppt: PpToken) -> DResult<bool> {
-        self.macro_state.begin_expansion(
-            self.ctx,
-            ppt,
-            &mut MacroArgLexer::new(&mut self.processor),
-        )
+        self.macro_state
+            .begin_expansion(self.ctx, ppt, MacroArgLexer::new(&mut self.processor))
     }
 
     fn handle_directive(&mut self) -> DResult<Option<Event>> {
@@ -361,7 +358,7 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
         loop {
             if let Some(ppt) = self
                 .macro_state
-                .next_expansion_token(self.ctx, &mut DirectiveLexer::new(&mut self.processor))?
+                .next_expansion_token(self.ctx, DirectiveLexer::new(&mut self.processor))?
             {
                 break Ok(ppt);
             }
@@ -371,7 +368,7 @@ impl<'a, 'b, 's, 'h> NextEventCtx<'a, 'b, 's, 'h> {
             if !self.macro_state.begin_expansion(
                 self.ctx,
                 ppt,
-                &mut DirectiveLexer::new(&mut self.processor),
+                DirectiveLexer::new(&mut self.processor),
             )? {
                 break Ok(ppt);
             }
