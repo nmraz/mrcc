@@ -21,7 +21,7 @@ pub enum TokenKind {
 }
 
 /// Represents the possible token types returned by
-/// [`convert_raw()`](fn.convert_raw.html).
+/// [`crate::convert_raw()`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConvertedTokenKind {
     /// A real token.
@@ -34,7 +34,7 @@ pub enum ConvertedTokenKind {
 
 /// Represents a token - data attached to a source range.
 ///
-/// By default, the data is a [`TokenKind`](enum.TokenKind.html).
+/// By default, the data is a [`TokenKind`].
 #[derive(Debug, Clone, Copy)]
 pub struct Token<D = TokenKind> {
     pub data: D,
@@ -63,11 +63,11 @@ impl<D> Token<D> {
     }
 }
 
-/// Converted token returned by [`convert_raw()`](fn.convert_raw.html).
+/// Converted token returned by [`crate::convert_raw()`].
 pub type ConvertedToken = Token<ConvertedTokenKind>;
 
 impl Token {
-    /// Returns an object that implements `fmt::Display` for printing the token.
+    /// Returns an object that implements [`fmt::Display`] for printing the token.
     pub fn display<'t, 'a, 'h>(&'t self, ctx: &'t LexCtx<'a, 'h>) -> Display<'t, 'a, 'h> {
         Display { tok: self, ctx }
     }

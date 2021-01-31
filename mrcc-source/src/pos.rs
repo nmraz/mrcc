@@ -1,7 +1,7 @@
 pub use text_size::{TextRange as LocalRange, TextSize as LocalOff};
 
 /// An opaque type representing a position in the source code managed by a
-/// [`SourceMap`](smap/struct.SourceMap.html).
+/// [`crate::SourceMap`].
 ///
 /// This can be resolved back to file/line/column/expansion information using the appropriate
 /// methods on `SourceMap`.
@@ -21,7 +21,7 @@ impl SourcePos {
 
     /// Returns a new position lying `offset` bytes forward from `self`.
     ///
-    /// The position returned can be meaningless if the [source](smap/index.html#sources)
+    /// The position returned can be meaningless if the [source](crate::smap#sources)
     /// containing `self` does not contain at least `offset` more bytes.
     #[inline]
     pub fn offset(self, offset: LocalOff) -> Self {
@@ -41,13 +41,12 @@ impl SourcePos {
     }
 }
 
-/// Represents a contiguous byte range within a single [source](smap/index.html#sources).
+/// Represents a contiguous byte range within a single [source](crate::smap#sources).
 ///
-/// Contrast with [`FragmentedSourceRange`](struct.FragmentedSourceRange.html), which can represent
-/// ranges whose endpoints lie within different sources (such as macro expansions). Generally,
-/// `SourceRange` is preferred when referring to an atomic run of text (i.e. a single token), while
-/// `FragmentedSourceRange` is more flexible and can represent composite structures whose tokens
-/// come from different sources.
+/// Contrast with [`FragmentedSourceRange`], which can represent ranges whose endpoints lie within
+/// different sources (such as macro expansions). Generally, `SourceRange` is preferred when
+/// referring to an atomic run of text (i.e. a single token), while `FragmentedSourceRange` is more
+/// flexible and can represent composite structures whose tokens come from different sources.
 ///
 /// `SourceRange` is also useful when displaying diagnostics, where one wants to indicate actual
 /// ranges in the source code.
@@ -144,7 +143,7 @@ impl From<SourcePos> for SourceRange {
 }
 
 /// Represents a range whose endpoints may lie in different
-/// [sources](smap/index.html#sources).
+/// [sources](crate::smap#sources).
 ///
 /// Reusing the example discussed in the source map documentation, consider the following code:
 ///
@@ -153,12 +152,12 @@ impl From<SourcePos> for SourceRange {
 /// int x = A + 1;
 /// ```
 ///
-/// No [`SourceRange`](struct.SourceRange.html) can accurately cover the expression `A + 1`, as its
+/// No [`SourceRange`] can accurately cover the expression `A + 1`, as its
 /// left endpoint lies within the expansion of `A` while its right endpoint lies within the
 /// surrounding file. For this reason, `FragmentedSourceRange` is a better fit for representing
 /// multi-token structures which may contain arbitrarily complex macro expansions.
 ///
-/// [`SourceMap::get_unfragmented_range()`](smap/struct.SourceMap.html#method.get_unfragmented_range)
+/// [`crate::SourceMap::get_unfragmented_range()`]
 /// can be used to try to convert a fragmented range to a contiguous range covering both its
 /// endpoints (possibly after macro expansion).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

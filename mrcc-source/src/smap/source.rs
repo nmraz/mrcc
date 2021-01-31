@@ -138,7 +138,7 @@ impl FileContents {
     }
 }
 
-/// Holds information about a file [source](index.html#sources).
+/// Holds information about a file [source](super#sources).
 #[derive(Clone)]
 pub struct FileSourceInfo {
     /// The name of the file.
@@ -176,7 +176,7 @@ pub enum ExpansionKind {
     Synth,
 }
 
-/// Holds information about an expansion [source](index.html#sources).
+/// Holds information about an expansion [source](super#sources).
 #[derive(Debug, Clone, Copy)]
 pub struct ExpansionSourceInfo {
     /// The expansion's spelling range. The length of this range is always one less than that of the

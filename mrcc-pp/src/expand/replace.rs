@@ -348,8 +348,8 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         Ok(())
     }
 
-    /// Computes the [replacement range](../../../mrcc_source/smap/index.html#sources) for a
-    /// function-like macro invocation of `name_tok` with arguments `args`.
+    /// Computes the [replacement range](mrcc_source::smap::ExpansionSourceInfo::replacement_range)
+    /// for a function-like macro invocation of `name_tok` with arguments `args`.
     ///
     /// # Panics
     ///

@@ -3,7 +3,7 @@
 //! Raw tokens differ from "ordinary" tokens in that they are lossless and point back into the
 //! original source string. Lexing them requires no auxiliary state (such as interners) and can
 //! never fail. To validate  a raw token and convert it to a "real" token, use
-//! [`convert_raw()`](../fn.convert_raw.html).
+//! [`crate::convert_raw()`].
 
 use std::borrow::Cow;
 use std::convert::TryFrom;
@@ -194,7 +194,7 @@ impl<'a> Reader<'a> {
     /// Returns the current content of this reader.
     ///
     /// The current content consists of all characters consumed since the last call to
-    /// [`begin_tok()`](#method.begin_tok).
+    /// [`Self::begin_tok()`].
     #[inline]
     pub fn cur_content(&self) -> RawContent<'a> {
         RawContent {
@@ -222,7 +222,7 @@ impl<'a> Reader<'a> {
 
     /// Marks the current offset as the start of a new token.
     ///
-    /// Subsequent calls to [`cur_content()`](#method.cur_content) will return all characters
+    /// Subsequent calls to [`Self::cur_content()`] will return all characters
     /// consumed since this point.
     pub fn begin_tok(&mut self) {
         self.start = self.off();

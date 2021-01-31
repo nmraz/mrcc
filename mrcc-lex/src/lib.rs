@@ -25,7 +25,7 @@ pub type Symbol = intern::Symbol<str>;
 pub trait Lexer {
     /// Lexes the next token from the stream.
     ///
-    /// This function returns a `DResult` as it may report diagnostics through `ctx`.
+    /// This function returns a [`DResult`] as it may report diagnostics through `ctx`.
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token>;
 }
 
@@ -61,7 +61,8 @@ impl<'a, 'h> LexCtx<'a, 'h> {
 
 /// Converts a raw token to a proper token, emitting errors if it is malformed.
 ///
-/// `base_pos` should be the position relative to which `raw.content.off` was specified.
+/// `base_pos` should be the position relative to which [`raw.content.off`](raw::RawContent::off) was
+/// specified.
 pub fn convert_raw(
     ctx: &mut LexCtx<'_, '_>,
     raw: &RawToken<'_>,

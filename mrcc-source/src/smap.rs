@@ -1,23 +1,23 @@
-//! [`SourceMap`](struct.SourceMap.html) is a structure holding all of the source code used in a
+//! [`SourceMap`] is a structure holding all of the source code used in a
 //! compilation.
 //!
 //! It is inspired by the analagous `SourceManager` in clang. In addition to holding the source
 //! code, it is responsible for tracking detailed location information within the code, and can
-//! resolve a [`SourcePos`](../struct.SourcePos.html) or [`SourceRange`](../struct.SourceRange.html)
+//! resolve a [`SourcePos`] or [`SourceRange`]
 //! into file/line/column information with macro traces.
 //!
 //! # Sources
 //!
-//! The `SourceMap` contains a number of [`Source`](struct.Source.html) objects, each of which
+//! The `SourceMap` contains a number of [`Source`] objects, each of which
 //! represents an area to which source code can be attributed. There are two kinds of sources: files
 //! and expansions.
 //!
-//! [File sources](struct.FileSourceInfo.html) represent actual source files from which code was
+//! [File sources](FileSourceInfo) represent actual source files from which code was
 //! read. They point to the content of the file itself and record additional metadata, such as the
 //! file name as spelled in the code. Note that a single file on disk may have multiple file source
 //! entries in the `SourceMap`, one for every time it is included.
 //!
-//! [Expansion sources](struct.ExpansionSourceInfo.html) are how the `SourceMap` tracks macro
+//! [Expansion sources](ExpansionSourceInfo) are how the `SourceMap` tracks macro
 //! expansions. Instead of containing actual source code, the expansion source merely points to two
 //! ranges, the _spelling range_ and the _replacement range_. The spelling range indicates where the
 //! expanded code came from, while the replacement range indicates where the code was expanded. Both
@@ -65,7 +65,7 @@ mod source;
 #[cfg(test)]
 mod tests;
 
-/// An opaque identifier representing a source in a `SourceMap`.
+/// An opaque identifier representing a source in a [`SourceMap`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceId(usize);
 
@@ -157,7 +157,7 @@ pub struct SourcesTooLargeError;
 ///
 /// # Panics
 ///
-/// Unless otherwise specified, all methods taking a `SourcePos` or `SourceRange` will panic if
+/// Unless otherwise specified, all methods taking a [`SourcePos`] or [`SourceRange`] will panic if
 /// provided an invalid value (i.e. one that does not lie in the map, or, in the case of ranges, one
 /// that crosses source boundaries).
 #[derive(Default)]
@@ -180,7 +180,7 @@ impl SourceMap {
     ///
     /// If there is enough room in the map, `ctor` is invoked to create the info and the ID of the
     /// new source is returned. If there is no room for a source of the specified length, a
-    /// `SourcesTooLargeError` is returned instead.
+    /// [`SourcesTooLargeError`] is returned instead.
     ///
     /// The created source will have an additional past-the-end sentinel position, useful for
     /// representing EOF positions and ensuring that sources unambiguously contain their own "end"
@@ -209,7 +209,7 @@ impl SourceMap {
     /// Creates a new file source with the specified parameters.
     ///
     /// If there is enough room in the map for the file, returns the ID of the newly-created file
-    /// source. Otherwise, returns a `SourcesTooLargeError`.
+    /// source. Otherwise, returns a [`SourcesTooLargeError`].
     ///
     /// The created file source will have an additional past-the-end sentinel position, useful for
     /// representing EOF positions and disambiguating empty sources from their successors.
@@ -245,7 +245,7 @@ impl SourceMap {
     /// Creates a new expansion source with the specified parameters.
     ///
     /// If there is enough room in the map, returns the ID of the newly-created expansion source.
-    /// Otherwise, returns a `SourcesTooLargeError`.
+    /// Otherwise, returns a [`SourcesTooLargeError`].
     ///
     /// The created expansion source will have an additional past-the-end sentinel position, to
     /// ensure that the end of the expansion range can be unambiguously attributed to it.
@@ -382,7 +382,7 @@ impl SourceMap {
 
     /// Retrieves the source code snippet indicated by `range`.
     ///
-    /// See also [`mrcc_lex::get_cleaned_spelling`](../../mrcc_lex/fn.get_cleaned_spelling.html),
+    /// See also `mrcc_lex::get_cleaned_spelling()`,
     /// which properly handles escaped newlines in the retrieved snippet.
     pub fn get_spelling(&self, range: SourceRange) -> &str {
         let (id, pos) = self.get_spelling_chain(range.start()).last().unwrap();
@@ -434,7 +434,7 @@ impl SourceMap {
     }
 
     /// If `range` points into an expansion, returns the matching
-    /// [caller range](struct.ExpansionSourceInfo.html#method.caller_range).
+    /// [caller range](ExpansionSourceInfo::caller_range).
     ///
     /// If `range` points into a file, returns `None`.
     ///
@@ -484,8 +484,7 @@ impl SourceMap {
     /// # Panics
     ///
     /// Panics if `range` does not point into a file. Consider using
-    /// [`get_spelling_pos()`](#method.get_spelling_pos) or
-    /// [`get_replacement_range()`](#method.get_replacement_range) first, as appropriate.
+    /// [`Self::get_spelling_pos()`] or [`Self::get_replacement_range()`] first, as appropriate.
     pub fn get_interpreted_range(&self, range: SourceRange) -> InterpretedFileRange<'_> {
         let (source, local_range) = self.lookup_source_range(range);
 

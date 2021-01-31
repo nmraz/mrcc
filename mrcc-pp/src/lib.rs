@@ -19,8 +19,7 @@ mod expand;
 mod file;
 mod token;
 
-/// Helper structure implementing the builder pattern for constructing a new
-/// [`Preprocessor`](struct.Preprocessor.html).
+/// Helper structure implementing the builder pattern for constructing a new [`Preprocessor`].
 pub struct PreprocessorBuilder<'a, 'b, 'h> {
     ctx: &'a mut LexCtx<'b, 'h>,
     main_id: SourceId,
@@ -73,7 +72,7 @@ impl<'a, 'b, 'h> PreprocessorBuilder<'a, 'b, 'h> {
 /// A lexer that transparently preprocesses its input source code (up through translation phase 4)
 /// and exposes the resulting token stream.
 ///
-/// Use [`PreprocessorBuilder`](struct.PreprocessorBuilder.html) to construct a new `Preprocessor`.
+/// Use [`PreprocessorBuilder`] to construct a new `Preprocessor`.
 pub struct Preprocessor {
     active_files: ActiveFiles,
     include_loader: IncludeLoader,
@@ -86,7 +85,7 @@ impl Preprocessor {
     ///
     /// This method returns tokens with leading whitespace/newline information, which may be
     /// relevant to certain clients. If this auxiliary information is not needed, consider using
-    /// `next()` instead.
+    /// [`Self::next()`] instead.
     pub fn next_pp(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<PpToken> {
         let ppt = loop {
             match self.top_file_event(ctx)? {

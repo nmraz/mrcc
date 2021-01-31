@@ -1,14 +1,13 @@
 //! Diagnostic reporting and emission.
 //!
-//! There are two kinds of diagnostics: [raw diagnostics](type.RawDiagnostic.html) and
-//! [rendered diagnostics](struct.RenderedDiagnostic.html).
+//! There are two kinds of diagnostics: [raw diagnostics](RawDiagnostic) and
+//! [rendered diagnostics](RenderedDiagnostic).
 //!
-//! Raw diagnosics are what users construct through [`Reporter`](struct.Reporter.html) and
-//! [`DiagnosticBuilder`](struct.DiagnosticBuilder.html). These diagnostics contain
-//! [fragmented source ranges](../struct.FragmentedSourceRange.html) for location information
-//! and have no awareness of macro expansions or include stacks. This makes them convenient to use
-//! when reporting diagnostics, as the user need not concern themselves with creating contiguous
-//! ranges and handling macro expansions themselves.
+//! Raw diagnosics are what users construct through [`Reporter`] and [`DiagnosticBuilder`]. These
+//! diagnostics contain [fragmented source ranges](crate::FragmentedSourceRange) for location
+//! information and have no awareness of macro expansions or include stacks. This makes them
+//! convenient to use when reporting diagnostics, as the user need not concern themselves with
+//! creating contiguous ranges and handling macro expansions themselves.
 //!
 //! However, raw diagnostics can be problematic to use when displaying the diagnostics later. There,
 //! the handler of the diagnostic wants contiguous ranges to mark up in the source code, preferably
@@ -16,8 +15,8 @@
 //!
 //! Rendered diagnostics are more amenable to display - they contain only contiguous ranges and
 //! come with the appropriate expansion subdiagnostics and include traces. Rendered diagnostics are
-//! passed to sinks registered with [`Manager::new()`](struct.Manager.html#method.new). They can
-//! also be created manually from raw diagnostics using [`render()`](fn.render.html).
+//! passed to sinks registered with [`Manager::new()`]. They can also be created manually from raw
+//! diagnostics using [`render()`].
 
 use std::fmt;
 
@@ -67,8 +66,7 @@ pub type Result<T> = std::result::Result<T, FatalErrorEmitted>;
 /// Generic suggestion type indicating that a range of code should be replaced with new code.
 ///
 /// Insertions can be modeled by using an empty replacement range at the desired position.
-/// See [`RawSuggestion`](type.RawSuggestion.html) and
-/// [`RenderedSuggestion`](type.RenderedSuggestion.html) for concrete types.
+/// See [`RawSuggestion`] and [`RenderedSuggestion`] for concrete types.
 #[derive(Debug, Clone)]
 pub struct Suggestion<R> {
     /// The range within the source to replace.
@@ -104,8 +102,7 @@ pub type RenderedSuggestion = Suggestion<SourceRange>;
 /// primary range. Note that cases where the ranges are expected to lie farther away (or potentially
 /// in other files) are better represented as an additional note subdiagnostic.
 ///
-/// See [`RawRanges`](type.RawRanges.html) and [`RenderedRanges`](type.RenderedRanges.html) for
-/// concrete types.
+/// See [`RawRanges`] and [`RenderedRanges`] for concrete types.
 #[derive(Debug, Clone)]
 pub struct Ranges<R> {
     pub primary_range: R,
@@ -130,8 +127,7 @@ pub type RenderedRanges = Ranges<SourceRange>;
 /// Generic subdiagnostic structure.
 ///
 /// Every diagnostic contains a main subdiagnostic and zero or more attached notes.
-/// See [`RawSubDiagnostic`](type.RawSubDiagnostic.html) and
-/// [`RenderedSubDiagnostic`](struct.RenderedSubDiagnostic.html) for concrete types.
+/// See [`RawSubDiagnostic`] and [`RenderedSubDiagnostic`] for concrete types.
 #[derive(Debug, Clone)]
 pub struct SubDiagnostic<R> {
     /// The message of this subdiagnostic.
@@ -218,8 +214,7 @@ impl<R> SubDiagnostic<R> {
 /// Generic diagnostic structure.
 ///
 /// This contains a main subdiagnostic and any number of note subdiagnostics.
-/// See [`RawDiagnostic`](type.RawDiagnostic.html) and
-/// [`RenderedDiagnostic`](struct.RenderedDiagnostic.html) for concrete types.
+/// See [`RawDiagnostic`] and [`RenderedDiagnostic`] for concrete types.
 #[derive(Debug, Clone)]
 pub struct Diagnostic<D> {
     /// The severity of this diagnostic.
@@ -267,10 +262,10 @@ impl RenderedDiagnostic {
 
 /// A helper structure for constructing and emitting diagnostics.
 ///
-/// This structure is returned by the various diagnostic reporting methods on
-/// [`Manager`](struct.Manager.html) and [`Reporter`](struct.Reporter.html).
+/// This structure is returned by the various diagnostic reporting methods on [`Manager`] and
+/// [`Reporter`].
 ///
-/// Once the diagnostic is built, be sure to call [`emit()`](#method.emit) to actually emit it.
+/// Once the diagnostic is built, be sure to call [`Self::emit()`] to actually emit it.
 #[must_use = "diagnostics should be emitted with `.emit()`"]
 pub struct DiagnosticBuilder<'a, 'h> {
     diag: Box<RawDiagnostic>,
@@ -400,7 +395,7 @@ impl<'h> Manager<'h> {
         )
     }
 
-    /// Creates a new `Manager` with an [annotating sink](struct.AnnotatingSink.html) and
+    /// Creates a new `Manager` with an [annotating sink](AnnotatingSink) and
     /// the specified error limit.
     pub fn new_annotating(error_limit: Option<u32>) -> Manager<'static> {
         Manager::new(AnnotatingSink, error_limit)
@@ -466,7 +461,7 @@ impl<'h> Manager<'h> {
 
 /// Helper for reporting diagnostics with location information.
 ///
-/// Use [`Manager::reporter()`](struct.Manager.html#method.reporter) to create a new reporter.
+/// Use [`Manager::reporter()`] to create a new reporter.
 pub struct Reporter<'a, 'h> {
     manager: &'a mut Manager<'h>,
     smap: &'a SourceMap,
