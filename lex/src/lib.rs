@@ -4,9 +4,7 @@
 
 use std::borrow::Cow;
 
-use mrcc_source::{
-    DResult, DiagManager, DiagReporter, LocalOff, SourceMap, SourcePos, SourceRange,
-};
+use source::{DResult, DiagManager, DiagReporter, LocalOff, SourceMap, SourcePos, SourceRange};
 
 pub use punct::PunctKind;
 use raw::{RawToken, RawTokenKind};

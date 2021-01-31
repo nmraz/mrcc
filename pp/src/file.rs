@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use rustc_hash::FxHashMap;
 
-use mrcc_source::smap::FileContents;
+use source::smap::FileContents;
 
 /// Represents the two kinds of `#include` directives.
 #[derive(Copy, Clone, Eq, PartialEq)]

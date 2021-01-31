@@ -4,9 +4,9 @@ use std::{iter, mem};
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
-use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
-use mrcc_source::{diag::RawSubDiagnostic, DResult};
-use mrcc_source::{smap::ExpansionKind, FragmentedSourceRange, SourceId, SourceRange};
+use lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
+use source::{diag::RawSubDiagnostic, DResult};
+use source::{smap::ExpansionKind, FragmentedSourceRange, SourceId, SourceRange};
 
 use crate::PpToken;
 
@@ -348,7 +348,7 @@ impl<'a, 'b, 'h> ReplacementCtx<'a, 'b, 'h> {
         Ok(())
     }
 
-    /// Computes the [replacement range](mrcc_source::smap::ExpansionSourceInfo::replacement_range)
+    /// Computes the [replacement range](source::smap::ExpansionSourceInfo::replacement_range)
     /// for a function-like macro invocation of `name_tok` with arguments `args`.
     ///
     /// # Panics

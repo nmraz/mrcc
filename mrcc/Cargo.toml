@@ -9,6 +9,6 @@ edition = "2018"
 [dependencies]
 structopt = "0.3.21"
 
-mrcc-lex = { path = "../mrcc-lex" }
-mrcc-pp = { path = "../mrcc-pp" }
-mrcc-source = { path = "../mrcc-source" }
+lex = { path = "../lex" }
+pp = { path = "../pp" }
+source = { path = "../source" }

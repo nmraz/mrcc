@@ -1,6 +1,6 @@
 use std::fmt;
 
-use mrcc_source::SourceRange;
+use source::SourceRange;
 
 use super::{get_cleaned_spelling, LexCtx, PunctKind, Symbol};
 

@@ -1,9 +1,9 @@
 use std::fmt::Write;
 use std::path::PathBuf;
 
-use mrcc_lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
-use mrcc_source::SourceRange;
-use mrcc_source::{
+use lex::{LexCtx, PunctKind, Symbol, Token, TokenKind};
+use source::SourceRange;
+use source::{
     diag::{RawSubDiagnostic, RawSuggestion, Reporter},
     DResult,
 };

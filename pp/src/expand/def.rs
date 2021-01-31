@@ -3,8 +3,8 @@ use std::mem;
 
 use rustc_hash::FxHashMap;
 
-use mrcc_lex::{Symbol, Token};
-use mrcc_source::SourceRange;
+use lex::{Symbol, Token};
+use source::SourceRange;
 
 use crate::PpToken;
 

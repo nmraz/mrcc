@@ -111,6 +111,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 
 [[package]]
+name = "lex"
+version = "0.1.0"
+dependencies = [
+ "intern",
+ "source",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -120,39 +128,21 @@ checksum = "f2f96b10ec2560088a8e76961b00d47107b3a625fecb76dedb29ee7ccbf98235"
 name = "mrcc"
 version = "0.1.0"
 dependencies = [
- "mrcc-lex",
- "mrcc-pp",
- "mrcc-source",
+ "lex",
+ "pp",
+ "source",
  "structopt",
 ]
 
 [[package]]
-name = "mrcc-lex"
-version = "0.1.0"
-dependencies = [
- "intern",
- "mrcc-source",
-]
-
-[[package]]
-name = "mrcc-pp"
+name = "pp"
 version = "0.1.0"
 dependencies = [
  "indexmap",
  "itertools",
- "mrcc-lex",
- "mrcc-source",
+ "lex",
  "rustc-hash",
-]
-
-[[package]]
-name = "mrcc-source"
-version = "0.1.0"
-dependencies = [
- "indexmap",
- "itertools",
- "rustc-hash",
- "text-size",
+ "source",
 ]
 
 [[package]]
@@ -202,6 +192,16 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
+
+[[package]]
+name = "source"
+version = "0.1.0"
+dependencies = [
+ "indexmap",
+ "itertools",
+ "rustc-hash",
+ "text-size",
+]
 
 [[package]]
 name = "strsim"

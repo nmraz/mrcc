@@ -1,5 +1,5 @@
 [package]
-name = "mrcc-source"
+name = "source"
 version = "0.1.0"
 authors = ["Noam Raz <noamraz8@gmail.com>"]
 edition = "2018"

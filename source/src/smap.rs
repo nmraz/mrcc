@@ -55,10 +55,10 @@ use std::option::Option;
 use std::rc::Rc;
 use std::vec::Vec;
 
-use crate::{FragmentedSourceRange, LineCol, LocalOff, LocalRange, SourcePos, SourceRange};
-pub use source::{
+pub use self::source::{
     ExpansionKind, ExpansionSourceInfo, FileContents, FileName, FileSourceInfo, Source, SourceInfo,
 };
+use crate::{FragmentedSourceRange, LineCol, LocalOff, LocalRange, SourcePos, SourceRange};
 
 mod source;
 
@@ -382,7 +382,7 @@ impl SourceMap {
 
     /// Retrieves the source code snippet indicated by `range`.
     ///
-    /// See also `mrcc_lex::get_cleaned_spelling()`,
+    /// See also `lex::get_cleaned_spelling()`,
     /// which properly handles escaped newlines in the retrieved snippet.
     pub fn get_spelling(&self, range: SourceRange) -> &str {
         let (id, pos) = self.get_spelling_chain(range.start()).last().unwrap();

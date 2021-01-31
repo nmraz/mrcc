@@ -1,8 +1,8 @@
 use std::mem;
 
-use mrcc_lex::raw::{Reader, Tokenizer};
-use mrcc_lex::{ConvertedTokenKind, LexCtx, TokenKind};
-use mrcc_source::{DResult, LocalOff, SourcePos};
+use lex::raw::{Reader, Tokenizer};
+use lex::{ConvertedTokenKind, LexCtx, TokenKind};
+use source::{DResult, LocalOff, SourcePos};
 
 use crate::PpToken;
 
@@ -153,7 +153,7 @@ impl<'a> Processor<'a> {
 
         let (tok, new_line_start) = loop {
             let converted =
-                mrcc_lex::convert_raw(ctx, &self.tokenizer_mut().next_token(), self.base_pos)?;
+                lex::convert_raw(ctx, &self.tokenizer_mut().next_token(), self.base_pos)?;
             match converted.data {
                 ConvertedTokenKind::Real(kind) => {
                     break (converted.map(|_| FileTokenKind::Real(kind)), false)

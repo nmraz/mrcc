@@ -1,8 +1,8 @@
 [workspace]
 members = [
   "intern",
-  "mrcc-source",
-  "mrcc-lex",
-  "mrcc-pp",
+  "source",
+  "lex",
+  "pp",
   "mrcc",
 ]

@@ -1,5 +1,5 @@
-use mrcc_lex::{LexCtx, Symbol};
-use mrcc_source::DResult;
+use lex::{LexCtx, Symbol};
+use source::DResult;
 
 use crate::PpToken;
 

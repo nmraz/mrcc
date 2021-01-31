@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 use std::rc::Rc;
 
-use mrcc_lex::LexCtx;
-use mrcc_source::smap::{FileName, SourcesTooLargeError};
-use mrcc_source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
+use lex::LexCtx;
+use source::smap::{FileName, SourcesTooLargeError};
+use source::{DResult, SourceId, SourceMap, SourcePos, SourceRange};
 
 use crate::expand::MacroState;
 use crate::file::{File, IncludeKind};

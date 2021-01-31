@@ -1,5 +1,5 @@
-use mrcc_lex::LexCtx;
-use mrcc_source::DResult;
+use lex::LexCtx;
+use source::DResult;
 
 use crate::expand::ReplacementLexer;
 use crate::PpToken;

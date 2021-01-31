@@ -8,7 +8,7 @@
 use std::borrow::Cow;
 use std::convert::TryFrom;
 
-use mrcc_source::{LocalOff, LocalRange};
+use source::{LocalOff, LocalRange};
 
 use super::PunctKind;
 

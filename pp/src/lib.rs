@@ -5,8 +5,8 @@
 use std::mem;
 use std::path::PathBuf;
 
-use mrcc_lex::{LexCtx, Lexer, Token, TokenKind};
-use mrcc_source::{DResult, SourceId, SourceRange};
+use lex::{LexCtx, Lexer, Token, TokenKind};
+use source::{DResult, SourceId, SourceRange};
 
 use active_file::{ActiveFiles, Event};
 use expand::MacroState;

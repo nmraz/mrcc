@@ -1,7 +1,7 @@
 use std::fmt;
 
-use mrcc_lex::{LexCtx, PunctKind, Token, TokenKind};
-use mrcc_source::SourceRange;
+use lex::{LexCtx, PunctKind, Token, TokenKind};
+use source::SourceRange;
 
 /// A token with auxiliary data relevent to the preprocessor.
 #[derive(Debug, Copy, Clone)]
