@@ -29,10 +29,12 @@ impl Node {
         }
     }
 
+    #[inline]
     pub fn kind(&self) -> NodeKind {
         self.kind
     }
 
+    #[inline]
     pub fn range(&self) -> FragmentedSourceRange {
         self.range
     }
@@ -76,5 +78,19 @@ impl Element {
             Element::Node(node) => node.range(),
             Element::Token(tok) => tok.range.into(),
         }
+    }
+}
+
+impl From<Token> for Element {
+    #[inline]
+    fn from(v: Token) -> Self {
+        Element::Token(v)
+    }
+}
+
+impl From<Node> for Element {
+    #[inline]
+    fn from(v: Node) -> Self {
+        Element::Node(v)
     }
 }
