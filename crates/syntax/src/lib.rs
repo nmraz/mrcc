@@ -2,8 +2,10 @@
 
 use source::FragmentedSourceRange;
 
+pub use builder::TreeBuilder;
 pub use kind::*;
 
+mod builder;
 mod kind;
 
 pub type Token = lex::Token<TokenKind>;
