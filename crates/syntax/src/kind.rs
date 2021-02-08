@@ -99,6 +99,8 @@ pub enum NodeKind {
     ArrayDeclarator,
     FunctionDeclarator,
 
+    ParamList,
+
     // Initializers
     StructInitList,
     DesignatorList,
