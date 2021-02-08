@@ -112,6 +112,7 @@ pub enum NodeKind {
     CaseStmt,
     DefaultCaseStmt,
 
+    BlockStmt,
     ExprStmt,
 
     IfStmt,
