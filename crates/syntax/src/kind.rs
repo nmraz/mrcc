@@ -104,4 +104,23 @@ pub enum NodeKind {
     DesignatorList,
     FieldDesignator,
     ArrayDesignator,
+
+    // Statements
+    LabeledStmt,
+    CaseStmt,
+    DefaultCaseStmt,
+
+    ExprStmt,
+
+    IfStmt,
+    SwitchStmt,
+
+    WhileStmt,
+    DoWhileStmt,
+    ForStmt,
+
+    GotoStmt,
+    ContinueStmt,
+    BreakStmt,
+    ReturnStmt,
 }
