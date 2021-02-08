@@ -65,7 +65,6 @@ pub enum NodeKind {
     PlainDecl,
     StaticAssertDecl,
 
-    PlainDeclarator,
     InitDeclarator,
 
     // Specifiers
@@ -84,4 +83,19 @@ pub enum NodeKind {
 
     SpecifierQualifierList,
     TypeQualifierList,
+
+    // Struct/Union Contents
+    StructDeclList,
+    StructFieldDecl,
+    BitfieldDeclarator,
+
+    // Enum Contents
+    EnumeratorList,
+    Enumerator,
+
+    // Declarators
+    IdentDeclarator,
+    ParenDeclarator,
+    ArrayDeclarator,
+    FunctionDeclarator,
 }
