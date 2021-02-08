@@ -59,4 +59,29 @@ pub enum TokenKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKind {
     TranslationUnit,
+
+    // (External) Declarations
+    FunctionDef,
+    PlainDecl,
+    StaticAssertDecl,
+
+    PlainDeclarator,
+    InitDeclarator,
+
+    // Specifiers
+    StorageSpecifier,
+
+    PlainTypeSpecifier,
+    AtomicTypeSpecifier,
+    StructSpecifier,
+    UnionSpecifier,
+    EnumSpecifier,
+    TypedefName,
+
+    TypeQualifier,
+    FunctionSpecifier,
+    AlignmentSpecifier,
+
+    SpecifierQualifierList,
+    TypeQualifierList,
 }
