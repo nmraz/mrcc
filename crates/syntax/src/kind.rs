@@ -123,4 +123,31 @@ pub enum NodeKind {
     ContinueStmt,
     BreakStmt,
     ReturnStmt,
+
+    // Expressions
+    IdentExpr,
+    NumberLiteralExpr,
+    CharLiteralExpr,
+    StrLiteralExpr,
+    ParenExpr,
+
+    IndexExpr,
+    CallExpr,
+    MemberExpr,
+    DerefMemberExpr,
+    PostIncrExpr,
+    CompoundLiteralExpr,
+
+    PreIncrExpr,
+    UnaryExpr,
+    SizeofValExpr,
+    SizeofTypeExpr,
+    AlignofExpr,
+
+    CastExpr,
+    BinExpr,
+    ConditionalExpr,
+    AssignmentExpr,
+
+    ArgList,
 }
