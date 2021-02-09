@@ -69,7 +69,7 @@ impl TreeBuilder {
             "builder has disconnected children"
         );
 
-        let root_elem = self.pending_children.remove(0);
+        let root_elem = self.pending_children.pop().unwrap();
 
         match root_elem {
             Element::Node(node) => node,
