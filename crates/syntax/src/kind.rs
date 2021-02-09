@@ -211,3 +211,43 @@ pub enum NodeKind {
 
     ArgList,
 }
+
+#[cfg(test)]
+mod tests {
+    use lex::PunctKind;
+
+    use super::*;
+
+    #[test]
+    fn kind_from_plain() {
+        fn check(plain: lex::TokenKind, expected: TokenKind, interner: &Interner) {
+            assert_eq!(TokenKind::from_plain(plain, interner), expected);
+        }
+
+        fn check_plain(plain: lex::TokenKind, interner: &Interner) {
+            check(plain, TokenKind::Plain(plain), interner);
+        }
+
+        fn check_kw(text: &str, kw: Keyword, interner: &mut Interner) {
+            check(
+                lex::TokenKind::Ident(interner.intern(text)),
+                TokenKind::Keyword(kw),
+                interner,
+            );
+        }
+
+        let mut interner = Interner::new();
+
+        check_plain(lex::TokenKind::Unknown, &interner);
+        check_plain(lex::TokenKind::Eof, &interner);
+        check_plain(lex::TokenKind::Punct(PunctKind::Comma), &interner);
+
+        check_plain(lex::TokenKind::Number(interner.intern("3")), &interner);
+        check_plain(lex::TokenKind::Str(interner.intern(r#""hi""#)), &interner);
+        check_plain(lex::TokenKind::Char(interner.intern("'c'")), &interner);
+
+        check_kw("if", Keyword::If, &mut interner);
+        check_kw("while", Keyword::While, &mut interner);
+        check_kw("for", Keyword::For, &mut interner);
+    }
+}
