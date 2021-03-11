@@ -5,7 +5,7 @@
 use std::mem;
 use std::path::PathBuf;
 
-use lex::{LexCtx, Lexer, Token, TokenKind};
+use lex::{Lex, LexCtx, Token, TokenKind};
 use source::{DResult, SourceId, SourceRange};
 
 use active_file::{ActiveFiles, Event};
@@ -151,7 +151,7 @@ impl Preprocessor {
     }
 }
 
-impl Lexer for Preprocessor {
+impl Lex for Preprocessor {
     fn next(&mut self, ctx: &mut LexCtx<'_, '_>) -> DResult<Token> {
         self.next_pp(ctx).map(|ppt| ppt.tok)
     }

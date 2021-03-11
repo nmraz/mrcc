@@ -20,7 +20,7 @@ pub type Interner = intern::Interner<str>;
 pub type Symbol = intern::Symbol<str>;
 
 /// Trait representing a source of tokens.
-pub trait Lexer {
+pub trait Lex {
     /// Lexes the next token from the stream.
     ///
     /// This function returns a [`DResult`] as it may report diagnostics through `ctx`.
