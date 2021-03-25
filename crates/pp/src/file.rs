@@ -126,7 +126,7 @@ impl IncludeLoader {
                     }
                 }
             })
-        };
+        }
 
         if filename.is_absolute() {
             // Avoid repeatedly looking up the same file.
