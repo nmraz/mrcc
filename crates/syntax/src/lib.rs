@@ -5,6 +5,7 @@ use source::FragmentedSourceRange;
 pub use builder::TreeBuilder;
 pub use kind::*;
 
+mod ast;
 mod builder;
 mod kind;
 
